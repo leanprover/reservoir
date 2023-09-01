@@ -6,6 +6,9 @@ jobs:
   fetch:
     name: Fetch
     runs-on: ubuntu-latest
+    outputs:
+      repos: ${{ steps.output-repos.outputs.repos }}
+      toolchain: ${{ steps.find-toolchain.outputs.toolchain }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -22,22 +25,9 @@ jobs:
         with:
           name: test-repos
           path: test-repos.txt
-  build:
-    needs: fetch
-    name: Build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install Elan
-        shell: bash -euo pipefail {0}
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
-          echo "$HOME/.elan/bin" >> $GITHUB_PATH
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Fetch Repositiories
-        uses: actions/download-artifact@v3
-        with:
-          name: test-repos
+      - id: output-repos
+        name: Output Repositories
+        run: node -e "console.log('repos='+JSON.stringify(require('fs').readFileSync('test-repos.txt').toString().trim().split('\n')))" >> "$GITHUB_OUTPUT"
       - id: find-toolchain
         name: Find Latest Toolchain
         shell: bash -euo pipefail {0}
@@ -46,12 +36,23 @@ jobs:
           echo "toolchain=leanprover/lean4:$latest" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ github.token }}
-      - name: Build Repositiories
+  build:
+    needs: fetch
+    name: Build ${{ matrix.repo }}
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    strategy:
+      matrix:
+        repo: ${{ fromJson(needs.fetch.outputs.repos) }}
+    steps:
+      - name: Install Elan
+        shell: bash -euo pipefail {0}
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Build
         # Note this runs arbitrary untrusted code so we cannot give it secrets
-        run: ./build.sh test-repos.txt ${{ steps.find-toolchain.outputs.toolchain }} > built-repos.txt
-      - name: Upload Results
-        uses: actions/upload-artifact@v3
-        with:
-          name: built-repos
-          path: built-repos.txt
+        run: ./build-one.sh ${{ matrix.repo }} testbed/${{ matrix.repo }} ${{ needs.fetch.outputs.toolchain }}
 
