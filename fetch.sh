@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-MAX_QUERY=${1:-100}
-MAX_REPOS=${2:-20}
+MAX_QUERY=${1:-1000}
+MAX_REPOS=${2:-100}
 TESTBED=${3:-testbed}
 
 mkdir -p $TESTBED
