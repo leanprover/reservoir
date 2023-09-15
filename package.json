@@ -1,0 +1,26 @@
+{
+  "name": "reservoir",
+  "version": "0.1.0",
+  "description": "The Lean package repository.",
+  "author": "Mac Malone",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tydeu/reservoir.git"
+  },
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "devDependencies": {
+    "@nuxt/devtools": "latest",
+    "@parcel/watcher": "^2.3.0",
+    "nuxt": "^3.7.3",
+    "sass": "^1.67.0"
+  }
+}

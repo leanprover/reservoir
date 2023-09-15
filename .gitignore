@@ -1,1 +1,17 @@
+# Reservoir outputs
 /testbed
+/manifest.json
+
+# Node dependencies
+node_modules
+
+# Nuxt dev/build outputs
+.output
+.data
+.nuxt
+.nitro
+.cache
+dist
+
+# Misc
+.DS_Store
