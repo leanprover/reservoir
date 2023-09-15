@@ -91,11 +91,9 @@ jobs:
           path: testbed
       - name: Create Manifest
         run: ./bundle.py testbed ${{ needs.fetch.outputs.toolchain }} -o testbed/manifest.json
-      - name: Cleanup Matrix
-        run: rm -rf testbed/matrix/
-      - name: Upload Bundle
+      - name: Upload Manifest
         uses: actions/upload-artifact@v3
         with:
-          name: testbed
-          path: testbed
+          name: manifest
+          path: testbed/manifest.json
 
