@@ -15,8 +15,8 @@ echo -n "$TOOLCHAIN" > lean-toolchain
 lake exe cache get || true
 if ! lake build; then
   echo "info: build failed, updating and trying again" >&2
-  lake clean
   lake update
+  lake clean
   lake exe cache get || true
   lake build
 fi
