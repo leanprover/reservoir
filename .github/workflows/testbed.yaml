@@ -1,33 +1,41 @@
 name: Testbed
 
-on: [push, workflow_dispatch]
+on:
+  push:
+    branches:
+      - master
+      - 'stage/**'   # branch pattern for general changes
+      - 'testbed/**' # branch pattern for testbed-only changes
+  # Enable running this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# Permit only 1 concurrent testbed run per branch, cancelling previous ones
+concurrency:
+  group: testbed/${{ github.ref_name }}
+  cancel-in-progress: true
 
 jobs:
   fetch:
     name: Fetch
     runs-on: ubuntu-latest
     outputs:
-      repos: ${{ steps.output-repos.outputs.repos }}
+      matrix: ${{ steps.output-repos.outputs.matrix }}
       toolchain: ${{ steps.find-toolchain.outputs.toolchain }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
       - name: Query Repositories
-        run: ./query.sh > gh-repos.txt
+        run: ./fetch.py ${{ github.ref_name == 'master' && 100 || 20 }} -o matrix.json -v
         env:
           GH_TOKEN: ${{ github.token }}
-      - name: Find Lakefiles
-        run: ./filter-lake.sh gh-repos.txt > lake-repos.txt
-      - name: Curate
-        run: ./curate.sh lake-repos.txt > test-repos.txt
-      - name: Upload Results
+      - name: Upload Matrix
         uses: actions/upload-artifact@v3
         with:
-          name: test-repos
-          path: test-repos.txt
+          name: matrix
+          path: matrix.json
       - id: output-repos
-        name: Output Repositories
-        run: node -e "console.log('repos='+JSON.stringify(require('fs').readFileSync('test-repos.txt').toString().trim().split('\n')))" >> "$GITHUB_OUTPUT"
+        name: Output Matrix
+        run: (echo -n 'matrix='; cat matrix.json) >> "$GITHUB_OUTPUT"
       - id: find-toolchain
         name: Find Latest Toolchain
         shell: bash -euo pipefail {0}
@@ -38,21 +46,56 @@ jobs:
           GH_TOKEN: ${{ github.token }}
   build:
     needs: fetch
-    name: Build ${{ matrix.repo }}
+    name: Build ${{ matrix.fullName }}
     runs-on: ubuntu-latest
-    continue-on-error: true
     strategy:
       matrix:
-        repo: ${{ fromJson(needs.fetch.outputs.repos) }}
+        include: ${{ fromJson(needs.fetch.outputs.matrix) }}
+      # complete all jobs
+      fail-fast: false
     steps:
       - name: Install Elan
         shell: bash -euo pipefail {0}
         run: |
-          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain ${{ needs.fetch.outputs.toolchain }}
           echo "$HOME/.elan/bin" >> $GITHUB_PATH
+      - name: Check Lean
+        run: lean --version
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Build
-        # Note this runs arbitrary untrusted code so we cannot give it secrets
-        run: ./build-one.sh ${{ matrix.repo }} testbed/${{ matrix.repo }} ${{ needs.fetch.outputs.toolchain }}
+      - id: build
+        name: Build
+        continue-on-error: true
+        # Note that this runs arbitrary untrusted code so we cannot give it secrets
+        run: ./build-one.sh ${{ matrix.fullName }} testbed ${{ needs.fetch.outputs.toolchain }}
+      - name: Output Outcome
+        run: |
+          mkdir -p testbed/build
+          echo ${{ steps.build.outcome }} > testbed/build/outcome.txt
+      - name: Upload Results
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.id }}
+          path: testbed/build
+  bundle:
+    needs: [fetch, build]
+    name: Bundle
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Download Individual Results
+        uses: actions/download-artifact@v3
+        with:
+          # Without a name, downloads all artifacts
+          path: testbed
+      - name: Create Manifest
+        run: ./bundle.py testbed ${{ needs.fetch.outputs.toolchain }} -o testbed/manifest.json
+      - name: Cleanup Matrix
+        run: rm -rf testbed/matrix/
+      - name: Upload Bundle
+        uses: actions/upload-artifact@v3
+        with:
+          name: testbed
+          path: testbed
 
