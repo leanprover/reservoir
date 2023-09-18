@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+      - 'stage/**' # branch pattern for general changes
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  index:
+    name: Index
+    uses: ./.github/workflows/index.yaml
+  testbed:
+    needs: index
+    name: Testbed
+    uses: ./.github/workflows/testbed.yaml
+  pages:
+    needs: [index, testbed]
+    name: Pages
+    uses: ./.github/workflows/pages.yaml

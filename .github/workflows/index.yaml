@@ -1,0 +1,33 @@
+name: Index
+
+on:
+  push:
+    branches:
+      - 'index/**' # branch pattern for query-only changes
+  # Enable running this workflow from ci.yml
+  workflow_call:
+  # Enable running this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# Permit only 1 concurrent run per branch, cancelling previous ones
+concurrency:
+  group: index/${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  fetch:
+    name: Fetch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Query Repositories
+        run: ./query.py -o index.json -v -Q ${{github.ref_name == 'master' && 1000 || 75}}
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Upload Index
+        uses: actions/upload-artifact@v3
+        with:
+          name: index
+          path: index.json
+          if-no-files-found: error

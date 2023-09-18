@@ -1,14 +1,21 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -euxo pipefail
 
-TESTBED="${TESTBED:-testbed}"
-REPO_FILE="${1:-"$TESTBED/test-repos.txt"}"
-TOOLCHAIN=${2:-"leanprover/lean4:$(gh release list -R leanprover/lean4 -L 1 | cut -f1)"}
+REPO=$1
+DIR=$2
+TOOLCHAIN=${3:-"leanprover/lean4:$(gh release list -R leanprover/lean4 -L 1 | cut -f1)"}
 
-while read -r REPO; do
-  DIR="$TESTBED/repos/$REPO"
-  echo "info: building $REPO on $TOOLCHAIN in $DIR" >&2
-  if ./build-one.sh $REPO "$DIR" $TOOLCHAIN >&2; then
-    echo $REPO
-  fi
-done < "$REPO_FILE"
+mkdir -p "$DIR"
+rm -rf "$DIR"
+git clone "$REPO" "$DIR"
+cd "$DIR"
+echo -n "$TOOLCHAIN" > lean-toolchain
+lake exe cache get || true
+if ! lake build; then
+  echo "info: build failed, updating and trying again" >&2
+  lake update
+  lake clean
+  lake exe cache get || true
+  lake build
+fi
+echo "info: succesfully built $REPO on $TOOLCHAIN" >&2

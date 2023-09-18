@@ -1,0 +1,6 @@
+leanprover-community/mathlib4
+lecopivo/SciLean
+opencompl/lean-mlir
+ufmg-smite/lean-smt
+avigad/mathematics_in_lean_source
+siddhartha-gadgil/LeanAide

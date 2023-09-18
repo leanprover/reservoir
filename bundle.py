@@ -1,38 +1,40 @@
 #!/usr/bin/env python3
-import json
 import argparse
-import os
+import json
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
+  parser.add_argument('index',
+    help="repository metadata")
   parser.add_argument('results',
-    help="directory containing testbed results")
-  parser.add_argument('toolchain',
-    help="Lean toolchain the results where built on")
-  parser.add_argument('-m', '--matrix',
-    help="matrix file within the results")
+    help="testbed results")
   parser.add_argument('-o', '--output',
     help='file to output the bundle manifest')
   args = parser.parse_args()
 
-  matrix_file = args.matrix
-  if matrix_file is None:
-    matrix_file = os.path.join(args.results, 'matrix', 'matrix.json')
+  with open(args.index, 'r') as f:
+    index = json.load(f)
 
-  with open(matrix_file, 'r') as f:
-    matrix = json.load(f)
+  with open(args.results, 'r') as f:
+    results = json.load(f)
 
-  for repo in matrix:
-    outcome_file = os.path.join(args.results, repo['id'], 'outcome.txt')
-    if os.path.exists(outcome_file):
-      with open(outcome_file, 'r') as f:
-        repo['outcome'] = f.read().strip()
-    else:
-      repo['outcome'] = "missing"
+  repos = dict()
+  for repo in index['matrix']:
+    repos[repo['id']] = repo
+    repos[repo['id']]['outcome'] = None
+  for result in results['matrix']:
+    if result['id'] in repos:
+      repos[result['id']]['outcome'] = result['outcome']
 
-  bundle = {'toolchain': args.toolchain, 'matrix': matrix}
+  data = {
+    "buildId": results['buildId'],
+    'builtAt': results['builtAt'],
+    'toolchain': results['toolchain'],
+    'fetchedAt': index['fetchedAt'],
+    'matrix': list(repos.values())
+  }
   if args.output is None:
-    print(json.dumps(bundle))
+    print(json.dumps(data))
   else:
     with open(args.output, 'w') as f:
-      f.write(json.dumps(bundle))
+      f.write(json.dumps(data))

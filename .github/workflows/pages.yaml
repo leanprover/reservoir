@@ -3,12 +3,15 @@ name: Pages
 on:
   push:
     branches:
-      - master
-      - 'stage/**'  # branch pattern for general changes
-      - 'pages/**'  # branch pattern for testbed-only changes
-  workflow_run:
-    workflows: [Testbed]
-    types: [completed]
+      - 'pages/**'  # branch pattern for pages-only changes
+  # Enable running this workflow from ci.yml
+  workflow_call:
+    inputs:
+      ci:
+        description: 'Used to dinstinguish a CI workflow call from a standalone workflow'
+        type: boolean
+        required: false
+        default: true
   # Enable running this workflow manually from the Actions tab
   workflow_dispatch:
 
@@ -21,11 +24,48 @@ permissions:
 # Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
 # However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
 concurrency:
-  group: "pages"
+  group: pages
   cancel-in-progress: false
 
 jobs:
+  bundle:
+    name: Bundle Manifest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Download Testbed Results (CI)
+        if: inputs.ci
+        uses: actions/download-artifact@v3
+        with:
+          name: results
+      - name: Download Testbed Results (Standalone)
+        if: (!inputs.ci)
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          name: results
+          workflow: testbed.yaml
+      - name: Download Index (CI)
+        if: inputs.ci
+        uses:  actions/download-artifact@v3
+        with:
+          name: index
+      - name: Download Index (Standalone)
+        if: (!inputs.ci)
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          name: index
+          workflow: index.yaml
+      - name: Create Manifest
+        run: ./bundle.py index.json results.json -o manifest.json
+      - name: Upload Manifest
+        uses: actions/upload-artifact@v3
+        with:
+          name: manifest
+          path: manifest.json
+          if-no-files-found: error
   deploy:
+    needs: bundle
     name: Deploy
     environment:
       name: github-pages
@@ -34,11 +74,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Download Testbed Manifest
-        uses: dawidd6/action-download-artifact@v2
+      - name: Download Manifest
+        uses: actions/download-artifact@v3
         with:
           name: manifest
-          workflow: testbed.yaml
       - name: Install Node Modules
         run: npm ci
       - name: Build Site

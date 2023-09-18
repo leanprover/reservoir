@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
+from datetime import datetime
 import argparse
 import subprocess
 import requests
 import json
 import logging
 
-def query(num):
+def query(num: int):
   query = "language:Lean stars:>1 sort:stars"
-  fields = ["fullName","description","updatedAt","url"]
+  fields = ["fullName","description","license","updatedAt","url","homepage","stargazersCount"]
   child = subprocess.run([
     "gh", "search", "repos",
     *query.split(' '), "-L", str(num), "--json", ','.join(fields),
@@ -17,8 +18,8 @@ def query(num):
 def filter_lake(repo):
   repo = repo['fullName']
   url = f"https://raw.githubusercontent.com/{repo}/HEAD/lakefile.lean"
-  logging.info(f"querying {url}")
-  code = requests.head(url).status_code
+  logging.debug(f"querying {url}")
+  code = requests.head(url, allow_redirects=True).status_code
   log = f"status {code} for repository {repo}"
   if code == 404:
     logging.debug(log)
@@ -30,17 +31,17 @@ def filter_lake(repo):
     logging.error(f"status {code} for repository {repo}")
     return False
 
-def gen_id(repo):
+def enrich(repo: dict):
   repo['id'] = repo['fullName'].replace("-", "--").replace("/", "-")
+  repo['license'] = repo['license']['key']
+  repo['stars'] = repo.pop('stargazersCount')
   return repo
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
-  parser.add_argument('num', type=int,
-    help='max number of results to curate')
-  parser.add_argument('-Q', '--query', type=int, default=None,
+  parser.add_argument('-Q', '--query', type=int, default=1000,
     help='(max) number of results to query from GitHub')
-  parser.add_argument('-X', '--exclusions', default="exclusions.txt",
+  parser.add_argument('-X', '--exclusions', default="query-exclusions.txt",
     help='file containing repos to exclude')
   parser.add_argument('-o', '--output',
     help='file to output results')
@@ -62,24 +63,23 @@ if __name__ == "__main__":
   with open(args.exclusions, 'r') as f:
     for line in f: exclusions.add(line.strip())
 
-  num_query = args.query
-  if num_query is None:
-    num_query = args.num * 5
-
-  repos = query(num_query)
-  logging.info(f"found {len(repos)} (max {num_query}) notable Lean repositories")
+  repos = query(args.query)
+  logging.info(f"found {len(repos)} (max {args.query}) notable Lean repositories")
   repos = filter(lambda repo: repo['fullName'] not in exclusions, repos)
   repos = filter(filter_lake, repos)
-  repos = map(gen_id, repos)
+  repos = map(enrich, repos)
   repos = list(repos)
-  logging.info(f"found {len(repos)} notable Lean repositories with lakefiles (picking {args.num})")
-  repos = repos[0:args.num]
+  logging.info(f"found {len(repos)} notable Lean repositories with lakefiles")
 
+  data = {
+    "fetchedAt": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+    "matrix": repos
+  }
   if args.output is None:
-    print(json.dumps(repos))
+    print(json.dumps(data))
   else:
     with open(args.output, 'w') as f:
-      f.write(json.dumps(repos))
+      f.write(json.dumps(data))
 
 
 
