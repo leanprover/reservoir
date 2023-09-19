@@ -1,5 +1,12 @@
 <script setup lang="ts">
+import pkg from '~/package.json'
 import manifest from '~/manifest.json'
+useHead({
+  title: 'Reservoir',
+  meta: [
+    { name: 'description', content: pkg.description }
+  ]
+})
 </script>
 
 <template>
