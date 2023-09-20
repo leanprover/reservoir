@@ -1,28 +1,21 @@
 <script setup lang="ts">
-import GitHubIcon from '~icons/simple-icons/github'
-import LinkedinIcon from '~icons/simple-icons/linkedin'
-import ZulipIcon from '~icons/simple-icons/zulip'
 import GetStartedIcon from '~icons/ion/book'
 import manifest from '~/manifest.json'
-useHead({
-  title: 'Reservoir',
-  meta: [
-    { name: 'description', content: 'The Lean package repository.' }
-  ]
-})
+const popular = manifest.matrix.slice(0, 10)
+const added = [...manifest.matrix].sort((a, b) =>
+  new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+).slice(0, 10)
+const updated = [...manifest.matrix].sort((a, b) =>
+  new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+).slice(0, 10)
 </script>
 
 <template>
-  <header>
-    <div class="contents">
-      <h1 class="title">Reservoir</h1>
-    </div>
-  </header>
-  <main>
-    <div class="contents">
-      <div class="intro">
+  <div class="page contents">
+    <div class="intro">
+      <div class="top-line">
         <div class="toolchain">
-          <span class="label">Latest Lean Toolchain: </span>
+          <span class="label">Latest Lean Toolchain:</span>
           <span class="name">{{ manifest.toolchain }}</span>
         </div>
         <a href="https://leanprover-community.github.io/get_started.html" class="get-started">
@@ -33,59 +26,135 @@ useHead({
       <div class="blurb">
         <p>Reservoir indexes, builds, and tests packages within the Lean and Lake ecosystem.</p>
       </div>
-      <h2>{{ manifest.matrix.length }} Indexed Repositories</h2>
-      <ol class="matrix">
-        <li v-for="repo in manifest.matrix">
-          <BuildOutcome class="icon" :outcome="repo.outcome"></BuildOutcome>
-          <a :href="repo.url">{{ repo.fullName }}</a>
-        </li>
-      </ol>
     </div>
-  </main>
-  <footer>
-    <div class="contents">
+    <div class="highlights">
       <div>
-        <h2>Lean</h2>
-        <ul>
-          <li><a href="https://leanprover.github.io/">Lean Prover</a></li>
-          <li><a href="https://lean-fro.org/">The Lean FRO</a></li>
-          <li><a href="https://leanprover-community.github.io/">Lean Community</a></li>
-          <li><a href="https://github.com/leanprover/lean4/issues">Report a bug</a></li>
-        </ul>
+        <h3>Most Popular</h3>
+        <PackageShortList :pkgs="popular"/>
       </div>
       <div>
-        <h2>Books</h2>
-        <ul>
-          <li><a href="https://leanprover.github.io/lean4/doc/whatIsLean.html">The Lean Manual</a></li>
-          <li><a href="https://leanprover.github.io/theorem_proving_in_lean4/">Theorem Proving in Lean</a></li>
-          <li><a href="https://leanprover.github.io/functional_programming_in_lean/">Functional Programming in Lean</a></li>
-          <li><a href="https://avigad.github.io/mathematics_in_lean/">Mathematics in Lean</a></li>
-        </ul>
+        <h3>Just Added</h3>
+        <PackageShortList :pkgs="added"/>
       </div>
       <div>
-        <h2>Social</h2>
-        <ul>
-          <li>
-            <a href="https://github.com/leanprover">
-              <GitHubIcon class="icon"/><span>leanprover</span>
-            </a>
-          </li>
-          <li>
-            <a href="https://www.linkedin.com/company/lean-fro">
-              <LinkedinIcon class="icon"/><span>Lean FRO</span>
-            </a>
-          </li>
-          <li>
-            <a href="https://leanprover.zulipchat.com/">
-              <ZulipIcon class="icon"/><span>leanprover</span>
-            </a>
-          </li>
-        </ul>
+        <h3>Recently Updated</h3>
+        <PackageShortList :pkgs="updated"/>
       </div>
     </div>
-  </footer>
+  </div>
 </template>
 
 <style lang="scss">
-@import url('~/styles/main.scss');
+.page {
+  display: flex;
+  flex-direction: column;
+  margin: 1em 0;
+
+  .intro {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 2em;
+
+    .top-line {
+      display: flex;
+
+      & > * {
+        margin-bottom: 1.5em;
+      }
+
+      @media only screen and (max-width: 600px) {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      }
+
+      @media screen and (min-width: 600px) {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+
+        .toolchain {
+          margin-right: 1em;
+        }
+      }
+
+      .toolchain {
+        display: flex;
+        flex-direction: column;
+        white-space: nowrap;
+        font-size: larger;
+
+        & > .label {
+          font-weight: bold;
+          margin-right: 0.5em;
+        }
+        & > .name {
+          font-size: 1em;
+        }
+      }
+
+      .get-started {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+
+        color: var(--light-text-color);
+        background-color: var(--dark-accent-color);
+        line-height: 1em;
+        padding: 0.5em 2em;
+
+        white-space: nowrap;
+        font-family: 'Merriweather', serif;
+        border-radius: 12px;
+
+        &:hover {
+          background-color: var(--light-accent-color);
+        }
+
+        .icon {
+          width: 1.5em;
+          height: 1.5em;
+          margin-right: 1em;
+          flex: 0 0 auto;
+        }
+      }
+    }
+
+    .blurb {
+      @media only screen and (max-width: 600px) {
+        text-align: center;
+      }
+    }
+  }
+
+  .highlights {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    flex-wrap: wrap;
+
+    @media screen and (max-width: 400px) {
+      & > * {
+        flex-grow: 1;
+      }
+    }
+
+
+    h3 {
+      margin-bottom: 1em;
+    }
+
+    .short-list {
+      margin-bottom: 2em;
+    }
+
+    .card  {
+      white-space: nowrap;
+
+      @media screen and (min-width: 600px) {
+        max-width: 30vw;
+      }
+    }
+  }
+}
 </style>
