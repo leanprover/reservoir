@@ -41,10 +41,9 @@ jobs:
           name: results
       - name: Download Testbed Results (Standalone)
         if: (!inputs.ci)
-        uses: dawidd6/action-download-artifact@v2
-        with:
-          name: results
-          workflow: testbed.yaml
+        run: gh run download -n results
+        env:
+          GH_TOKEN: ${{ github.token }}
       - name: Download Index (CI)
         if: inputs.ci
         uses:  actions/download-artifact@v3
@@ -52,10 +51,9 @@ jobs:
           name: index
       - name: Download Index (Standalone)
         if: (!inputs.ci)
-        uses: dawidd6/action-download-artifact@v2
-        with:
-          name: index
-          workflow: index.yaml
+        run: gh run download -n index
+        env:
+          GH_TOKEN: ${{ github.token }}
       - name: Create Manifest
         run: ./bundle.py index.json results.json -o manifest.json
       - name: Upload Manifest

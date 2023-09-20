@@ -55,10 +55,9 @@ jobs:
           name: index
       - name: Download Index (Standalone)
         if: (!inputs.ci)
-        uses: dawidd6/action-download-artifact@v2
-        with:
-          name: index
-          workflow: index.yaml
+        run: gh run download -n index
+        env:
+          GH_TOKEN: ${{ github.token }}
       - name: Create Matrix
         run: |
           ./testbed-create.py index.json -o matrix.json \
