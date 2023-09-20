@@ -8,7 +8,7 @@ import logging
 
 def query(num: int):
   query = "language:Lean stars:>1 sort:stars"
-  fields = ["fullName","description","license","updatedAt","url","homepage","stargazersCount"]
+  fields = ["name","fullName","description","license","createdAt","updatedAt","url","homepage","stargazersCount"]
   child = subprocess.run([
     "gh", "search", "repos",
     *query.split(' '), "-L", str(num), "--json", ','.join(fields),
