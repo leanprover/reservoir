@@ -40,7 +40,7 @@ const outcomeTooltip = computed(() => {
 </Tippy>
 </template>
 
-<style lang="scss">
+<style scoped lang="scss">
 .build-outcome {
   display: flex;
   align-items: center;
@@ -52,14 +52,17 @@ const outcomeTooltip = computed(() => {
 
   &.outcome-success {
     background-color: var(--success-color);
+    svg { margin-left: 1%; }
   }
 
   &.outcome-failure {
     background-color: var(--failure-color);
+    svg { margin-left: 1%; margin-top: 1%; }
   }
 
   &.outcome-none {
     background-color: var(--neutral-color);
+    svg { margin-left: 1%; }
   }
 }
 </style>
