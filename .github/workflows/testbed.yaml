@@ -61,7 +61,7 @@ jobs:
       - name: Create Matrix
         run: |
           ./testbed-create.py index.json -o matrix.json \
-            -n ${{inputs.repositories || (github.ref_name == 'master' && 100 || 15)}} \
+            -n ${{inputs.repositories || (github.ref_name == 'master' && 200 || 15)}} \
             -X ${{github.ref_name == 'master' && 'testbed-exclusions.txt' || 'testbed-dev-exclusions.txt'}}
       - name: Upload Matrix
         uses: actions/upload-artifact@v3
