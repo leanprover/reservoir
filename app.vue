@@ -1,8 +1,14 @@
 <script setup lang="ts">
 useHead({
+  htmlAttrs: {
+    lang: 'en'
+  },
   title: 'Reservoir',
   meta: [
     { name: 'description', content: 'The Lean package repository.' }
+  ],
+  link: [
+    { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }
   ]
 })
 </script>
@@ -17,7 +23,7 @@ useHead({
 
 <style lang="scss">
 @import url("normalize.css");
-@import url('https://fonts.googleapis.com/css2?family=Merriweather&family=Open+Sans&family=Source+Code+Pro&family=Source+Code+Pro:wght@600&display=swap');
+@import url('tippy.js/dist/tippy.css');
 
 // palette is variants of slate and blue gray
 :root {
@@ -58,6 +64,7 @@ a {
 }
 
 body {
+  line-height: 1.2;
   background-color: var(--header-bg-color);
   font-family: 'Open Sans', sans-serif;
   min-height: 100vh;
@@ -179,4 +186,3 @@ footer > .contents {
   }
 }
 </style>
-

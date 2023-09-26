@@ -4,7 +4,7 @@ import StarIcon from '~icons/ion/star'
 </script>
 
 <template>
-  <div class="page contents">
+  <div class="search-page contents">
     <div class="page-header">
       <h2>All Packages</h2>
     </div>
@@ -33,7 +33,7 @@ import StarIcon from '~icons/ion/star'
 </template>
 
 <style lang="scss">
-.page {
+.search-page {
   .page-header {
     padding: 1em;
     background-color: #ebedf1;
@@ -116,4 +116,3 @@ import StarIcon from '~icons/ion/star'
   }
 }
 </style>
-

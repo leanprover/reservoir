@@ -11,14 +11,14 @@ const updated = [...manifest.matrix].sort((a, b) =>
 </script>
 
 <template>
-  <div class="page contents">
+  <div class="index-page contents">
     <div class="intro">
       <div class="top-line">
         <div class="toolchain">
-          <span class="label">Latest Lean Toolchain:</span>
+          <h4 class="label">Latest Lean Toolchain:</h4>
           <span class="name">{{ manifest.toolchain }}</span>
         </div>
-        <a href="https://leanprover-community.github.io/get_started.html" class="get-started">
+        <a href="https://lean-lang.org/lean4/doc/quickstart.html" class="get-started">
           <GetStartedIcon class="icon"/>
           <span>Get Started with Lean</span>
         </a>
@@ -45,7 +45,7 @@ const updated = [...manifest.matrix].sort((a, b) =>
 </template>
 
 <style lang="scss">
-.page {
+.index-page {
   display: flex;
   flex-direction: column;
   margin: 1em 0;
@@ -133,7 +133,7 @@ const updated = [...manifest.matrix].sort((a, b) =>
     justify-content: space-between;
     flex-wrap: wrap;
 
-    @media screen and (max-width: 400px) {
+    @media screen and (max-width: 600px) {
       & > * {
         flex-grow: 1;
       }

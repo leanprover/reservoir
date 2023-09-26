@@ -3,7 +3,6 @@ import NoneIcon from '~icons/ion/help'
 import FailIcon from '~icons/ion/close'
 import PassIcon from '~icons/ion/checkmark'
 import { Tippy } from 'vue-tippy'
-import 'tippy.js/dist/tippy.css'
 
 const props = defineProps<{outcome?: string | null}>()
 const outcome = props.outcome
@@ -32,7 +31,7 @@ const outcomeTooltip = computed(() => {
 </script>
 
 <template>
-<Tippy :arrow="true" :class="['build-outcome', 'outcome-' + (outcome || 'none')]">
+<Tippy :arrow="true" class="build-outcome" :class="['outcome-' + (outcome || 'none')]">
   <component width="66%" height="66%" :is="outcomeIcon"/>
   <template #content>
     <div class="tooltip">{{ outcomeTooltip }}</div>
