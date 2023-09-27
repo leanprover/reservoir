@@ -18,6 +18,10 @@ const outcomeIcon = computed(() => {
   }
 })
 
+const outcomeClass = computed(() => {
+  return 'outcome-' + (outcome || 'none')
+})
+
 const outcomeTooltip = computed(() => {
   switch (outcome) {
     case 'success':
@@ -31,7 +35,7 @@ const outcomeTooltip = computed(() => {
 </script>
 
 <template>
-<Tippy :arrow="true" class="build-outcome" :class="['outcome-' + (outcome || 'none')]">
+<Tippy :arrow="true" class="build-outcome" :class="[outcomeClass]">
   <component width="66%" height="66%" :is="outcomeIcon"/>
   <template #content>
     <div class="tooltip">{{ outcomeTooltip }}</div>

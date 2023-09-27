@@ -1,6 +1,31 @@
 <script setup lang="ts">
 import manifest from '~/manifest.json'
 import StarIcon from '~icons/ion/star'
+
+const sortKeys = ["fullName", "stars", "createdAt", "updatedAt"] as const
+type SortKey = typeof sortKeys[number]
+const isSortKey = (x: any): x is SortKey => sortKeys.includes(x)
+
+const route = useRoute()
+const querySortKey = Array(route.query.sort).filter(isSortKey).at(-1)
+const sortKey = ref<SortKey | "">(querySortKey || "stars")
+const matrix = computed(() => {
+  const key = sortKey.value
+  const matrix = [...manifest.matrix]
+  switch (key) {
+    case "stars":
+      return matrix.sort((a, b) => b[key] - a[key])
+    case "createdAt":
+     return matrix.sort((a, b) => new Date(b[key]).getTime() - new Date(a[key]).getTime())
+    case "updatedAt":
+      return matrix.sort((a, b) => new Date(b[key]).getTime() - new Date(a[key]).getTime())
+    case "fullName":
+      return matrix.sort((a, b) => a[key].localeCompare(b[key]))
+    default:
+      return matrix
+  }
+});
+const numResults = manifest.matrix.length
 </script>
 
 <template>
@@ -10,14 +35,20 @@ import StarIcon from '~icons/ion/star'
     </div>
     <div class="results">
       <div class="results-header">
-        <div>Displaying <strong>{{ manifest.matrix.length }}</strong> results</div>
+        <div>Displaying <strong>{{ numResults }}</strong> results</div>
         <div class="sort-by">
           <span class="label">Sort by</span>
-          <span class="dropdown">Most Popular</span>
+          <select class="dropdown" v-model="sortKey">
+            <option value="" disabled selected>Select one...</option>
+            <option value="stars">Stars</option>
+            <option value="createdAt">Date Created</option>
+            <option value="updatedAt">Date Updated</option>
+            <option value="fullName">Alphabetical</option>
+          </select>
         </div>
       </div>
       <ol class="results-list">
-        <li class="card" v-for="repo in manifest.matrix" :key="repo.id">
+        <li class="card" v-for="repo in matrix" :key="repo.id">
           <h3>{{repo.fullName}}</h3>
           <p>{{repo.description}}</p>
           <ul class="links">
@@ -59,6 +90,10 @@ import StarIcon from '~icons/ion/star'
           padding: 0.5em 0.8em;
           background-color: #ebedf1;
           border-radius: 6px;
+
+          option:hover {
+            background-color: var(--dark-color);
+          }
         }
       }
     }

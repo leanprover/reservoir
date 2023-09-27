@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import GetStartedIcon from '~icons/ion/book'
 import manifest from '~/manifest.json'
-const popular = manifest.matrix.slice(0, 10)
-const added = [...manifest.matrix].sort((a, b) =>
+const popular = [...manifest.matrix].sort((a, b) =>
+  b.stars - a.stars
+).slice(0, 10)
+const created = [...manifest.matrix].sort((a, b) =>
   new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
 ).slice(0, 10)
 const updated = [...manifest.matrix].sort((a, b) =>
@@ -28,18 +30,9 @@ const updated = [...manifest.matrix].sort((a, b) =>
       </div>
     </div>
     <div class="highlights">
-      <div>
-        <h3>Most Popular</h3>
-        <PackageShortList :pkgs="popular"/>
-      </div>
-      <div>
-        <h3>Just Added</h3>
-        <PackageShortList :pkgs="added"/>
-      </div>
-      <div>
-        <h3>Recently Updated</h3>
-        <PackageShortList :pkgs="updated"/>
-      </div>
+      <HighlightCategory title="Most Popular" :list="popular" to="/search?sort=stars"/>
+      <HighlightCategory title="Newly Created" :list="created" to="/search?sort=createdAt"/>
+      <HighlightCategory title="Recently Updated" :list="updated" to="/search?sort=updatedAt"/>
     </div>
   </div>
 </template>
@@ -134,25 +127,14 @@ const updated = [...manifest.matrix].sort((a, b) =>
     flex-wrap: wrap;
 
     @media screen and (max-width: 600px) {
-      & > * {
-        flex-grow: 1;
-      }
+      & > * { flex-grow: 1; }
     }
 
-
-    h3 {
-      margin-bottom: 1em;
-    }
-
-    .short-list {
+    .highlight-category {
       margin-bottom: 2em;
-    }
-
-    .card  {
-      white-space: nowrap;
 
       @media screen and (min-width: 600px) {
-        max-width: 30vw;
+        .card { max-width: 30vw; }
       }
     }
   }
