@@ -8,7 +8,7 @@ useHead({
     { name: 'description', content: 'The Lean package repository.' }
   ],
   link: [
-    { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }
+    { rel: 'icon', href: '/favicon.svg' }
   ]
 })
 </script>
@@ -28,7 +28,7 @@ useHead({
 // palette is variants of slate and blue gray
 :root {
   --light-color: #f9fbfd;
-  --medium-color: #bac3cb;
+  --medium-color: #ebedf1;
   --dark-color: #708090;
   --dark-accent-color: #6699cc;
   --light-accent-color: #a1c0e0;
@@ -52,7 +52,7 @@ html, body {
   margin: 0;
 }
 
-* {
+h1, * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
@@ -108,9 +108,16 @@ header > .contents {
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
+  margin: 0.8em 1em;
 
-  h1.title {
-    margin: 0;
+  .title-logo {
+    display: flex;
+    align-items: center;
+
+    .logo {
+      height: 2.5em;
+      margin-right: 0.8em;
+    }
   }
 
   nav {

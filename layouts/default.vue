@@ -3,16 +3,20 @@ import GitHubIcon from '~icons/simple-icons/github'
 import TwitterIcon from '~icons/simple-icons/twitter'
 import LinkedinIcon from '~icons/simple-icons/linkedin'
 import ZulipIcon from '~icons/simple-icons/zulip'
-import IndexIcon from '~icons/ion/list'
+import IndexIcon from '~icons/mdi/lake'
+import LogoIcon from '~/public/favicon.svg?component'
 </script>
 
 <template>
   <div class="layout">
     <header>
       <div class="contents">
-        <NuxtLink to="/"><h1 class="title">Reservoir</h1></NuxtLink>
+        <NuxtLink class="title-logo" to="/">
+          <LogoIcon class="logo"/>
+          <h1 class="title">Reservoir</h1>
+        </NuxtLink>
         <nav>
-          <NuxtLink to="/search" class="all">
+          <NuxtLink to="/packages" class="all">
             <span class="label">All Packages</span>
             <IndexIcon class="icon"/>
           </NuxtLink>

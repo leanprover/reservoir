@@ -9,6 +9,9 @@ export default defineNuxtConfig({
   },
   modules: [
     'unplugin-icons/nuxt',
+    ['nuxt-svgo', {
+      autoImportPath: false,
+    }],
     ['@nuxtjs/critters', {
       config: {
         preload: "body",

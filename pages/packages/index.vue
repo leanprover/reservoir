@@ -29,7 +29,7 @@ const numResults = manifest.matrix.length
 </script>
 
 <template>
-  <div class="search-page contents">
+  <div class="search-page">
     <div class="page-header">
       <h2>All Packages</h2>
     </div>
@@ -48,14 +48,14 @@ const numResults = manifest.matrix.length
         </div>
       </div>
       <ol class="results-list">
-        <li class="card" v-for="repo in matrix" :key="repo.id">
-          <h3>{{repo.fullName}}</h3>
-          <p>{{repo.description}}</p>
+        <li class="card" v-for="pkg in matrix" :key="pkg.id">
+          <h3><NuxtLink :to="`/packages/${pkg.id}`">{{pkg.fullName}}</NuxtLink></h3>
+          <p>{{pkg.description}}</p>
           <ul class="links">
-            <li v-if="repo.homepage"><a :href="repo.homepage">Homepage</a></li>
-            <li><a :href="repo.url">Repository</a></li>
-            <li class="stars"><StarIcon class="icon"/>{{ repo.stars }}</li>
-            <li><BuildOutcome :outcome="repo.outcome"/></li>
+            <li v-if="pkg.homepage"><a :href="pkg.homepage">Homepage</a></li>
+            <li><a :href="pkg.url">Repository</a></li>
+            <li class="stars"><StarIcon class="icon"/>{{ pkg.stars }}</li>
+            <li><BuildOutcome :outcome="pkg.outcome"/></li>
           </ul>
         </li>
       </ol>
@@ -67,7 +67,7 @@ const numResults = manifest.matrix.length
 .search-page {
   .page-header {
     padding: 1em;
-    background-color: #ebedf1;
+    background-color: var(--medium-color);
     border-radius: 6px;
     margin-bottom: 1em;
   }
@@ -88,7 +88,7 @@ const numResults = manifest.matrix.length
 
         .dropdown {
           padding: 0.5em 0.8em;
-          background-color: #ebedf1;
+          background-color: var(--medium-color);
           border-radius: 6px;
 
           option:hover {
@@ -108,6 +108,10 @@ const numResults = manifest.matrix.length
 
         h3 {
           margin-bottom: 0.8em;
+
+          a:hover {
+            color: var(--light-accent-color);
+          }
         }
 
         ul.links {

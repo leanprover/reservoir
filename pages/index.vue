@@ -13,7 +13,7 @@ const updated = [...manifest.matrix].sort((a, b) =>
 </script>
 
 <template>
-  <div class="index-page contents">
+  <div class="index-page">
     <div class="intro">
       <div class="top-line">
         <div class="toolchain">
@@ -30,9 +30,9 @@ const updated = [...manifest.matrix].sort((a, b) =>
       </div>
     </div>
     <div class="highlights">
-      <HighlightCategory title="Most Popular" :list="popular" to="/search?sort=stars"/>
-      <HighlightCategory title="Newly Created" :list="created" to="/search?sort=createdAt"/>
-      <HighlightCategory title="Recently Updated" :list="updated" to="/search?sort=updatedAt"/>
+      <HighlightCategory title="Most Popular" :list="popular" to="/packages?sort=stars"/>
+      <HighlightCategory title="Newly Created" :list="created" to="/packages?sort=createdAt"/>
+      <HighlightCategory title="Recently Updated" :list="updated" to="/packages?sort=updatedAt"/>
     </div>
   </div>
 </template>

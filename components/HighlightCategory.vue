@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Tippy } from 'vue-tippy'
 import ForwardIcon from '~icons/ion/chevron-forward'
 const props = defineProps<{title: string, list: any[], to: string}>()
 </script>
@@ -9,7 +10,15 @@ const props = defineProps<{title: string, list: any[], to: string}>()
     <ol class="short-list">
       <li class="card" v-for="pkg in props.list" :key="pkg.id">
         <BuildOutcome class="icon" :outcome="pkg.outcome"/>
-        <a :href="pkg.url">{{ pkg.name }}</a>
+        <Tippy class="text" :on-show="() => { if (!pkg.description) return false }">
+          <NuxtLink :to="`/packages/${pkg.id}`">
+            <div class="name">{{ pkg.name }}</div>
+            <ForwardIcon class="icon"/>
+          </NuxtLink>
+          <template #content>
+            <div class="tooltip">{{ pkg.description }}</div>
+          </template>
+        </Tippy>
       </li>
     </ol>
     <div class="see-more">
@@ -32,22 +41,48 @@ h3 {
     display: flex;
     flex-direction: row;
     align-items: center;
+
     margin: 0 0 0.8em 0;
     padding: 1em;
 
-    .icon {
+    .text {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      flex-grow: 1;
+      min-width: 0;
+    }
+
+    .build-outcome {
       width: 1.2em;
       height: 1.2em;
       margin-right: 0.7em;
     }
 
     a {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      flex-grow: 1;
+      min-width: 0;
+
+      .name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        flex-grow: 1;
+      }
+
 
       &:hover {
         color: var(--light-accent-color);
+      }
+
+      .icon {
+        width: 1em;
+        height: 1em;
+        margin-left: 0.5em;
       }
     }
   }
