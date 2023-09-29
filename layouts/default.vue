@@ -48,6 +48,7 @@ import LogoIcon from '~/public/favicon.svg?component'
             <li><a href="https://lean-lang.org/theorem_proving_in_lean4/">Theorem Proving in Lean</a></li>
             <li><a href="https://lean-lang.org/functional_programming_in_lean/">Functional Programming in Lean</a></li>
             <li><a href="https://avigad.github.io/mathematics_in_lean/">Mathematics in Lean</a></li>
+            <li><a href="https://hrmacbeth.github.io/math2001/">The Mechanics of Proof</a></li>
             <li><a href="https://djvelleman.github.io/HTPIwL/">How To Prove It With Lean</a></li>
           </ul>
         </div>
