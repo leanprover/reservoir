@@ -7,6 +7,9 @@ export default defineNuxtConfig({
   experimental: {
     watcher: "parcel",
   },
+  build: {
+    transpile: ['primevue']
+  },
   modules: [
     'unplugin-icons/nuxt',
     ['nuxt-svgo', {

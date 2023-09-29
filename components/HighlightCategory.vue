@@ -74,9 +74,12 @@ h3 {
         flex-grow: 1;
       }
 
-
-      &:hover {
+      &:hover, &:focus {
         color: var(--light-accent-color);
+      }
+
+      &:focus {
+        outline: none;
       }
 
       .icon {
@@ -103,8 +106,12 @@ h3 {
 
     color: var(--dark-accent-color);
 
-    &:hover {
+    &:hover, &:focus {
       color: var(--light-accent-color);
+    }
+
+    &:focus {
+      outline:none;
     }
 
     .icon {

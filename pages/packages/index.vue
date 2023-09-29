@@ -2,16 +2,23 @@
 import manifest from '~/manifest.json'
 import StarIcon from '~icons/ion/star'
 
+const toArray = <T,>(a: T | T[]) => Array.isArray(a) ? a: [a]
+
 const sortKeys = ["fullName", "stars", "createdAt", "updatedAt"] as const
 type SortKey = typeof sortKeys[number]
 const isSortKey = (x: any): x is SortKey => sortKeys.includes(x)
 
 const route = useRoute()
-const querySortKey = Array(route.query.sort).filter(isSortKey).at(-1)
-const sortKey = ref<SortKey | "">(querySortKey || "stars")
+const query = computed(() => toArray(route.query.q).at(-1))
+const querySortKey = toArray(route.query.sort).filter(isSortKey).at(-1)
+const sortKey = ref<SortKey | "">(querySortKey ?? "stars")
 const matrix = computed(() => {
+  const q = query.value
   const key = sortKey.value
-  const matrix = [...manifest.matrix]
+  let matrix = [...manifest.matrix]
+  if (q) {
+    matrix = matrix.filter((e) => e.name.indexOf(q) > -1)
+  }
   switch (key) {
     case "stars":
       return matrix.sort((a, b) => b[key] - a[key])
@@ -25,17 +32,24 @@ const matrix = computed(() => {
       return matrix
   }
 });
-const numResults = manifest.matrix.length
 </script>
 
 <template>
   <div class="search-page">
     <div class="page-header">
-      <h2>All Packages</h2>
+      <h2 v-if="query">Search Results <span class="query">for '{{ query }}'</span></h2>
+      <h2 v-else>All Packages</h2>
     </div>
-    <div class="results">
+    <div class="no-results" v-if="matrix.length === 0">
+      <h3>
+        <span>0 packages found. </span>
+        <a href="https://lean-lang.org/lean4/doc/quickstart.html">Get started</a>
+        <span> to create your own!</span>
+      </h3>
+    </div>
+    <div v-else class="results">
       <div class="results-header">
-        <div>Displaying <strong>{{ numResults }}</strong> results</div>
+        <div>Displaying <strong>{{ matrix.length }}</strong> results</div>
         <div class="sort-by">
           <span class="label">Sort by</span>
           <select class="dropdown" v-model="sortKey">
@@ -49,7 +63,7 @@ const numResults = manifest.matrix.length
       </div>
       <ol class="results-list">
         <li class="card" v-for="pkg in matrix" :key="pkg.id">
-          <h3><NuxtLink :to="`/packages/${pkg.id}`">{{pkg.fullName}}</NuxtLink></h3>
+          <h3><NuxtLink :to="`/packages/${encodeURIComponent(pkg.id)}`">{{pkg.fullName}}</NuxtLink></h3>
           <p>{{pkg.description}}</p>
           <ul class="links">
             <li v-if="pkg.homepage"><a :href="pkg.homepage">Homepage</a></li>
@@ -70,7 +84,23 @@ const numResults = manifest.matrix.length
     background-color: var(--medium-color);
     border-radius: 6px;
     margin-bottom: 1em;
+
+    .query {
+      color: var(--dark-color);
+    }
   }
+
+  .no-results {
+    margin-top: 2em;
+
+    a {
+      color: var(--dark-accent-color);
+
+      &:hover {
+        color: var(--light-accent-color);
+      }
+    }
+}
 
   .results {
     .results-header {

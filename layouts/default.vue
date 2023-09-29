@@ -15,6 +15,7 @@ import LogoIcon from '~/public/favicon.svg?component'
           <LogoIcon class="logo"/>
           <h1 class="title">Reservoir</h1>
         </NuxtLink>
+        <SearchBar/>
         <nav>
           <NuxtLink to="/packages" class="all">
             <span class="label">All Packages</span>

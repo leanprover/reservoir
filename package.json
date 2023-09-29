@@ -29,6 +29,7 @@
     "normalize.css": "^8.0.1",
     "nuxt": "^3.7.4",
     "nuxt-svgo": "^3.5.4",
+    "primevue": "^3.35.0",
     "sass": "^1.67.0",
     "unplugin-icons": "^0.17.0",
     "vue-tippy": "^6.3.1"

@@ -100,8 +100,12 @@ const updated = [...manifest.matrix].sort((a, b) =>
         font-family: 'Merriweather', serif;
         border-radius: 12px;
 
-        &:hover {
+        &:hover, &:focus {
           background-color: var(--light-accent-color);
+        }
+
+        &:focus {
+          outline: none;
         }
 
         .icon {

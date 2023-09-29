@@ -93,12 +93,19 @@ header, main, footer {
   }
 }
 
+.layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
 header, footer {
   background-color: var(--header-bg-color);
   color: var(--header-text-color);
 }
 
 main {
+  flex-grow: 1;
   background-color: var(--main-bg-color);
   color: var(--main-text-color)
 }
@@ -120,9 +127,19 @@ header > .contents {
     }
   }
 
+  .search-bar {
+    flex-grow: 1;
+    margin-left: 1em;
+    margin-right: 1em;
+  }
+
   nav {
-    a:hover {
+    a:hover, a:focus {
       color: var(--light-accent-color);
+    }
+
+    a:focus {
+      outline: none
     }
 
     .all {
@@ -179,8 +196,12 @@ footer > .contents {
           margin-right: 0.5em;
         }
 
-        &:hover {
+        &:hover, &:focus {
           color: var(--header-accent-color);
+        }
+
+        &:focus {
+          outline: none;
         }
       }
     }

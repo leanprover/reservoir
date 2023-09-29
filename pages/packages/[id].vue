@@ -183,8 +183,12 @@ const formatLicense = (id: string) => {
         margin-bottom: 0.5em;
       }
 
-      a:hover {
+      a:hover, a:focus {
         color: var(--light-accent-color);
+      }
+
+      a:focus {
+        outline: none;
       }
     }
 
@@ -201,8 +205,11 @@ const formatLicense = (id: string) => {
           display: block;
 
           color: var(--dark-accent-color);
-          &:hover {
+          &:hover, &:focus {
             color: var(--light-accent-color);
+          }
+          &:focus {
+            outline: none
           }
         }
       }
