@@ -33,6 +33,9 @@ export default defineNuxtConfig({
   nitro: {
     prerender: {
       failOnError: true,
+      // Needed to prevent GitHub Pages from automatically adding trailing
+      // slashes to URLs (as otherwise they are directories rather than files)
+      autoSubfolderIndex: false,
       routes: ["/", ...manifest.matrix.map((pkg) => `/packages/${pkg.id}`)]
     },
   },
