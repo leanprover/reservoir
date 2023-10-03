@@ -1,12 +1,10 @@
+import manifest from './manifest.json'
 import { defineNuxtConfig } from 'nuxt/config'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   devtools: { enabled: false },
   typescript: { strict: true },
-  experimental: {
-    watcher: "parcel",
-  },
   build: {
     transpile: ['primevue']
   },
@@ -35,6 +33,7 @@ export default defineNuxtConfig({
   nitro: {
     prerender: {
       failOnError: true,
+      routes: ["/", ...manifest.matrix.map((pkg) => `/packages/${pkg.id}`)]
     },
   },
 })

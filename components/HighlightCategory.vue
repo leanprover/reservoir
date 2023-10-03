@@ -66,7 +66,6 @@ h3 {
       justify-content: space-between;
       flex-grow: 1;
       min-width: 0;
-
       .name {
         overflow: hidden;
         text-overflow: ellipsis;

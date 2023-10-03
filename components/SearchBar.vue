@@ -67,8 +67,11 @@ const commit = (event: Event, clickedPkg?: Package) => {
       :virtualScrollerOptions="{ itemSize: 50 }">
       <template #option="slotProps">
         <div @click="commit($event, slotProps.option)">
-          <h4>{{ slotProps.option.name }}</h4>
-          <div class="description">{{ slotProps.option.description }}</div>
+          <h4 class="name">{{ slotProps.option.name }}</h4>
+          <div class="description">
+            <span v-if="slotProps.option.description">{{ slotProps.option.description }}</span>
+            <em v-else>No description provided.</em>
+          </div>
         </div>
       </template>
     </AutoComplete>
@@ -158,7 +161,7 @@ const commit = (event: Event, clickedPkg?: Package) => {
         background-color: var(--dark-accent-color);
       }
 
-      .description {
+      .name, .description {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;

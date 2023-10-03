@@ -1,29 +1,31 @@
 <script setup lang="ts">
 import manifest from '~/manifest.json'
 import StarIcon from '~icons/ion/star'
+import Paginator from 'primevue/paginator'
+import Dropdown from 'primevue/dropdown'
 
 const toArray = <T,>(a: T | T[]) => Array.isArray(a) ? a: [a]
 
-const sortKeys = ["fullName", "stars", "createdAt", "updatedAt"] as const
-type SortKey = typeof sortKeys[number]
+const sortOptions = [
+  {name: "Stars", value: "stars"},
+  {name: "Date Created", value: "createdAt"},
+  {name: "Date Updated", value: "updatedAt"},
+  {name: "Alphabetical", value: "fullName"},
+] as const
+type SortKey = typeof sortOptions[number]['value']
+const sortKeys: SortKey[] = sortOptions.map(opt => opt.value)
 const isSortKey = (x: any): x is SortKey => sortKeys.includes(x)
 
 const route = useRoute()
 const query = computed(() => toArray(route.query.q).at(-1))
 const querySortKey = toArray(route.query.sort).filter(isSortKey).at(-1)
-const sortKey = ref<SortKey | "">(querySortKey ?? "stars")
-const matrix = computed(() => {
-  const q = query.value
-  const key = sortKey.value
-  let matrix = [...manifest.matrix]
-  if (q) {
-    matrix = matrix.filter((e) => e.name.indexOf(q) > -1)
-  }
+const sortKey = ref<SortKey>(querySortKey ?? "stars")
+const sort = (matrix: typeof manifest.matrix, key: SortKey | "") => {
   switch (key) {
     case "stars":
       return matrix.sort((a, b) => b[key] - a[key])
     case "createdAt":
-     return matrix.sort((a, b) => new Date(b[key]).getTime() - new Date(a[key]).getTime())
+      return matrix.sort((a, b) => new Date(b[key]).getTime() - new Date(a[key]).getTime())
     case "updatedAt":
       return matrix.sort((a, b) => new Date(b[key]).getTime() - new Date(a[key]).getTime())
     case "fullName":
@@ -31,6 +33,23 @@ const matrix = computed(() => {
     default:
       return matrix
   }
+}
+const fullMatrix = computed(() => {
+  const q = query.value
+  let matrix = [...manifest.matrix]
+  if (q) {
+    matrix = matrix.filter((e) => e.name.indexOf(q) > -1)
+  }
+  return sort(matrix, sortKey.value)
+})
+const numResults = computed(() => fullMatrix.value.length)
+
+const numRows = 20
+const first = ref(parseInt(toArray(route.query.page).at(-1)!) || 0)
+const last = computed(() => Math.min(first.value + numRows, fullMatrix.value.length))
+const matrix = computed(() => {
+  const i = first.value
+  return fullMatrix.value.slice(i, i+numRows)
 });
 </script>
 
@@ -49,22 +68,34 @@ const matrix = computed(() => {
     </div>
     <div v-else class="results">
       <div class="results-header">
-        <div>Displaying <strong>{{ matrix.length }}</strong> results</div>
+        <div class="info">
+          <span class="displaying">Displaying </span>
+          <strong>{{ first+1 }}-{{ last }}</strong>
+          <span> of </span>
+          <strong>{{ numResults }}</strong>
+          <span class="total-descr"> total results</span>
+        </div>
         <div class="sort-by">
           <span class="label">Sort by</span>
-          <select class="dropdown" v-model="sortKey">
-            <option value="" disabled selected>Select one...</option>
-            <option value="stars">Stars</option>
-            <option value="createdAt">Date Created</option>
-            <option value="updatedAt">Date Updated</option>
-            <option value="fullName">Alphabetical</option>
-          </select>
+          <Dropdown class="dropdown" panelClass="sort-panel" :autoOptionFocus="false"
+            v-model="sortKey" :options="(sortOptions as any)" optionLabel="name" optionValue="value">
+            <template #option="slotProps">
+              <NuxtLink :to="{path: '/packages', query: {q: query, sort: slotProps.option.value}}">
+                {{ slotProps.option.name }}
+              </NuxtLink>
+            </template>
+          </Dropdown>
         </div>
       </div>
       <ol class="results-list">
         <li class="card" v-for="pkg in matrix" :key="pkg.id">
-          <h3><NuxtLink :to="`/packages/${encodeURIComponent(pkg.id)}`">{{pkg.fullName}}</NuxtLink></h3>
-          <p>{{pkg.description}}</p>
+          <NuxtLink class="name" :to="`/packages/${encodeURIComponent(pkg.id)}`">
+            <h3>{{pkg.fullName}}</h3>
+          </NuxtLink>
+          <p>
+            <span v-if="pkg.description">{{ pkg.description }}</span>
+            <em v-else>No description provided.</em>
+          </p>
           <ul class="links">
             <li v-if="pkg.homepage"><a :href="pkg.homepage">Homepage</a></li>
             <li><a :href="pkg.url">Repository</a></li>
@@ -73,12 +104,16 @@ const matrix = computed(() => {
           </ul>
         </li>
       </ol>
+      <Paginator :pt="{root: 'paginator'}"
+        v-model:first="first" :rows="numRows" :total-records="numResults"/>
     </div>
   </div>
 </template>
 
 <style lang="scss">
 .search-page {
+  max-width: 100vw;
+
   .page-header {
     padding: 1em;
     background-color: var(--medium-color);
@@ -108,6 +143,16 @@ const matrix = computed(() => {
       justify-content: space-between;
       align-items: center;
 
+      .info {
+        @media only screen and (max-width: 500px) {
+          .total-descr { display: none; }
+        }
+
+        @media only screen and (max-width: 600px) {
+          .displaying { display: none; }
+        }
+      }
+
       .sort-by {
         display: flex;
         align-items: center;
@@ -117,12 +162,22 @@ const matrix = computed(() => {
         }
 
         .dropdown {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+
           padding: 0.5em 0.8em;
           background-color: var(--medium-color);
           border-radius: 6px;
+          width: 10em;
 
-          option:hover {
+          &:has(*:focus) {
+            color: var(--light-text-color);
             background-color: var(--dark-color);
+          }
+
+          *:focus {
+            outline: none;
           }
         }
       }
@@ -136,11 +191,24 @@ const matrix = computed(() => {
         padding: 1em;
         margin-bottom: 1em;
 
-        h3 {
+        .name {
+          display: block;
           margin-bottom: 0.8em;
 
-          a:hover {
+          h3 {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-wrap: nowrap;
+            display: block;
+            width: 100%;
+          }
+
+          &:hover, &:focus   {
             color: var(--light-accent-color);
+          }
+
+          &:focus {
+            outline: none;
           }
         }
 
@@ -158,8 +226,12 @@ const matrix = computed(() => {
             a {
               color: var(--dark-accent-color);
 
-              &:hover {
+              &:hover, &:focus {
                 color: var(--light-accent-color);
+              }
+
+              &:focus {
+                outline: none;
               }
             }
 
@@ -180,6 +252,68 @@ const matrix = computed(() => {
             }
           }
         }
+      }
+    }
+
+    .paginator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 1em 0;
+
+      button {
+        border-radius: 6px;
+        color: var(--dark-text-color);
+        padding: 0.3em 0.5em;
+        margin: 0em 0.2em;
+
+        &:hover {
+          cursor: pointer;
+          background-color: var(--medium-color);
+        }
+
+        &:focus {
+          outline: none;
+          color: var(--light-accent-color);
+        }
+
+        &[data-p-highlight="true"] {
+          color: var(--light-text-color);
+          background-color: var(--dark-color);
+        }
+      }
+    }
+  }
+}
+
+.sort-panel {
+  background-color: var(--card-color);
+
+  border: 1px solid var(--medium-color);
+  background-color: var(--card-bg-color);
+  border-radius: 6px;
+
+  option:hover {
+    background-color: var(--dark-color);
+  }
+
+  ul {
+    list-style-type: none;
+
+    li {
+      a {
+        width: 100%;
+        height: 100%;
+        display: block;
+        padding: 0.3em 0.8em;
+      }
+
+      &:hover {
+        background-color: var(--medium-color);
+      }
+
+      &[data-p-focused="true"] {
+        color: var(--light-accent-color);
       }
     }
   }

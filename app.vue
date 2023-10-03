@@ -63,6 +63,11 @@ a {
   text-decoration: none;
 }
 
+button {
+  border: none;
+  background-color: inherit;
+}
+
 body {
   line-height: 1.2;
   background-color: var(--header-bg-color);
@@ -88,8 +93,8 @@ header, main, footer {
 
   & > .contents {
     flex-grow: 1;
-    max-width: 1080px;
-    margin: 1em;
+    max-width: min(1080px, 100vw);
+    padding: 1em;
   }
 }
 
@@ -115,15 +120,23 @@ header > .contents {
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  margin: 0.8em 1em;
+  padding: 0.8em 1em;
 
   .title-logo {
     display: flex;
     align-items: center;
 
+    .title {
+      margin-left: 0.5em;
+
+      @media only screen and (max-width: 600px) {
+        display: none;
+      }
+    }
+
+
     .logo {
       height: 2.5em;
-      margin-right: 0.8em;
     }
   }
 
@@ -148,7 +161,9 @@ header > .contents {
       align-items: center;
 
       .label {
-        @media only screen and (max-width: 400px) {
+        margin-right: 0.8em;
+
+        @media only screen and (max-width: 800px) {
           display: none;
         }
       }
@@ -156,7 +171,6 @@ header > .contents {
       .icon {
         height: 1.5em;
         width: 1.5em;
-        margin-left: 0.8em;
       }
     }
   }
@@ -164,7 +178,7 @@ header > .contents {
 
 footer > .contents {
   display: flex;
-  margin: 0.5em 2em 3em 1.5em;
+  padding: 0.5em 2em 3em 1.5em;
 
   @media only screen and (max-width: 700px) {
     flex-direction: column;

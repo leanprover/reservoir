@@ -130,12 +130,14 @@ const updated = [...manifest.matrix].sort((a, b) =>
     justify-content: space-between;
     flex-wrap: wrap;
 
-    @media screen and (max-width: 600px) {
-      & > * { flex-grow: 1; }
-    }
-
     .highlight-category {
-      margin-bottom: 2em;
+      @media screen and (max-width: 600px) {
+        flex-grow: 1;
+
+        &:not(:first-child) {
+          margin-top: 2em;
+        }
+      }
 
       @media screen and (min-width: 600px) {
         .card { max-width: 30vw; }
