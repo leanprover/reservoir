@@ -76,6 +76,7 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: manifest
+          path: site
       - name: Install Node Modules
         run: npm ci
       - name: Build Site

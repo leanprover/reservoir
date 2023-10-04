@@ -1,8 +1,9 @@
-import manifest from './manifest.json'
+import manifest from './site/manifest.json'
 import { defineNuxtConfig } from 'nuxt/config'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
+  srcDir: 'site',
   devtools: { enabled: false },
   typescript: { strict: true },
   build: {
