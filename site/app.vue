@@ -5,10 +5,11 @@ useHead({
   },
   title: 'Reservoir',
   meta: [
-    { name: 'description', content: 'The Lean package repository.' }
+    { name: 'description', content: 'The Lean package repository.' },
   ],
   link: [
-    { rel: 'icon', href: '/favicon.svg' }
+    { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
+    { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
   ]
 })
 </script>
