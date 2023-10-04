@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import NoneIcon from '~icons/ion/help'
-import FailIcon from '~icons/ion/close'
-import PassIcon from '~icons/ion/checkmark'
+import NoneIcon from '~icons/mdi/help'
+import FailIcon from '~icons/mdi/close'
+import PassIcon from '~icons/mdi/check'
 import { Tippy } from 'vue-tippy'
 
 const props = defineProps<{outcome?: string | null}>()
@@ -25,9 +25,9 @@ const outcomeClass = computed(() => {
 const outcomeTooltip = computed(() => {
   switch (outcome) {
     case 'success':
-      return 'Builds on latest toolchain'
+      return 'Builds on the latest toolchain'
     case 'failure':
-      return 'Fails to build on latest toolchain'
+      return 'Fails to build on the latest toolchain'
     default:
       return 'No build data'
   }
@@ -55,17 +55,14 @@ const outcomeTooltip = computed(() => {
 
   &.outcome-success {
     background-color: var(--success-color);
-    svg { margin-left: 1%; }
   }
 
   &.outcome-failure {
     background-color: var(--failure-color);
-    svg { margin-left: 1%; margin-top: 1%; }
   }
 
   &.outcome-none {
     background-color: var(--neutral-color);
-    svg { margin-left: 1%; }
   }
 }
 </style>

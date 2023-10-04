@@ -40,9 +40,9 @@ useHead({
 
   --main-bg-color: var(--light-color);
   --main-text-color: var(--dark-text-color);
-  --header-bg-color: var(--dark-color);
-  --header-text-color: var(--light-text-color);
-  --header-accent-color: var(--light-accent-color);
+  --gutter-bg-color: var(--dark-color);
+  --gutter-text-color: var(--light-text-color);
+  --gutter-accent-color: var(--light-accent-color);
   --outcome-icon-color: var(--light-text-color);
   --card-bg-color: white;
   --star-color: gold;
@@ -61,6 +61,28 @@ h1, * {
 a {
   color: inherit;
   text-decoration: none;
+
+  &.soft-link {
+    &:hover, &:focus {
+      color: var(--light-accent-color);
+    }
+
+    &:focus {
+      outline: none;
+    }
+  }
+
+  &.hard-link {
+    color: var(--dark-accent-color);
+
+    &:hover, &:focus {
+      color: var(--light-accent-color);
+    }
+
+    &:focus {
+      outline: none;
+    }
+  }
 }
 
 button {
@@ -68,9 +90,22 @@ button {
   background-color: inherit;
 }
 
+.icon {
+  width: 1em;
+  height: 1em;
+  flex: 0 0 auto;
+
+  &.prefix {
+    margin-right: 0.5em;
+  }
+
+  &.suffix {
+    margin-left: 0.5em;
+  }
+}
+
 body {
   line-height: 1.2;
-  background-color: var(--header-bg-color);
   font-family: 'Open Sans', sans-serif;
   min-height: 100vh;
 }
@@ -94,7 +129,6 @@ header, main, footer {
   & > .contents {
     flex-grow: 1;
     max-width: min(1080px, 100vw);
-    padding: 1em;
   }
 }
 
@@ -104,127 +138,47 @@ header, main, footer {
   min-height: 100vh;
 }
 
-header, footer {
-  background-color: var(--header-bg-color);
-  color: var(--header-text-color);
+.gutter {
+  background-color: var(--gutter-bg-color);
+  color: var(--gutter-text-color);
+
+  a {
+    &:hover, &:focus {
+      color: var(--gutter-accent-color);
+    }
+
+    &:focus {
+      outline: none;
+    }
+  }
 }
 
 main {
   flex-grow: 1;
   background-color: var(--main-bg-color);
-  color: var(--main-text-color)
+  color: var(--main-text-color);
+
+  & > .contents {
+    padding: 1em;
+  }
 }
 
-header > .contents {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.8em 1em;
+header {
+  & > .contents {
+    padding: 0.8em 1em;
+  }
 
-  .title-logo {
+  .top-line {
     display: flex;
-    align-items: center;
-
-    .title {
-      margin-left: 0.5em;
-
-      @media only screen and (max-width: 600px) {
-        display: none;
-      }
-    }
-
-
-    .logo {
-      height: 2.5em;
-    }
-  }
-
-  .search-bar {
-    flex-grow: 1;
-    margin-left: 1em;
-    margin-right: 1em;
-  }
-
-  nav {
-    a:hover, a:focus {
-      color: var(--light-accent-color);
-    }
-
-    a:focus {
-      outline: none
-    }
-
-    .all {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-
-      .label {
-        margin-right: 0.8em;
-
-        @media only screen and (max-width: 800px) {
-          display: none;
-        }
-      }
-
-      .icon {
-        height: 1.5em;
-        width: 1.5em;
-      }
-    }
-  }
-}
-
-footer > .contents {
-  display: flex;
-  padding: 0.5em 2em 3em 1.5em;
-
-  @media only screen and (max-width: 700px) {
-    flex-direction: column;
-    justify-content: space-between;
-  }
-
-  @media screen and (min-width: 700px) {
     flex-direction: row;
-    justify-content: space-around;
-  }
+    align-items: center;
+    justify-content: space-between;
 
-  ul {
-    list-style: none;
-    color: var(--header-color);
-
-    li {
-      display: flex;
-      align-items: center;
-
-      padding: 0.3em 0;
-      line-height: 1em;
-
-      a {
-        color: var(--header-text-color);
-
-        .icon {
-          width: 1em;
-          height: 1em;
-          margin-right: 0.5em;
-        }
-
-        &:hover, &:focus {
-          color: var(--header-accent-color);
-        }
-
-        &:focus {
-          outline: none;
-        }
-      }
+    .search-bar {
+      flex-grow: 1;
+      margin-left: 1em;
+      margin-right: 1em;
     }
-  }
-
-  h2 {
-    margin-top: 1em;
-    margin-bottom: 0.5em;
-    color: var(--header-accent-color);
   }
 }
 </style>

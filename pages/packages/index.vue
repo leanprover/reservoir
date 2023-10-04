@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import manifest from '~/manifest.json'
-import StarIcon from '~icons/ion/star'
+import StarIcon from '~icons/mdi/star'
 import Paginator from 'primevue/paginator'
 import Dropdown from 'primevue/dropdown'
 
@@ -45,7 +45,7 @@ const fullMatrix = computed(() => {
 const numResults = computed(() => fullMatrix.value.length)
 
 const numRows = 20
-const first = ref(parseInt(toArray(route.query.page).at(-1)!) || 0)
+const first = ref(parseInt(toArray(route.query.first).at(-1)!) || 0)
 const last = computed(() => Math.min(first.value + numRows, fullMatrix.value.length))
 const matrix = computed(() => {
   const i = first.value
@@ -77,7 +77,7 @@ const matrix = computed(() => {
         </div>
         <div class="sort-by">
           <span class="label">Sort by</span>
-          <Dropdown class="dropdown" panelClass="sort-panel" :autoOptionFocus="false"
+          <Dropdown class="dropdown" panelClass="sort-panel" :autoOptionFocus="false" @change="first = 0"
             v-model="sortKey" :options="(sortOptions as any)" optionLabel="name" optionValue="value">
             <template #option="slotProps">
               <NuxtLink :to="{path: '/packages', query: {q: query, sort: slotProps.option.value}}">
@@ -97,10 +97,12 @@ const matrix = computed(() => {
             <em v-else>No description provided.</em>
           </p>
           <ul class="links">
-            <li v-if="pkg.homepage"><a :href="pkg.homepage">Homepage</a></li>
-            <li><a :href="pkg.url">Repository</a></li>
-            <li class="stars"><StarIcon class="icon"/>{{ pkg.stars }}</li>
-            <li><BuildOutcome :outcome="pkg.outcome"/></li>
+            <li v-if="pkg.homepage">
+              <a class="hard-link" :href="pkg.homepage">Homepage</a>
+            </li>
+            <li><a class="hard-link" :href="pkg.url">Repository</a></li>
+            <li class="stars"><StarIcon class="prefix icon"/>{{ pkg.stars }}</li>
+            <li><BuildOutcome class="icon" :outcome="pkg.outcome"/></li>
           </ul>
         </li>
       </ol>
@@ -223,32 +225,13 @@ const matrix = computed(() => {
           & > li {
             margin-right: 0.8em;
 
-            a {
-              color: var(--dark-accent-color);
-
-              &:hover, &:focus {
-                color: var(--light-accent-color);
-              }
-
-              &:focus {
-                outline: none;
-              }
-            }
-
             &.stars {
               display: flex;
               align-items: center;
-              .icon {
-                width: 1em;
-                height: 1em;
-                color: var(--star-color);
-                margin-right: 0.5em;
-              }
-            }
 
-            .build-outcome {
-              width: 1em;
-              height: 1em;
+              .icon {
+                color: var(--star-color);
+              }
             }
           }
         }

@@ -19,12 +19,27 @@ onUnmounted(() => {
 
 const allPkgs = manifest.matrix
 type Package = typeof allPkgs[number]
+type PackageResult = Package & {highlightedName : VNode}
 
 const query = ref()
 const selectedPkg = ref<Package>()
-const filteredPkgs = ref(allPkgs)
+const filteredPkgs = ref<Package[]>(allPkgs)
 const filter = (event: AutoCompleteCompleteEvent) => {
-  const results = allPkgs.filter((pkg) => pkg.name.indexOf(event.query) > -1)
+  const q = event.query
+  const results = allPkgs.reduce<PackageResult[]>((pkgs, pkg) => {
+    const idx = pkg.name.indexOf(q)
+    if (idx > -1) {
+      const result = Object.assign(pkg, {
+        highlightedName: h('span', [
+          pkg.name.slice(0, idx),
+          h('span', {class: 'highlight'},  q),
+          pkg.name.slice(idx+q.length),
+        ])
+      })
+      pkgs.push(result)
+    }
+    return pkgs
+  }, [])
   if (results.length === 0) ctrl.value.hide()
   filteredPkgs.value = results;
 }
@@ -61,13 +76,13 @@ const commit = (event: Event, clickedPkg?: Package) => {
   <div class="search-bar">
     <AutoComplete ref="ctrl"
       class="search-control" panelClass="search-panel"
-      placeholder="Press 'S' to focus this searchbox..." optionLabel="name"
+      placeholder="Press 'S' to start searching..." optionLabel="name"
       v-model="query" :suggestions="filteredPkgs" :autoOptionFocus="false"
       @complete="filter" @change="onChange" @keyup.enter="commit"
       :virtualScrollerOptions="{ itemSize: 50 }">
       <template #option="slotProps">
         <div @click="commit($event, slotProps.option)">
-          <h4 class="name">{{ slotProps.option.name }}</h4>
+          <h4 class="name"><component :is="slotProps.option.highlightedName"/></h4>
           <div class="description">
             <span v-if="slotProps.option.description">{{ slotProps.option.description }}</span>
             <em v-else>No description provided.</em>
@@ -76,7 +91,7 @@ const commit = (event: Event, clickedPkg?: Package) => {
       </template>
     </AutoComplete>
     <div tabindex="0" class="search-button" @click="commit" @keyup.enter="commit">
-      <SearchIcon width="100%" height="100%" class="icon"/>
+      <SearchIcon width="100%" height="100%"/>
     </div>
   </div>
 </template>
@@ -152,13 +167,21 @@ const commit = (event: Event, clickedPkg?: Package) => {
       }
 
       &:hover {
-        color: var(--light-text-color);
-        background-color: var(--light-accent-color);
+        background-color: var(--medium-color);
       }
 
       &[data-p-focus="true"] {
         color: var(--light-text-color);
+        // background-color: var(--dark-color);
         background-color: var(--dark-accent-color);
+
+        .name .highlight {
+          color: inherit;
+        }
+      }
+
+      .name .highlight {
+        color: var(--dark-accent-color);
       }
 
       .name, .description {

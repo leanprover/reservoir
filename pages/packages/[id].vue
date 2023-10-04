@@ -60,7 +60,7 @@ const formatLicense = (id: string) => {
           </li>
           <li>
             <StarIcon class="icon"/>
-            <a :href="`${pkg.url}/stargazers`">{{ pkg.stars }} stars</a>
+            <a class="soft-link" :href="`${pkg.url}/stargazers`">{{ pkg.stars }} stars</a>
           </li>
         </ul>
         <div>
@@ -76,14 +76,14 @@ const formatLicense = (id: string) => {
           <h3>Homepage</h3>
           <div>
             <HomepageIcon class="icon"/>
-            <a :href="pkg.homepage">{{ pkg.homepage.split('://')[1] }}</a>
+            <a class="hard-link" :href="pkg.homepage">{{ pkg.homepage.split('://')[1] }}</a>
           </div>
         </div>
         <div class="main-link">
           <h3>Repository</h3>
           <div>
             <GitHubIcon class="icon"/>
-            <a :href="pkg.url">{{ pkg.fullName }}</a>
+            <a class="hard-link" :href="pkg.url">{{ pkg.fullName }}</a>
           </div>
         </div>
       </aside>
@@ -149,8 +149,7 @@ const formatLicense = (id: string) => {
     }
 
     border-bottom: 1px solid var(--medium-color);
-
-    margin-bottom: 1em;;
+    margin-bottom: 1em;
   }
 
   .page-main {
@@ -182,14 +181,6 @@ const formatLicense = (id: string) => {
         align-items: center;
         margin-bottom: 0.5em;
       }
-
-      a:hover, a:focus {
-        color: var(--light-accent-color);
-      }
-
-      a:focus {
-        outline: none;
-      }
     }
 
     .main-link {
@@ -203,14 +194,6 @@ const formatLicense = (id: string) => {
           overflow: hidden;
           text-overflow: ellipsis;
           display: block;
-
-          color: var(--dark-accent-color);
-          &:hover, &:focus {
-            color: var(--light-accent-color);
-          }
-          &:focus {
-            outline: none
-          }
         }
       }
     }
