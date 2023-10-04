@@ -17,7 +17,7 @@ const sortKeys: SortKey[] = sortOptions.map(opt => opt.value)
 const isSortKey = (x: any): x is SortKey => sortKeys.includes(x)
 
 const route = useRoute()
-const query = computed(() => toArray(route.query.q).at(-1))
+const query = computed(() => toArray(route.query.q).at(-1) || '')
 const querySortKey = toArray(route.query.sort).filter(isSortKey).at(-1)
 const sortKey = ref<SortKey>(querySortKey ?? "stars")
 const sort = (matrix: typeof manifest.matrix, key: SortKey | "") => {
@@ -35,10 +35,10 @@ const sort = (matrix: typeof manifest.matrix, key: SortKey | "") => {
   }
 }
 const fullMatrix = computed(() => {
-  const q = query.value
+  const q = query.value.toLocaleLowerCase()
   let matrix = [...manifest.matrix]
   if (q) {
-    matrix = matrix.filter((e) => e.name.indexOf(q) > -1)
+    matrix = matrix.filter((e) => e.name.toLocaleLowerCase().indexOf(q) > -1)
   }
   return sort(matrix, sortKey.value)
 })

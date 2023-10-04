@@ -2,7 +2,7 @@
 import manifest from '~/manifest.json'
 import SearchIcon from '~icons/mdi/magnify'
 import AutoComplete from 'primevue/autocomplete'
-import { AutoCompleteCompleteEvent, AutoCompleteChangeEvent } from 'primevue/autocomplete'
+import type { AutoCompleteCompleteEvent, AutoCompleteChangeEvent } from 'primevue/autocomplete'
 
 const ctrl = ref()
 const keyHandler = (e: KeyboardEvent) => {
@@ -25,14 +25,14 @@ const query = ref()
 const selectedPkg = ref<Package>()
 const filteredPkgs = ref<Package[]>(allPkgs)
 const filter = (event: AutoCompleteCompleteEvent) => {
-  const q = event.query
+  const q = event.query.toLocaleLowerCase()
   const results = allPkgs.reduce<PackageResult[]>((pkgs, pkg) => {
-    const idx = pkg.name.indexOf(q)
+    const idx = pkg.name.toLocaleLowerCase().indexOf(q)
     if (idx > -1) {
       const result = Object.assign(pkg, {
         highlightedName: h('span', [
           pkg.name.slice(0, idx),
-          h('span', {class: 'highlight'},  q),
+          h('span', {class: 'highlight'}, pkg.name.slice(idx, idx+q.length)),
           pkg.name.slice(idx+q.length),
         ])
       })
