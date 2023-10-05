@@ -4,7 +4,7 @@ import { defineNuxtConfig } from 'nuxt/config'
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   srcDir: 'site',
-  devtools: { enabled: false },
+  devtools: { enabled: true },
   typescript: { strict: true },
   build: {
     transpile: ['primevue']
@@ -25,7 +25,7 @@ export default defineNuxtConfig({
       families: {
         Merriweather: [400],
         'Open+Sans': [400],
-        // 'Source+Code+Pro': [400, 600],
+        'Source+Code+Pro': [400],
       },
       display: 'swap',
       download: true,

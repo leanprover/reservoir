@@ -20,7 +20,6 @@ useHead({
   title: `${pkg.name} | Reservoir`,
 })
 
-
 const formatLicense = (id: string) => {
   switch (id) {
     case 'apache-2.0':
@@ -31,6 +30,9 @@ const formatLicense = (id: string) => {
       return "Unknown"
   }
 }
+
+const baseContentUrl = `https://raw.githubusercontent.com/${pkg.fullName}/HEAD/`
+const { data: readme } = await useFetch<string>(`${baseContentUrl}README.md`)
 </script>
 
 <template>
@@ -41,12 +43,13 @@ const formatLicense = (id: string) => {
     </div>
     <nav>
       <ul>
-        <li class="active">Overview</li>
+        <li class="active">Readme</li>
       </ul>
     </nav>
     <div class="page-body">
       <article class="page-main card">
-        Nothing to see here (yet).
+        <MarkdownView v-if="readme" :baseUrl="baseContentUrl" prefix="readme:" :value="readme"/>
+        <div v-else><em>No <code>README.md</code> in repository.</em></div>
       </article>
       <aside>
         <ul>
@@ -128,6 +131,7 @@ const formatLicense = (id: string) => {
         min-height: 40em;
         margin-right: 1em;
         flex-grow: 1;
+        min-width: 0;
       }
     }
   }

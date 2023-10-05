@@ -115,6 +115,10 @@ h1, h2, h3, h4, h5, h6 {
   font-family: 'Merriweather', serif;
 }
 
+code {
+  font-family: 'Source Code Pro', monospace;
+}
+
 .card {
   border-radius: 12px;
   border-left: 1px solid var(--light-accent-color);
