@@ -17,7 +17,12 @@ if (!pkg) {
 }
 
 useHead({
-  title: `${pkg.name} | Reservoir`,
+  title: pkg.name,
+  meta: pkg.description ? [{name: 'description', content: pkg.description}] : undefined
+})
+
+defineOgImage({
+  hasNoDescription: !pkg.description,
 })
 
 const formatLicense = (id: string) => {

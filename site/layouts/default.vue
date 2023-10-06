@@ -1,8 +1,3 @@
-<script setup lang="ts">
-import IndexIcon from '~icons/mdi/lake'
-import LogoIcon from '~/public/favicon.svg?component'
-</script>
-
 <template>
   <div class="layout">
     <header class="gutter">

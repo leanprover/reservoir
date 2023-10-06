@@ -1,7 +1,7 @@
 {
   "name": "reservoir",
   "version": "0.1.0",
-  "description": "The Lean package repository.",
+  "description": "Lake's package repository for the Lean community.",
   "author": "Mac Malone",
   "license": "Apache-2.0",
   "repository": {
@@ -15,7 +15,7 @@
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "postinstall": "nuxt prepare && patch-package"
   },
   "devDependencies": {
     "@iconify-json/mdi": "^1.1.54",
@@ -23,12 +23,14 @@
     "@nuxt/devtools": "latest",
     "@nuxtjs/critters": "^0.5.0",
     "@nuxtjs/google-fonts": "^3.0.2",
+    "@nuxtseo/module": "^2.0.0-beta.15",
     "dayjs": "^1.11.10",
     "hast-util-classnames": "^3.0.0",
     "highlight.js": "^11.8.0",
     "normalize.css": "^8.0.1",
     "nuxt": "^3.7.4",
     "nuxt-svgo": "^3.5.4",
+    "patch-package": "^8.0.0",
     "primevue": "^3.35.0",
     "rehype-autolink-headings": "^7.0.0",
     "rehype-external-links": "^3.0.0",

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { Tippy } from 'vue-tippy'
 import ForwardIcon from '~icons/mdi/chevron-right'
-const props = defineProps<{title: string, list: any[], to: string}>()
+import type { RouteLocationRaw } from 'vue-router'
+const props = defineProps<{title: string, list: any[], to: RouteLocationRaw}>()
 </script>
 
 <template>
@@ -23,7 +24,8 @@ const props = defineProps<{title: string, list: any[], to: string}>()
     </ol>
     <div class="see-more">
       <NuxtLink class="hard-link" :to="props.to">
-        <span>See more</span><ForwardIcon class="suffix icon"/>
+        <span>All {{ props.title.toLocaleLowerCase() }}</span>
+        <ForwardIcon class="suffix icon"/>
       </NuxtLink>
     </div>
   </div>

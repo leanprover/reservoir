@@ -3,7 +3,7 @@ import LogoIcon from '~/public/favicon.svg?component'
 </script>
 
 <template>
-  <NuxtLink class="logo" to="/">
+  <NuxtLink aria-label="Reservoir" class="logo" to="/">
     <LogoIcon class="icon"/>
     <h1 class="label">Reservoir</h1>
   </NuxtLink>

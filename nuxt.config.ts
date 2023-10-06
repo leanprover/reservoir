@@ -1,5 +1,4 @@
 import manifest from './site/manifest.json'
-import { defineNuxtConfig } from 'nuxt/config'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
@@ -7,24 +6,25 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   typescript: { strict: true },
   build: {
-    transpile: ['primevue']
+    transpile: ['primevue'],
   },
   modules: [
     'unplugin-icons/nuxt',
+    '@nuxtseo/module',
     ['nuxt-svgo', {
       autoImportPath: false,
     }],
     ['@nuxtjs/critters', {
       config: {
-        preload: "body",
+        preload: "swap",
         pruneSource: true,
         reduceInlineStyles: false, // `true` breaks fonts
       }
     }],
     ['@nuxtjs/google-fonts', {
       families: {
-        Merriweather: [400],
-        'Open+Sans': [400],
+        'Merriweather': [400, 700],
+        'Open+Sans': [400, 700],
         'Source+Code+Pro': [400],
       },
       display: 'swap',
@@ -40,4 +40,37 @@ export default defineNuxtConfig({
       routes: ["/", ...manifest.matrix.map((pkg) => `/packages/${pkg.id}`)]
     },
   },
+  site: {
+    url: 'https://reservoir.lean-lang.org',
+    name: 'Reservoir',
+    description: "Lake's package repository for the Lean community.",
+    titleSeparator: '|',
+    defaultLocale: 'en-US',
+  },
+  linkChecker: {
+    failOnError: true,
+    fetchRemoteUrls: false,
+  },
+  ogImage: {
+    defaults: {
+      cache: false,
+      component: 'OgImageGeneric',
+    },
+    runtimeBrowser: false,
+    runtimeCacheStorage: false,
+    fonts: [ 'Merriweather:400', 'Merriweather:700', 'Open+Sans:400' ],
+  },
+  vite: {
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('mathjax')) {
+              return 'mathjax';
+            }
+          }
+        }
+      }
+    }
+  }
 })

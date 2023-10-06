@@ -1,12 +1,5 @@
 <script setup lang="ts">
 useHead({
-  htmlAttrs: {
-    lang: 'en'
-  },
-  title: 'Reservoir',
-  meta: [
-    { name: 'description', content: 'The Lean package repository.' },
-  ],
   link: [
     { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
     { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },

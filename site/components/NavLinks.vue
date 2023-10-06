@@ -4,7 +4,7 @@ import IndexIcon from '~icons/mdi/lake'
 
 <template>
   <nav>
-    <NuxtLink to="/packages" class="all">
+    <NuxtLink aria-label="All Packages" to="/packages" class="all">
       <span class="label">All Packages</span>
       <IndexIcon class="icon"/>
     </NuxtLink>

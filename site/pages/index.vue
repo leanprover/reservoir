@@ -12,7 +12,11 @@ const updated = [...manifest.matrix].sort((a, b) =>
 ).slice(0, 10)
 definePageMeta({
   layout: false,
-});
+})
+defineOgImage({
+  component: 'Generic',
+  title: 'Reservoir',
+})
 </script>
 
 <template>
@@ -49,9 +53,9 @@ definePageMeta({
           </div>
         </div>
         <div class="highlights">
-          <HighlightCategory title="Most Popular" :list="popular" to="/packages?sort=stars"/>
-          <HighlightCategory title="Newly Created" :list="created" to="/packages?sort=createdAt"/>
-          <HighlightCategory title="Recently Updated" :list="updated" to="/packages?sort=updatedAt"/>
+          <HighlightCategory title="Most Popular" :list="popular" :to="{path: '/packages', query: {sort: 'stars'}}"/>
+          <HighlightCategory title="Newly Created" :list="created" :to="{path: '/packages', query: {sort: 'createdAt'}}"/>
+          <HighlightCategory title="Recently Updated" :list="updated" :to="{path: '/packages', query: {sort: 'updatedAt'}}"/>
         </div>
       </div>
     </main>
