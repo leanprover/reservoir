@@ -1,1 +1,2 @@
 leanprover-community/mathlib4
+semorrison/lean-training-data
