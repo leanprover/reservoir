@@ -120,16 +120,37 @@ const html = computed(() => {
     border-radius: 6px;
   }
 
+  ul, ol, p, img {
+    margin-bottom: 1em;
+  }
+
+  p img {
+    margin-bottom: 0;
+  }
+
   ul, ol {
     margin-left: 2em;
+
+    ul, ol {
+      margin-bottom: 0;
+    }
 
     li {
       margin: 0.5em 0;
     }
   }
 
-  ul, ol, p, img {
-    margin-bottom: 1em;
+  .contains-task-list {
+    position: relative;
+  }
+
+  .task-list-item {
+    list-style-type: none;
+
+    input {
+      margin-left: -1.5em;
+      margin-right: 0.2em;
+    }
   }
 
   code {

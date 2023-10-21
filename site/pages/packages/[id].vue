@@ -29,8 +29,28 @@ const formatLicense = (id: string) => {
   switch (id) {
     case 'apache-2.0':
       return "Apache 2.0"
+    case "bsd-2-clause":
+      return "BSD 2 clause"
+    case "bsd-3-clause":
+      return "BSD 3 clause"
+    case "cc0-1.0":
+      return "CC0"
+    case "epl-2.0":
+      return "EPLv2"
+    case "gpl-2.0":
+      return "GPLv2"
+    case "gpl-3.0":
+      return "GPLv3"
+    case "agpl-3.0":
+      return "AGPLv3"
+    case "lgpl-2.1":
+      return "LGPLv2.1"
     case "mit":
       return "MIT"
+    case "mpl-2.0":
+      return "MPLv2"
+    case "unlicense":
+      return "Unlicense"
     default:
       return "Unknown"
   }
@@ -109,6 +129,12 @@ const { data: readme } = await useFetch<string>(`${baseContentUrl}README.md`)
     background-color: var(--medium-color);
     border-radius: 6px;
     margin-bottom: 1em;
+
+    h2 {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-wrap: nowrap;
+    }
 
     .description {
       margin-top: 0.5em;

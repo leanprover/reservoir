@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import NoneIcon from '~icons/mdi/help'
+import NoneIcon from '~icons/mdi/asterisk'
 import FailIcon from '~icons/mdi/close'
 import PassIcon from '~icons/mdi/check'
 import { Tippy } from 'vue-tippy'
@@ -21,24 +21,24 @@ const outcomeIcon = computed(() => {
 const outcomeClass = computed(() => {
   return 'outcome-' + (outcome || 'none')
 })
-
-const outcomeTooltip = computed(() => {
-  switch (outcome) {
-    case 'success':
-      return 'Builds on the latest toolchain'
-    case 'failure':
-      return 'Fails to build on the latest toolchain'
-    default:
-      return 'No build data'
-  }
-})
 </script>
 
 <template>
 <Tippy class="build-outcome" :class="[outcomeClass]">
   <component width="66%" height="66%" :is="outcomeIcon"/>
   <template #content>
-    <div class="tooltip">{{ outcomeTooltip }}</div>
+    <div class="tooltip">
+      <span v-if="outcome == 'success'">
+        Builds on the latest toolchain
+      </span>
+      <span v-else-if="outcome == 'failure'">
+        Builds on the latest toolchain
+      </span>
+      <span v-else>
+        <span class="line">Build data not currently included on Reservoir. </span>
+        <span class="line">See the repository's CI instead.</span>
+      </span>
+    </div>
   </template>
 </Tippy>
 </template>
@@ -62,7 +62,7 @@ const outcomeTooltip = computed(() => {
   }
 
   &.outcome-none {
-    background-color: var(--neutral-color);
+    background-color: var(--dark-accent-color);
   }
 }
 </style>

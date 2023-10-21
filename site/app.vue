@@ -84,6 +84,14 @@ button {
   background-color: inherit;
 }
 
+.tooltip {
+  text-align: center;
+
+  span.line {
+    display: inline-block
+  }
+}
+
 .icon {
   width: 1em;
   height: 1em;
