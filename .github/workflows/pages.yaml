@@ -66,8 +66,8 @@ jobs:
     needs: bundle
     name: Deploy
     environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      name: netlify
+      url: ${{ github.ref_name == 'master' && steps.publish.outputs.NETLIFY_LIVE_URL || steps.publish.outputs.NETLIFY_URL }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -81,12 +81,16 @@ jobs:
         run: npm ci
       - name: Build Site
         run: npm run generate
-      - name: Setup Pages
-        uses: actions/configure-pages@v3
-      - name: Upload Pages
-        uses: actions/upload-pages-artifact@v2
+      - id: alias
+        name: Compute Deploy Alias
+        if: github.ref_name != 'master'
+        run: python3 -c 'import base64; print("alias="+base64.urlsafe_b64encode(bytes.fromhex("${{github.sha}}")).decode("utf-8").rstrip("="))' >> "$GITHUB_OUTPUT"
+      - id: publish
+        name: Publish
+        uses: netlify/actions/cli@master
         with:
-          path: .output/public
-      - name: Deploy Pages
-        id: deployment
-        uses: actions/deploy-pages@v2
+          args: deploy --dir=.output/public \
+            ${{ github.ref_name == 'master' && '--prod' || format('--alias={0}', steps.alias.outputs.alias) }}
+        env:
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}

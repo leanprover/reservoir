@@ -32,7 +32,6 @@ export default defineNuxtConfig({
     }],
   ],
   nitro: {
-    preset: 'github-pages',
     prerender: {
       failOnError: true,
       // Needed to prevent GitHub Pages from automatically adding trailing
