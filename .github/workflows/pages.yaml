@@ -15,11 +15,12 @@ on:
   # Enable running this workflow manually from the Actions tab
   workflow_dispatch:
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+# Sets permissions of the GITHUB_TOKEN needed for deployment
 permissions:
   contents: read
-  pages: write
-  id-token: write
+  deployments: none # do not allow the Netlify action to produce a deployment
+  pull-requests: write
+  statuses: write
 
 # Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
 # However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
@@ -67,7 +68,7 @@ jobs:
     name: Deploy
     environment:
       name: netlify
-      url: ${{ github.ref_name == 'master' && steps.publish.outputs.NETLIFY_LIVE_URL || steps.publish.outputs.NETLIFY_URL }}
+      url: ${{ steps.publish.outputs.deploy-url }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -81,16 +82,24 @@ jobs:
         run: npm ci
       - name: Build Site
         run: npm run generate
-      - id: alias
-        name: Compute Deploy Alias
-        if: github.ref_name != 'master'
-        run: python3 -c 'import base64; print("alias="+base64.urlsafe_b64encode(bytes.fromhex("${{github.sha}}")).decode("utf-8").rstrip("="))' >> "$GITHUB_OUTPUT"
+      - id: deploy-info
+        name: Compute Deploy Info
+        run: |
+          set -e
+          python3 -c 'import base64; print("alias="+base64.urlsafe_b64encode(bytes.fromhex("${{github.sha}}")).decode("utf-8").rstrip("="))' >> "$GITHUB_OUTPUT"
+          echo "message=`git log -1 --pretty=format:"%s"`" >> "$GITHUB_OUTPUT"
       - id: publish
-        name: Publish
-        uses: netlify/actions/cli@master
+        name: Publish to Netlify
+        uses: nwtgck/actions-netlify@v2.0
         with:
-          args: deploy --dir=.output/public \
-            ${{ github.ref_name == 'master' && '--prod' || format('--alias={0}', steps.alias.outputs.alias) }}
+          publish-dir: .output/public
+          production-branch: master
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: |
+            ${{ github.event_name == 'pull_request' && format('pr {0}: {1}', github.event.number, steps.deploy-info.outputs.message) || steps.deploy-info.outputs.message }}
+          alias: ${{ steps.deploy-info.outputs.alias }}
+          enable-commit-comment: false
         env:
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        timeout-minutes: 1
