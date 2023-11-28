@@ -8,7 +8,7 @@ on:
   workflow_call:
     inputs:
       ci:
-        description: 'Used to dinstinguish a CI workflow call from a standalone workflow'
+        description: 'Used to distinguish a CI workflow call from a standalone workflow'
         type: boolean
         required: false
         default: true
