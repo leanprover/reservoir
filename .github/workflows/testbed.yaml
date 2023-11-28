@@ -98,13 +98,12 @@ jobs:
         run: ./build.sh ${{ matrix.url }} testbed ${{ needs.setup.outputs.toolchain }}
       - name: Output Outcome
         run: |
-          mkdir -p testbed/build
-          echo ${{ steps.build.outcome }} > testbed/build/outcome.txt
+          echo ${{ steps.build.outcome }} > outcome.txt
       - name: Upload Results
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.id }}
-          path: testbed/build
+          path: outcome.txt
   collect:
     needs: [setup, build]
     name: Collect Results
@@ -125,4 +124,3 @@ jobs:
           name: results
           path: testbed/results.json
           if-no-files-found: error
-
