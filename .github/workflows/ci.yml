@@ -30,3 +30,4 @@ jobs:
     needs: [index, testbed]
     name: Pages
     uses: ./.github/workflows/pages.yaml
+    secrets: inherit

@@ -99,6 +99,7 @@ jobs:
             ${{ github.event_name == 'pull_request' && format('pr {0}: {1}', github.event.number, steps.deploy-info.outputs.message) || steps.deploy-info.outputs.message }}
           alias: ${{ steps.deploy-info.outputs.alias }}
           enable-commit-comment: false
+          fails-without-credentials: true
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
