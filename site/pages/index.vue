@@ -180,17 +180,18 @@ defineOgImage({
     flex-wrap: wrap;
 
     .highlight-category {
-      @media screen and (max-width: 600px) {
-        flex-grow: 1;
-        min-width: 0;
+      @media screen and (max-width: 650px) {
+        width: 100%;
 
         &:not(:first-child) {
           margin-top: 2em;
         }
       }
 
-      @media screen and (min-width: 600px) {
-        .card { max-width: 30vw; }
+      @media screen and (min-width: 650px) {
+        .card {
+          width: min(320px, 30vw);
+        }
       }
     }
   }
