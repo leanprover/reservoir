@@ -37,13 +37,13 @@ export default defineNuxtConfig({
       // Needed to prevent GitHub Pages from automatically adding trailing
       // slashes to URLs (as otherwise they are directories rather than files)
       autoSubfolderIndex: false,
-      routes: ["/", ...manifest.matrix.map((pkg) => `/packages/${pkg.id}`)]
+      routes: ["/", ...manifest.packages.map(pkg => `/packages/${pkg.id}`)]
     },
   },
   site: {
     url: 'https://reservoir.lean-lang.org',
     name: 'Reservoir',
-    description: "Lake's package repository for the Lean community.",
+    description: "Lake's package registry for the Lean community.",
     titleSeparator: '|',
     defaultLocale: 'en-US',
   },

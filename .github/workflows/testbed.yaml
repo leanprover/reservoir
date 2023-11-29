@@ -35,7 +35,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.output-matrix.outputs.matrix }}
-      toolchain: ${{ inputs.toolchain || steps.find-toolchain.outputs.toolchain }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -60,7 +59,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
       - name: Create Matrix
         run: |
-          ./testbed-create.py index.json -o matrix.json \
+          ./testbed-create.py index.json ${{ inputs.toolchain || steps.find-toolchain.outputs.toolchain }} -o matrix.json \
             -n ${{inputs.repositories || (github.ref_name == 'master' && 200 || 15)}} \
             -X ${{github.ref_name == 'master' && 'testbed-exclusions.txt' || 'testbed-dev-exclusions.txt'}}
       - name: Upload Matrix
@@ -85,7 +84,7 @@ jobs:
       - name: Install Elan
         shell: bash -euo pipefail {0}
         run: |
-          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain ${{ needs.setup.outputs.toolchain }}
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain ${{ matrix.toolchain }}
           echo "$HOME/.elan/bin" >> $GITHUB_PATH
       - name: Check Lean
         run: lean --version
@@ -95,7 +94,7 @@ jobs:
         name: Build
         continue-on-error: true
         # Note that this runs arbitrary untrusted code so we cannot give it secrets
-        run: ./build.sh ${{ matrix.url }} testbed ${{ needs.setup.outputs.toolchain }}
+        run: ./build.sh ${{ matrix.url }} testbed ${{ matrix.toolchain }}
       - name: Output Outcome
         run: |
           echo ${{ steps.build.outcome }} > outcome.txt
@@ -117,7 +116,9 @@ jobs:
           # Without a name, downloads all artifacts
           path: testbed
       - name: Collect Outcomes
-        run: ./testbed-collect.py testbed ${{ needs.setup.outputs.toolchain }} ${{ github.run_id }} -o testbed/results.json
+        run: ./testbed-collect.py testbed ${{ github.run_id }} ${{ github.run_attempt }} -o testbed/results.json
+        env:
+          GH_TOKEN: ${{ github.token }}
       - name: Upload Results
         uses: actions/upload-artifact@v3
         with:

@@ -94,7 +94,7 @@ const { data: readme } = await useFetch<string>(`${baseContentUrl}README.md`)
           <h3>Lean</h3>
           <ul>
             <li>
-              <BuildOutcome class="icon" :outcome="pkg.outcome"/>
+              <BuildOutcome class="icon" :build="pkg.builds.find(b => b.toolchain === latestToolchain)"/>
               {{ latestToolchain.split(':')[1] }}
             </li>
           </ul>

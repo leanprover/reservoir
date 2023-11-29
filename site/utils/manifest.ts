@@ -1,5 +1,6 @@
 import manifest from '~/manifest.json'
 
-export const packages = manifest.matrix
+export const packages = manifest.packages
 export type Package = typeof packages[number]
-export const latestToolchain = manifest.toolchain
+export type Build = Package['builds'][number]
+export const latestToolchain = manifest.toolchains[0]

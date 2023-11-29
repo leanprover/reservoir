@@ -101,7 +101,7 @@ const resultPage = computed(() => {
             </li>
             <li><a class="hard-link" :href="pkg.url">Repository</a></li>
             <li class="stars"><StarIcon class="prefix icon"/>{{ pkg.stars }}</li>
-            <li><BuildOutcome class="icon" :outcome="pkg.outcome"/></li>
+            <li><BuildOutcome class="icon" :build="pkg.builds.find(b => b.toolchain === latestToolchain)"/></li>
           </ul>
         </li>
       </ol>
@@ -222,11 +222,13 @@ const resultPage = computed(() => {
           margin-top: 1em;
 
           & > li {
+            display: flex;
             margin-right: 0.8em;
 
             &.stars {
               display: flex;
               align-items: center;
+              line-height: 1em;
 
               .icon {
                 color: var(--star-color);

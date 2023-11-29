@@ -28,7 +28,7 @@ defineOgImage({
         </div>
         <div class="landing-callout">
           <div class="landing-search">
-            <h1 class="label">Lake's package repository</h1>
+            <h1 class="label">Lake's package registry</h1>
             <SearchBar/>
           </div>
         </div>

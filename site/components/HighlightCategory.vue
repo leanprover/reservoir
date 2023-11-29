@@ -2,7 +2,7 @@
 import { Tippy } from 'vue-tippy'
 import ForwardIcon from '~icons/mdi/chevron-right'
 import type { RouteLocationRaw } from 'vue-router'
-const props = defineProps<{title: string, list: any[], to: RouteLocationRaw}>()
+const props = defineProps<{title: string, list: Package[], to: RouteLocationRaw}>()
 </script>
 
 <template>
@@ -10,7 +10,7 @@ const props = defineProps<{title: string, list: any[], to: RouteLocationRaw}>()
     <h3 class="title">{{ props.title }}</h3>
     <ol class="short-list">
       <li class="card" v-for="pkg in props.list" :key="pkg.id">
-        <BuildOutcome class="prefix icon" :outcome="pkg.outcome"/>
+        <BuildOutcome class="prefix icon" :build="pkg.builds.find(b => b.toolchain === latestToolchain)"/>
         <Tippy class="text" :on-show="() => { if (!pkg.description) return false }">
           <NuxtLink class="soft-link" :to="`/packages/${pkg.id}`">
             <div class="name">{{ pkg.name }}</div>

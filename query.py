@@ -6,13 +6,15 @@ import requests
 import json
 import logging
 
-def query(num: int):
+def query(limit: int):
   query = "language:Lean stars:>1 sort:stars"
-  fields = ["name","fullName","description","license","createdAt","updatedAt","url","homepage","stargazersCount"]
+  fields = ["fullName","description","license","createdAt","updatedAt","pushedAt","url","homepage","stargazersCount"]
   child = subprocess.run([
     "gh", "search", "repos",
-    *query.split(' '), "-L", str(num), "--json", ','.join(fields),
-  ], stdout=subprocess.PIPE)
+    *query.split(' '), "-L", str(limit), "--json", ','.join(fields),
+  ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  if child.returncode != 0:
+    raise RuntimeError(child.stderr.decode().strip())
   return json.loads(child.stdout)
 
 def filter_lake(repo):
@@ -33,13 +35,16 @@ def filter_lake(repo):
 
 def enrich(repo: dict):
   repo['id'] = repo['fullName'].replace("-", "--").replace("/", "-")
+  repo['owner'], repo['name'] = repo['fullName'].split('/')
   repo['license'] = repo['license']['key']
   repo['stars'] = repo.pop('stargazersCount')
+  repo['updatedAt'] = max(repo['updatedAt'], repo['pushedAt'])
+  del repo['pushedAt']
   return repo
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
-  parser.add_argument('-Q', '--query', type=int, default=1000,
+  parser.add_argument('-L', '--limit', type=int, default=50,
     help='(max) number of results to query from GitHub')
   parser.add_argument('-X', '--exclusions', default="query-exclusions.txt",
     help='file containing repos to exclude')
@@ -63,25 +68,20 @@ if __name__ == "__main__":
   with open(args.exclusions, 'r') as f:
     for line in f: exclusions.add(line.strip())
 
-  repos = query(args.query)
-  logging.info(f"found {len(repos)} (max {args.query}) notable Lean repositories")
+  repos = query(args.limit)
+  logging.info(f"found {len(repos)} (max {args.limit}) notable Lean repositories")
   repos = filter(lambda repo: repo['fullName'] not in exclusions, repos)
   repos = filter(filter_lake, repos)
-  repos = map(enrich, repos)
-  repos = list(repos)
-  logging.info(f"found {len(repos)} notable Lean repositories with lakefiles")
+  pkgs = map(enrich, repos)
+  pkgs = list(pkgs)
+  logging.info(f"found {len(pkgs)} notable Lean repositories with lakefiles")
 
   data = {
-    "fetchedAt": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-    "matrix": repos
+    'fetchedAt': datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+    'packages': pkgs
   }
   if args.output is None:
     print(json.dumps(data))
   else:
     with open(args.output, 'w') as f:
       f.write(json.dumps(data))
-
-
-
-
-

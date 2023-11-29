@@ -57,6 +57,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
       - name: Create Manifest
         run: ./bundle.py index.json results.json -o manifest.json
+        env:
+          GH_TOKEN: ${{ github.token }}
       - name: Upload Manifest
         uses: actions/upload-artifact@v3
         with:
