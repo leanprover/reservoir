@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import manifest from '~/manifest.json'
 import LegalIcon from '~icons/mdi/legal'
 import UpdateIcon from '~icons/mdi/update'
 import StarIcon from '~icons/mdi/star'
@@ -7,7 +6,7 @@ import HomepageIcon from '~icons/mdi/home'
 import GitHubIcon from '~icons/mdi/github'
 
 const route = useRoute()
-const pkg = manifest.matrix.find(e => e.id === route.params.id)
+const pkg = packages.find(e => e.id === route.params.id)
 if (!pkg) {
   throw createError({
     statusCode: 404,
@@ -96,7 +95,7 @@ const { data: readme } = await useFetch<string>(`${baseContentUrl}README.md`)
           <ul>
             <li>
               <BuildOutcome class="icon" :outcome="pkg.outcome"/>
-              {{ manifest.toolchain.split(':')[1] }}
+              {{ latestToolchain.split(':')[1] }}
             </li>
           </ul>
         </div>

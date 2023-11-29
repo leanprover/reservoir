@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import GetStartedIcon from '~icons/mdi/book-open'
-import manifest from '~/manifest.json'
-const popular = [...manifest.matrix].sort((a, b) =>
+const popular = [...packages].sort((a, b) =>
   b.stars - a.stars
 ).slice(0, 10)
-const created = [...manifest.matrix].sort((a, b) =>
+const created = [...packages].sort((a, b) =>
   new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
 ).slice(0, 10)
-const updated = [...manifest.matrix].sort((a, b) =>
+const updated = [...packages].sort((a, b) =>
   new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
 ).slice(0, 10)
 definePageMeta({
@@ -41,7 +40,7 @@ defineOgImage({
           <div class="top-line">
             <div class="toolchain">
               <h4 class="label">Latest Lean Toolchain:</h4>
-              <span class="name">{{ manifest.toolchain }}</span>
+              <span class="name">{{ latestToolchain }}</span>
             </div>
             <a class="get-started" href="https://lean-lang.org/lean4/doc/quickstart.html">
               <GetStartedIcon class="prefix icon"/>

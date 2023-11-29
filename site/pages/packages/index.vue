@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import manifest from '~/manifest.json'
 import StarIcon from '~icons/mdi/star'
 import Paginator from 'primevue/paginator'
 import Dropdown from 'primevue/dropdown'
@@ -20,36 +19,36 @@ const route = useRoute()
 const query = computed(() => toArray(route.query.q).at(-1) || '')
 const querySortKey = toArray(route.query.sort).filter(isSortKey).at(-1)
 const sortKey = ref<SortKey>(querySortKey ?? "stars")
-const sort = (matrix: typeof manifest.matrix, key: SortKey | "") => {
+const sort = (pkgs: Package[], key: SortKey | "") => {
   switch (key) {
     case "stars":
-      return matrix.sort((a, b) => b[key] - a[key])
+      return pkgs.sort((a, b) => b[key] - a[key])
     case "createdAt":
-      return matrix.sort((a, b) => new Date(b[key]).getTime() - new Date(a[key]).getTime())
+      return pkgs.sort((a, b) => new Date(b[key]).getTime() - new Date(a[key]).getTime())
     case "updatedAt":
-      return matrix.sort((a, b) => new Date(b[key]).getTime() - new Date(a[key]).getTime())
+      return pkgs.sort((a, b) => new Date(b[key]).getTime() - new Date(a[key]).getTime())
     case "fullName":
-      return matrix.sort((a, b) => a[key].localeCompare(b[key]))
+      return pkgs.sort((a, b) => a[key].localeCompare(b[key]))
     default:
-      return matrix
+      return pkgs
   }
 }
-const fullMatrix = computed(() => {
+const results = computed(() => {
   const q = query.value.toLocaleLowerCase()
-  let matrix = [...manifest.matrix]
+  let pkgs = [...packages]
   if (q) {
-    matrix = matrix.filter((e) => e.name.toLocaleLowerCase().indexOf(q) > -1)
+    pkgs = pkgs.filter(e => e.name.toLocaleLowerCase().indexOf(q) > -1)
   }
-  return sort(matrix, sortKey.value)
+  return sort(pkgs, sortKey.value)
 })
-const numResults = computed(() => fullMatrix.value.length)
+const numResults = computed(() => results.value.length)
 
 const numRows = 20
 const first = ref(parseInt(toArray(route.query.first).at(-1)!) || 0)
-const last = computed(() => Math.min(first.value + numRows, fullMatrix.value.length))
-const matrix = computed(() => {
+const last = computed(() => Math.min(first.value + numRows, results.value.length))
+const resultPage = computed(() => {
   const i = first.value
-  return fullMatrix.value.slice(i, i+numRows)
+  return results.value.slice(i, i+numRows)
 });
 </script>
 
@@ -59,7 +58,7 @@ const matrix = computed(() => {
       <h2 v-if="query">Search Results <span class="query">for '{{ query }}'</span></h2>
       <h2 v-else>All Packages</h2>
     </div>
-    <div class="no-results" v-if="matrix.length === 0">
+    <div class="no-results" v-if="numResults === 0">
       <h3>
         <span>0 packages found. </span>
         <a href="https://lean-lang.org/lean4/doc/quickstart.html">Get started</a>
@@ -88,7 +87,7 @@ const matrix = computed(() => {
         </div>
       </div>
       <ol class="results-list">
-        <li class="card" v-for="pkg in matrix" :key="pkg.id">
+        <li class="card" v-for="pkg in resultPage" :key="pkg.id">
           <NuxtLink class="name" :to="`/packages/${encodeURIComponent(pkg.id)}`">
             <h3>{{pkg.fullName}}</h3>
           </NuxtLink>

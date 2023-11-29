@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import manifest from '~/manifest.json'
 import SearchIcon from '~icons/mdi/magnify'
 import AutoComplete from 'primevue/autocomplete'
 import type { AutoCompleteCompleteEvent, AutoCompleteChangeEvent } from 'primevue/autocomplete'
@@ -17,16 +16,14 @@ onUnmounted(() => {
   window.removeEventListener('keyup', keyHandler)
 })
 
-const allPkgs = manifest.matrix
-type Package = typeof allPkgs[number]
 type PackageResult = Package & {highlightedName : VNode}
 
 const query = ref()
 const selectedPkg = ref<Package>()
-const filteredPkgs = ref<Package[]>(allPkgs)
+const filteredPkgs = ref<Package[]>(packages)
 const filter = (event: AutoCompleteCompleteEvent) => {
   const q = event.query.toLocaleLowerCase()
-  const results = allPkgs.reduce<PackageResult[]>((pkgs, pkg) => {
+  const results = packages.reduce<PackageResult[]>((pkgs, pkg) => {
     const idx = pkg.name.toLocaleLowerCase().indexOf(q)
     if (idx > -1) {
       const result = Object.assign(pkg, {
