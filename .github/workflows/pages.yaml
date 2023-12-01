@@ -8,12 +8,12 @@ on:
   workflow_call:
     inputs:
       ci:
-        description: 'Used to distinguish a CI workflow call from a standalone workflow'
+        description: "Used to distinguish a CI workflow call from a standalone workflow"
         type: boolean
         required: false
         default: true
       index-artifact:
-        description: 'Use local index artifact instead of the reservoir-index repository'
+        description: "Use local artifact not reservoir-index"
         type: boolean
         required: false
         default: true

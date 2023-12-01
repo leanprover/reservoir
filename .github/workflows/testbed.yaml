@@ -8,7 +8,7 @@ on:
   workflow_call:
     inputs:
       index-artifact:
-        description: 'Use local index artifact instead of the reservoir-index repository'
+        description: "Use local artifact, not reservoir-index"
         type: boolean
         required: false
         default: true

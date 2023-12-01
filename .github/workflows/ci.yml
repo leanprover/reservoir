@@ -10,6 +10,12 @@ on:
       - master
   # Enable running this workflow manually from the Actions tab
   workflow_dispatch:
+    inputs:
+      reuse-index:
+        description: "Use reservoir-index, not a new local artifact"
+        type: boolean
+        required: false
+        default: true
 
 # GITHUB_TOKEN permissions needed for deployment (copied from pages.yaml)
 permissions:
@@ -21,13 +27,22 @@ permissions:
 jobs:
   index:
     name: Index
+    if: (!inputs.reuse-index)
     uses: ./.github/workflows/index.yaml
   testbed:
     needs: index
+    # Run even if `index` is skipped
+    if: (!failure() && !cancelled())
     name: Testbed
     uses: ./.github/workflows/testbed.yaml
+    with:
+      index-artifact: ${{ !inputs.reuse-index }}
   pages:
     needs: [index, testbed]
+    # Run even if `index` is skipped
+    if: (!failure() && !cancelled())
     name: Pages
     uses: ./.github/workflows/pages.yaml
     secrets: inherit
+    with:
+      index-artifact: ${{ !inputs.reuse-index }}
