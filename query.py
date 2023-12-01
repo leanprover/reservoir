@@ -1,25 +1,10 @@
 #!/usr/bin/env python3
+from utils import paginate, run_cmd
 from datetime import datetime
 import argparse
-import itertools
 import os
-import subprocess
 import json
 import logging
-
-# from https://antonz.org/page-iterator/
-def paginate(iterable, page_size):
-  it = iter(iterable)
-  slicer = lambda: list(itertools.islice(it, page_size))
-  return iter(slicer, [])
-
-def run_cmd(*args: str) -> bytes:
-  child = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-  if child.returncode != 0:
-    raise RuntimeError(child.stderr.decode().strip())
-  elif len(child.stderr) > 0:
-    logging.error(child.stderr.decode())
-  return child.stdout
 
 REPO_QUERY="""
 query($repoIds: [ID!]!) {
@@ -72,7 +57,6 @@ def query_lake_repos(limit: int) -> 'list[str]':
       '--json', 'path,repository', '-q', '.[] | .repository.id'
     )
   return out.decode().splitlines()
-
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()

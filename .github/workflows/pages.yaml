@@ -12,6 +12,11 @@ on:
         type: boolean
         required: false
         default: true
+      index-artifact:
+        description: 'Use local index artifact instead of the reservoir-index repository'
+        type: boolean
+        required: false
+        default: true
   # Enable running this workflow manually from the Actions tab
   workflow_dispatch:
 
@@ -45,13 +50,13 @@ jobs:
         run: gh run download -n results
         env:
           GH_TOKEN: ${{ github.token }}
-      - name: Download Index (CI)
-        if: inputs.ci
+      - name: Download Index Artifact
+        if: inputs.index-artifact
         uses:  actions/download-artifact@v3
         with:
           name: index
-      - name: Download Index (Standalone)
-        if: (!inputs.ci)
+      - name: Download Index Repository
+        if: (!inputs.index-artifact)
         run: |
           mkdir index
           gh api repos/leanprover/reservoir-index/tarball \
@@ -59,7 +64,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Create Manifest
-        run: ./bundle.py ${{ inputs.ci && 'index.json' || 'index' }} results.json -o manifest.json
+        run: ./bundle.py ${{ inputs.index-artifact && 'index.json' || 'index' }} results.json -o manifest.json
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Upload Manifest
@@ -87,7 +92,7 @@ jobs:
         run: npm ci
       - name: Build Site
         run: npm run generate
-      - name: Download Index
+      - name: Download Index Repository
         run: |
           mkdir .output/public/index
           gh api repos/leanprover/reservoir-index/tarball \

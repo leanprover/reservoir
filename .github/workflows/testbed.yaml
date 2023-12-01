@@ -7,8 +7,8 @@ on:
   # Enable running this workflow from ci.yml
   workflow_call:
     inputs:
-      ci:
-        description: 'Used to distinguish a CI workflow call from a standalone workflow'
+      index-artifact:
+        description: 'Use local index artifact instead of the reservoir-index repository'
         type: boolean
         required: false
         default: true
@@ -47,19 +47,24 @@ jobs:
           echo "toolchain=leanprover/lean4:$latest" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ github.token }}
-      - name: Download Index (CI)
-        if: inputs.ci
+      - name: Download Index Artifact
+        if: inputs.index-artifact
         uses: actions/download-artifact@v3
         with:
           name: index
-      - name: Download Index (Standalone)
-        if: (!inputs.ci)
-        run: gh run download -n index
+      - name: Download Index Repository
+        if: (!inputs.index-artifact)
+        run: |
+          mkdir index
+          gh api repos/leanprover/reservoir-index/tarball \
+            | tar -xvz -C index --strip-component=1
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Create Matrix
         run: |
-          ./testbed-create.py index.json ${{ inputs.toolchain || steps.find-toolchain.outputs.toolchain }} -o matrix.json \
+          ./testbed-create.py -o matrix.json \
+            ${{ inputs.index-artifact && 'index.json' || 'index' }} \
+            ${{ inputs.toolchain || steps.find-toolchain.outputs.toolchain }}  \
             -n ${{inputs.repositories || (github.ref_name == 'master' && 200 || 15)}} \
             -X ${{github.ref_name == 'master' && 'testbed-exclusions.txt' || 'testbed-dev-exclusions.txt'}}
       - name: Upload Matrix

@@ -1,20 +1,17 @@
 #!/usr/bin/env python3
+from utils import run_cmd, load_index
 from datetime import datetime
 import argparse
-import os
-import subprocess
 import json
 
 RELEASE_REPO = 'leanprover/lean4'
 def query_toolchain_releases():
-  child = subprocess.run([
+  out = run_cmd(
     'gh', 'api', '--paginate',
     f'repos/{RELEASE_REPO}/releases',
     '-q', '.[] | .tag_name'
-  ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-  if child.returncode != 0:
-    raise RuntimeError(child.stderr.decode().strip())
-  return [f'{RELEASE_REPO}:{ver}' for ver in child.stdout.decode().splitlines()]
+  )
+  return [f'{RELEASE_REPO}:{ver}' for ver in out.decode().splitlines()]
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
@@ -26,19 +23,7 @@ if __name__ == "__main__":
     help='file to output the bundle manifest')
   args = parser.parse_args()
 
-  if os.path.isdir(args.index):
-    pkgs = list()
-    for owner in os.listdir(args.index):
-      owner_dir = os.path.join(args.index, owner)
-      for pkg in os.listdir(owner_dir):
-        md_file = os.path.join(owner_dir, pkg, 'metadata.json')
-        with open(md_file, 'r') as f:
-          pkgs.append(json.load(f))
-    pkgs = sorted(pkgs, key=lambda pkg: pkg['stars'], reverse=True)
-  else:
-    with open(args.index, 'r') as f:
-      pkgs = json.load(f)
-
+  pkgs = load_index(args.index)
   with open(args.results, 'r') as f:
     results: 'dict[str, dict[str, any]]' = json.load(f)
 
