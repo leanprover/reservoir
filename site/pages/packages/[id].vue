@@ -24,8 +24,8 @@ defineOgImage({
   hasNoDescription: !pkg.description,
 })
 
-const formatLicense = (id: string) => {
-  switch (id) {
+const formatLicense = (id: string | null) => {
+  switch (id && id.toLowerCase()) {
     case 'apache-2.0':
       return "Apache 2.0"
     case "bsd-2-clause":
