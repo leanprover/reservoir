@@ -69,7 +69,7 @@ if __name__ == "__main__":
     results[entry['id']] = result
 
   if args.output is None:
-    print(json.dumps(results))
+    print(json.dumps(results, indent=2))
   else:
     with open(args.output, 'w') as f:
-      f.write(json.dumps(results))
+      f.write(json.dumps(results, indent=2))

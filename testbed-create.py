@@ -25,7 +25,7 @@ if __name__ == "__main__":
       for line in f: exclusions.add(line.strip())
 
   with open(args.manifest, 'r') as f:
-    manifest = json.load(f)
+    pkgs = json.load(f)
 
   def create_entry(pkg: 'dict[str, any]'):
     return {
@@ -35,13 +35,12 @@ if __name__ == "__main__":
       'toolchain': args.toolchain
     }
 
-  pkgs = manifest['packages']
   pkgs = filter(lambda pkg: pkg['fullName'] not in exclusions, pkgs)
   pkgs = map(create_entry, pkgs)
   pkgs = list(pkgs)[0:args.num]
 
-  if args.output is None:
-    print(json.dumps(pkgs))
+  if args.output is not None:
+    print(json.dumps(pkgs, indent=2))
   else:
     with open(args.output, 'w') as f:
-      f.write(json.dumps(pkgs))
+      f.write(json.dumps(pkgs, indent=2))

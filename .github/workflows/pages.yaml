@@ -52,11 +52,14 @@ jobs:
           name: index
       - name: Download Index (Standalone)
         if: (!inputs.ci)
-        run: gh run download -n index
+        run: |
+          mkdir index
+          gh api repos/leanprover/reservoir-index/tarball \
+            | tar -xvz -C index --strip-component=1
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Create Manifest
-        run: ./bundle.py index.json results.json -o manifest.json
+        run: ./bundle.py ${{ inputs.ci && 'index.json' || 'index' }} results.json -o manifest.json
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Upload Manifest
@@ -84,6 +87,13 @@ jobs:
         run: npm ci
       - name: Build Site
         run: npm run generate
+      - name: Download Index
+        run: |
+          mkdir .output/public/index
+          gh api repos/leanprover/reservoir-index/tarball \
+            | tar -xvz -C .output/public/index --strip-component=1
+        env:
+          GH_TOKEN: ${{ github.token }}
       - id: deploy-info
         name: Compute Deploy Info
         run: |
@@ -105,4 +115,3 @@ jobs:
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
-        timeout-minutes: 1

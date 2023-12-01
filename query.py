@@ -73,18 +73,6 @@ def query_lake_repos(limit: int) -> 'list[str]':
     )
   return out.decode().splitlines()
 
-def enrich(repo: dict):
-  repo['fullName'] = repo.pop('nameWithOwner')
-  repo['id'] = repo['fullName'].replace('-', '--').replace('/', '-')
-  repo['owner'], repo['name'] = repo['fullName'].split('/')
-  info = repo.pop('licenseInfo')
-  spdxId = None if info is None else info['spdxId']
-  spdxId = None if spdxId in ['NONE', 'NOASSERTION'] else spdxId
-  repo['license'] = spdxId
-  repo['homepage'] = repo.pop('homepageUrl')
-  repo['stars'] = repo.pop('stargazerCount')
-  repo['updatedAt'] = max(repo['updatedAt'], repo.pop('pushedAt'))
-  return repo
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
@@ -114,6 +102,21 @@ if __name__ == "__main__":
   with open(args.exclusions, 'r') as f:
     for line in f: exclusions.add(line.strip())
 
+  fetchedAt = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+  def enrich(repo: dict):
+    repo['fullName'] = repo.pop('nameWithOwner')
+    repo['id'] = repo['fullName'].replace('-', '--').replace('/', '-')
+    repo['owner'], repo['name'] = repo['fullName'].split('/')
+    info = repo.pop('licenseInfo')
+    spdxId = None if info is None else info['spdxId']
+    spdxId = None if spdxId in ['NONE', 'NOASSERTION'] else spdxId
+    repo['license'] = spdxId
+    repo['homepage'] = repo.pop('homepageUrl')
+    repo['stars'] = repo.pop('stargazerCount')
+    repo['updatedAt'] = max(repo['updatedAt'], repo.pop('pushedAt'))
+    repo['fetchedAt'] = fetchedAt
+    return repo
+
   def curate(pkg: dict):
     return pkg['fullName'] not in exclusions and pkg['stars'] > 1
 
@@ -135,12 +138,8 @@ if __name__ == "__main__":
       with open(os.path.join(pkg_dir, "metadata.json"), 'w') as f:
         f.write(json.dumps(pkg, indent=2))
 
-  data = {
-    'fetchedAt': datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-    'packages': pkgs
-  }
   if args.output_manifest is None:
-    print(json.dumps(data, indent=2))
+    print(json.dumps(pkgs, indent=2))
   else:
     with open(args.output_manifest, 'w') as f:
-      f.write(json.dumps(data, indent=2))
+      f.write(json.dumps(pkgs, indent=2))
