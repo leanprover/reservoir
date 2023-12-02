@@ -8,24 +8,53 @@ on:
   workflow_call:
   # Enable running this workflow manually from the Actions tab
   workflow_dispatch:
+    inputs:
+      update-index:
+        description: "Upadte reservoir-index"
+        type: boolean
+        required: false
+        default: true
 
-# Permit only 1 concurrent run per branch, cancelling previous ones
+# Permit only 1 concurrent update of the repository
+# and 1 concurrent artifact per branch, cancelling previous ones
 concurrency:
-  group: index/${{ github.ref_name }}
+  group: ${{ inputs.update-index && 'index' || format('index/{0}', github.ref_name) }}
   cancel-in-progress: true
 
 jobs:
   fetch:
-    name: Fetch
+    name: Refresh
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+      - name: Checkout Index
+        if: inputs.update-index
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.PUSH_RESERVOIR_INDEX_TOKEN }}
+          repository: leanprover/reservoir-index
+          path: index
       - name: Query Repositories
-        run: ./query.py -o index.json -v -L ${{github.ref_name != 'master' && 100 || 0}}
+        run: |
+          ./query.py -v \
+            ${{ inputs.update-index && '-D index' || '-o index.json' }} \
+            -L ${{ (!inputs.update-index && github.ref_name != 'master') && 100 || 0 }}
         env:
           GH_TOKEN: ${{ github.token }}
+      - name: Update Index
+        if: inputs.update-index
+        uses: EndBug/add-and-commit@v9
+        with:
+          cwd: index
+          fetch: false
+          message: |
+            chore: update index
+
+            ${{github.server_url}}/${{github.repository}}/actions/runs/${{github.run_id}}/attempts/${{github.run_attempt}}
+          default_author: github_actions
       - name: Upload Index
+        if: (!inputs.update-index)
         uses: actions/upload-artifact@v3
         with:
           name: index
