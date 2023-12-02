@@ -13,7 +13,7 @@ on:
         required: false
         default: true
       index-artifact:
-        description: "Use local artifact not reservoir-index"
+        description: "Use local artifact, not reservoir-index"
         type: boolean
         required: false
         default: true
@@ -113,7 +113,7 @@ jobs:
           production-branch: master
           github-token: ${{ secrets.GITHUB_TOKEN }}
           deploy-message: |
-            ${{ github.event_name == 'pull_request' && format('pr {0}: {1}', github.event.number, steps.deploy-info.outputs.message) || steps.deploy-info.outputs.message }}
+            ${{ github.event_name == 'pull_request' && format('pr#{0}: {1}', github.event.number, github.event.pull_request.title) || format('ref/{0}: {1}', github.ref_name, steps.deploy-info.outputs.message) }}
           alias: ${{ steps.deploy-info.outputs.alias }}
           enable-commit-comment: false
           fails-without-credentials: true

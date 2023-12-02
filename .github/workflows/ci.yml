@@ -36,6 +36,7 @@ jobs:
     name: Index
     if: (!inputs.index || inputs.index != 'current')
     uses: ./.github/workflows/index.yaml
+    secrets: inherit
     with:
       update-index: ${{ inputs.index == 'updated' }}
   testbed:

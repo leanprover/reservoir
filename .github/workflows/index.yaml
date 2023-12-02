@@ -34,7 +34,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Checkout Index
+      - name: Checkout External Index
         if: inputs.update-index
         uses: actions/checkout@v3
         with:
@@ -48,7 +48,7 @@ jobs:
             -L ${{ (!inputs.update-index && github.ref_name != 'master') && 100 || 0 }}
         env:
           GH_TOKEN: ${{ github.token }}
-      - name: Update Index
+      - name: Update External Index
         if: inputs.update-index
         uses: EndBug/add-and-commit@v9
         with:
