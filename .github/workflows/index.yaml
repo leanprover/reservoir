@@ -6,6 +6,12 @@ on:
       - 'index/**' # branch pattern for query-only changes
   # Enable running this workflow from ci.yml
   workflow_call:
+    inputs:
+      update-index:
+        description: "Upadte reservoir-index"
+        type: boolean
+        required: false
+        default: false
   # Enable running this workflow manually from the Actions tab
   workflow_dispatch:
     inputs:
@@ -22,8 +28,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  fetch:
-    name: Refresh
+  index:
+    name: ${{ inputs.update-index && 'Update' || 'Fetch'}}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

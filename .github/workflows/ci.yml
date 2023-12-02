@@ -11,11 +11,18 @@ on:
   # Enable running this workflow manually from the Actions tab
   workflow_dispatch:
     inputs:
-      reuse-index:
-        description: "Use reservoir-index, not a new local artifact"
-        type: boolean
-        required: false
-        default: true
+      index:
+        description: "What index to use"
+        type: choice
+        options:
+          # Use the current state of the index repository (i.e., reservoir-index)
+          - current
+          # Update the index repository and then use it
+          - updated
+          # Create and use a small local index artifact (e.g., for testing)
+          - local
+        required: true
+        default: current
 
 # GITHUB_TOKEN permissions needed for deployment (copied from pages.yaml)
 permissions:
@@ -27,8 +34,10 @@ permissions:
 jobs:
   index:
     name: Index
-    if: (!inputs.reuse-index)
+    if: (!inputs.index || inputs.index != 'current')
     uses: ./.github/workflows/index.yaml
+    with:
+      update-index: ${{ inputs.index == 'updated' }}
   testbed:
     needs: index
     # Run even if `index` is skipped
@@ -36,7 +45,7 @@ jobs:
     name: Testbed
     uses: ./.github/workflows/testbed.yaml
     with:
-      index-artifact: ${{ !inputs.reuse-index }}
+      index-artifact: ${{ !inputs.index || inputs.index == 'local' }}
   pages:
     needs: [index, testbed]
     # Run even if `index` is skipped
@@ -45,4 +54,4 @@ jobs:
     uses: ./.github/workflows/pages.yaml
     secrets: inherit
     with:
-      index-artifact: ${{ !inputs.reuse-index }}
+      index-artifact: ${{ !inputs.index || inputs.index == 'local' }}
