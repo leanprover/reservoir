@@ -1,5 +1,6 @@
 leanprover-community/mathlib4
 semorrison/lean-training-data
+leanprover-community/flt-regular
 lecopivo/SciLean
 opencompl/lean-mlir
 ufmg-smite/lean-smt
