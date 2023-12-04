@@ -6,3 +6,4 @@ opencompl/lean-mlir
 ufmg-smite/lean-smt
 avigad/mathematics_in_lean_source
 siddhartha-gadgil/LeanAide
+mo271/formal_book

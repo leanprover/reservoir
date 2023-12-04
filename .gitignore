@@ -13,5 +13,8 @@ node_modules
 .cache
 dist
 
+# Python outputs
+__pycache__
+
 # Misc
 .DS_Store
