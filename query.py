@@ -10,6 +10,7 @@ REPO_QUERY="""
 query($repoIds: [ID!]!) {
   nodes(ids: $repoIds) {
     ... on Repository {
+      id
       nameWithOwner
       description
       licenseInfo {
@@ -35,6 +36,7 @@ def query_repo_data(repoIds: 'list[str]') -> dict:
       fields.append(f'repoIds[]={id}')
     out = run_cmd(
       'gh', 'api', 'graphql',
+      "-H", "X-Github-Next-Global-ID: 1",
       '-f', f'query={REPO_QUERY}', *fields
     )
     results = results + json.loads(out)['data']['nodes']
@@ -57,6 +59,16 @@ def query_lake_repos(limit: int) -> 'list[str]':
       '--json', 'path,repository', '-q', '.[] | .repository.id'
     )
   return out.decode().splitlines()
+
+def filter_falsy(value):
+  return value if value else None
+
+def filter_ws(value: str | None):
+  value: str | None = value
+  if value is not None:
+    value = filter_falsy(value.strip())
+  return value
+
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
@@ -86,20 +98,31 @@ if __name__ == "__main__":
   with open(args.exclusions, 'r') as f:
     for line in f: exclusions.add(line.strip())
 
-  fetchedAt = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
   def enrich(repo: dict):
-    repo['fullName'] = repo.pop('nameWithOwner')
-    repo['id'] = repo['fullName'].replace('-', '--').replace('/', '-')
-    repo['owner'], repo['name'] = repo['fullName'].split('/')
-    info = repo.pop('licenseInfo')
-    spdxId = None if info is None else info['spdxId']
-    spdxId = None if spdxId in ['NONE', 'NOASSERTION'] else spdxId
-    repo['license'] = spdxId
-    repo['homepage'] = repo.pop('homepageUrl')
-    repo['stars'] = repo.pop('stargazerCount')
-    repo['updatedAt'] = max(repo['updatedAt'], repo.pop('pushedAt'))
-    repo['fetchedAt'] = fetchedAt
-    return repo
+    license = repo['licenseInfo']
+    if license is not None: license = license['spdxId']
+    if license in ['NONE', 'NOASSERTION']: license = None
+    owner, name = repo['nameWithOwner'].split('/')
+    id = repo['nameWithOwner'].replace('-', '--').replace('/', '-')
+    return {
+      'id': id,
+      'name' : name,
+      'owner': owner,
+      'fullName': repo['nameWithOwner'],
+      'description': filter_ws(repo['description']),
+      'homepage': filter_ws(repo['homepageUrl']),
+      'license': license,
+      'createdAt': repo['createdAt'],
+      'updatedAt':  max(repo['updatedAt'], repo['pushedAt']),
+      'stars': repo['stargazerCount'],
+      'sources': [{
+        'host': 'github',
+        'id': repo['id'],
+        'fullName': repo['nameWithOwner'],
+        'repoUrl': repo['url'],
+        'gitUrl': repo['url'],
+      }],
+    }
 
   def curate(pkg: dict):
     return pkg['fullName'] not in exclusions and pkg['stars'] > 1
@@ -121,6 +144,7 @@ if __name__ == "__main__":
         os.makedirs(pkg_dir)
       with open(os.path.join(pkg_dir, "metadata.json"), 'w') as f:
         f.write(json.dumps(pkg, indent=2))
+        f.write("\n")
 
   if args.output_manifest is None:
     print(json.dumps(pkgs, indent=2))

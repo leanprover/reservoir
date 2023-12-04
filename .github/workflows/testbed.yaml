@@ -99,14 +99,14 @@ jobs:
         name: Build
         continue-on-error: true
         # Note that this runs arbitrary untrusted code so we cannot give it secrets
-        run: ./build.sh ${{ matrix.url }} testbed ${{ matrix.toolchain }}
+        run: ./build.sh ${{ matrix.gitUrl }} testbed ${{ matrix.toolchain }}
       - name: Output Outcome
         run: |
           echo ${{ steps.build.outcome }} > outcome.txt
       - name: Upload Results
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ matrix.id }}
+          name: ${{ matrix.artifact }}
           path: outcome.txt
   collect:
     needs: [setup, build]

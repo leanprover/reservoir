@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import StarIcon from '~icons/mdi/star'
 import Paginator from 'primevue/paginator'
 import Dropdown from 'primevue/dropdown'
 
@@ -87,23 +86,7 @@ const resultPage = computed(() => {
         </div>
       </div>
       <ol class="results-list">
-        <li class="card" v-for="pkg in resultPage" :key="pkg.id">
-          <NuxtLink class="name" :to="`/packages/${encodeURIComponent(pkg.id)}`">
-            <h3>{{pkg.fullName}}</h3>
-          </NuxtLink>
-          <p>
-            <span v-if="pkg.description">{{ pkg.description }}</span>
-            <em v-else>No description provided.</em>
-          </p>
-          <ul class="links">
-            <li v-if="pkg.homepage">
-              <a class="hard-link" :href="pkg.homepage">Homepage</a>
-            </li>
-            <li><a class="hard-link" :href="pkg.url">Repository</a></li>
-            <li class="stars"><StarIcon class="prefix icon"/>{{ pkg.stars }}</li>
-            <li><BuildOutcome class="icon" :build="pkg.builds.find(b => b.toolchain === latestToolchain)"/></li>
-          </ul>
-        </li>
+        <PackageResult v-for="pkg in resultPage" :key="pkg.id" :pkg="pkg"/>
       </ol>
       <Paginator :pt="{root: 'paginator'}"
         v-model:first="first" :rows="numRows" :total-records="numResults"/>

@@ -29,10 +29,11 @@ if __name__ == "__main__":
 
   fullPkgs: 'dict[str, any]' = dict()
   for pkg in pkgs:
-    fullPkgs[pkg['id']] = pkg
-    fullPkgs[pkg['id']]['builds'] = list()
-  for (id, result) in results.items():
-    fullPkgs[id]['builds'].insert(0, result)
+    fullPkgs[pkg['fullName']] = pkg
+    if 'builds' not in pkg:
+      fullPkgs[pkg['fullName']]['builds'] = list()
+  for (fullName, result) in results.items():
+    fullPkgs[fullName]['builds'].insert(0, result)
 
   data = {
     'bundledAt': datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),

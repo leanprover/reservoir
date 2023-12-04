@@ -60,13 +60,13 @@ if __name__ == "__main__":
       'builtAt': datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
       'toolchain': entry['toolchain'],
     }
-    outcome_file = os.path.join(args.results, entry['id'], 'outcome.txt')
+    outcome_file = os.path.join(args.results, entry['artifact'], 'outcome.txt')
     if os.path.exists(outcome_file):
       with open(outcome_file, 'r') as f:
         result['outcome'] = f.read().strip()
     else:
       result['outcome'] = None
-    results[entry['id']] = result
+    results[entry['fullName']] = result
 
   if args.output is None:
     print(json.dumps(results, indent=2))

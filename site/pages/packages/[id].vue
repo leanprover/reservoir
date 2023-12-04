@@ -87,7 +87,7 @@ const { data: readme } = await useFetch<string>(`${baseContentUrl}README.md`)
           </li>
           <li>
             <StarIcon class="icon"/>
-            <a class="soft-link" :href="`${pkg.url}/stargazers`">{{ pkg.stars }} stars</a>
+            <span>{{ pkg.stars }} stars</span>
           </li>
         </ul>
         <div>
@@ -108,14 +108,15 @@ const { data: readme } = await useFetch<string>(`${baseContentUrl}README.md`)
         </div>
         <div class="main-link">
           <h3>Repository</h3>
-          <div>
-            <GitHubIcon class="icon"/>
-            <a class="hard-link" :href="pkg.url">{{ pkg.fullName }}</a>
-          </div>
+          <template v-for="src in pkg.sources" :key="src.id">
+            <div v-if="src.host === 'github'">
+              <GitHubIcon class="icon"/>
+              <a class="hard-link" :href="src.repoUrl">{{ src.fullName }}</a>
+            </div>
+          </template>
         </div>
       </aside>
     </div>
-
   </div>
 </template>
 

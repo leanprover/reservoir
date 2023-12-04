@@ -24,9 +24,11 @@ if __name__ == "__main__":
       for line in f: exclusions.add(line.strip())
 
   def create_entry(pkg: 'dict[str, any]'):
+    artifact = pkg['fullName'].replace('-', '--').replace('/', '-')
+    src = next(filter(lambda src: 'gitUrl' in src, pkg['sources']))
     return {
-      'id': pkg['id'],
-      'url': pkg['url'],
+      'artifact': artifact,
+      'gitUrl': src['gitUrl'],
       'fullName': pkg['fullName'],
       'toolchain': args.toolchain
     }
