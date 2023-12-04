@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from utils import add_build
 from typing import TypedDict
 from datetime import datetime
 import json
@@ -37,6 +38,8 @@ if __name__ == "__main__":
     help="the testbed run attempt")
   parser.add_argument('-m', '--matrix',
     help="file containing the JSON build matrix")
+  parser.add_argument('-D', '--index-dir', default=None,
+    help='directory to output hierarchical index')
   parser.add_argument('-o', '--output',
     help='file to output the bundle manifest')
   args = parser.parse_args()
@@ -67,6 +70,22 @@ if __name__ == "__main__":
     else:
       result['outcome'] = None
     results[entry['fullName']] = result
+
+  if args.index_dir is not None:
+    for entry in matrix:
+      pkg_dir = os.path.join(args.index_dir, entry['fullName'])
+      if not os.path.exists(pkg_dir):
+        continue
+      builds_file = os.path.join(pkg_dir, "builds.json")
+      if os.path.exists(builds_file):
+        with open(os.path.join(pkg_dir, "builds.json"), 'r') as f:
+          builds = json.loads(f)
+        builds = add_build(builds, results[entry['fullName']])
+      else:
+        builds = list()
+      with open(builds_file, 'w') as f:
+        f.write(json.dumps([results[entry['fullName']]], indent=2))
+        f.write("\n")
 
   if args.output is None:
     print(json.dumps(results, indent=2))

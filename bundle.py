@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from utils import run_cmd, load_index
+from utils import run_cmd, load_index, add_build
 from datetime import datetime
 import argparse
 import json
@@ -17,23 +17,22 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument('index',
     help="package index (directory or manifest)")
-  parser.add_argument('results',
+  parser.add_argument('results', nargs='?', default=None,
     help="testbed results")
   parser.add_argument('-o', '--output',
     help='file to output the bundle manifest')
   args = parser.parse_args()
 
-  pkgs = load_index(args.index)
-  with open(args.results, 'r') as f:
-    results: 'dict[str, dict[str, any]]' = json.load(f)
-
+  pkgs = load_index(args.index, include_builds=True)
   fullPkgs: 'dict[str, any]' = dict()
   for pkg in pkgs:
     fullPkgs[pkg['fullName']] = pkg
-    if 'builds' not in pkg:
-      fullPkgs[pkg['fullName']]['builds'] = list()
-  for (fullName, result) in results.items():
-    fullPkgs[fullName]['builds'].insert(0, result)
+  if args.results is not None:
+    with open(args.results, 'r') as f:
+      results: 'dict[str, dict[str, any]]' = json.load(f)
+    for (fullName, result) in results.items():
+      pkg = fullPkgs[fullName]
+      pkg['builds'] = add_build(pkg['builds'], result)
 
   data = {
     'bundledAt': datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),

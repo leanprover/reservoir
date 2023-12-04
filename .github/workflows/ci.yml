@@ -23,6 +23,19 @@ on:
           - local
         required: true
         default: current
+      toolchain:
+        description: "Lean toolchain to test against"
+        type: string
+        required: false
+      testbed-size:
+        description: "Number of packages to test"
+        type: number
+        required: false
+      save-testbed:
+        description: "Save testbed results to reservoir-index"
+        type: boolean
+        required: false
+        default: true
 
 # GITHUB_TOKEN permissions needed for deployment (copied from pages.yaml)
 permissions:
@@ -45,8 +58,12 @@ jobs:
     if: (!failure() && !cancelled())
     name: Testbed
     uses: ./.github/workflows/testbed.yaml
+    secrets: inherit
     with:
       index-artifact: ${{ !inputs.index || inputs.index == 'local' }}
+      toolchain: ${{ inputs.toolchain }}
+      testbed-size: ${{ inputs.testbed-size || 0 }}
+      update-index: ${{ inputs.save-testbed == true }}
   pages:
     needs: [index, testbed]
     # Run even if `index` is skipped

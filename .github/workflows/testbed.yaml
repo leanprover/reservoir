@@ -12,17 +12,35 @@ on:
         type: boolean
         required: false
         default: true
+      toolchain:
+        description: "Lean toolchain to test against"
+        type: string
+        required: false
+      testbed-size:
+        description: "Number of packages to test"
+        type: number
+        required: false
+      update-index:
+        description: "Save to reservoir-index"
+        type: boolean
+        required: false
+        default: false
   # Enable running this workflow manually from the Actions tab
   workflow_dispatch:
     inputs:
       toolchain:
-        description: "The Lean toolchain to test against"
+        description: "Lean toolchain to test against"
         type: string
         required: false
-      repositories:
-        description: "The number of repositories to test"
+      testbed-size:
+        description: "Number of packages to test"
         type: number
         required: false
+      update-index:
+        description: "Save to reservoir-index"
+        type: boolean
+        required: false
+        default: true
 
 # Permit only 1 concurrent run per branch, cancelling previous ones
 concurrency:
@@ -65,7 +83,7 @@ jobs:
           ./testbed-create.py -o matrix.json \
             ${{ inputs.index-artifact && 'index.json' || 'index' }} \
             ${{ inputs.toolchain || steps.find-toolchain.outputs.toolchain }}  \
-            -n ${{inputs.repositories || (github.ref_name == 'master' && 200 || 15)}} \
+            -n ${{inputs.testbed-size || (github.ref_name == 'master' && 200 || 15)}} \
             -X ${{github.ref_name == 'master' && 'testbed-exclusions.txt' || 'testbed-dev-exclusions.txt'}}
       - name: Upload Matrix
         uses: actions/upload-artifact@v3
@@ -115,16 +133,37 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+      - name: Checkout External Index
+        if: inputs.update-index
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.PUSH_RESERVOIR_INDEX_TOKEN }}
+          repository: leanprover/reservoir-index
+          path: index
       - name: Download Individual Results
         uses: actions/download-artifact@v3
         with:
           # Without a name, downloads all artifacts
           path: testbed
       - name: Collect Outcomes
-        run: ./testbed-collect.py testbed ${{ github.run_id }} ${{ github.run_attempt }} -o testbed/results.json
+        run: |
+          ./testbed-collect.py \
+            testbed ${{ github.run_id }} ${{ github.run_attempt }} \
+            -o testbed/results.json ${{ inputs.update-index && '-D index' || '' }}
         env:
           GH_TOKEN: ${{ github.token }}
-      - name: Upload Results
+      - name: Update External Index
+        if: inputs.update-index
+        uses: EndBug/add-and-commit@v9
+        with:
+          cwd: index
+          fetch: false
+          message: |
+            chore: update w/ testbed run results
+
+            ${{github.server_url}}/${{github.repository}}/actions/runs/${{github.run_id}}/attempts/${{github.run_attempt}}
+          default_author: github_actions
+      - name: Upload Results Artifact
         uses: actions/upload-artifact@v3
         with:
           name: results
