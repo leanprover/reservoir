@@ -32,7 +32,7 @@ const outcomeClass = computed(() => {
 
 <template>
 <Tippy class="build-outcome">
-  <NuxtLink v-if="build.link" :to="build.link">
+  <NuxtLink v-if="build.url" :to="build.url">
     <div class="build-outcome-icon" :class="[outcomeClass]">
       <component width="66%" height="66%" :is="outcomeIcon"/>
     </div>

@@ -17,7 +17,7 @@ export interface GitHubSource extends GitSource, RepoSource {
 export type Source = GitHubSource
 
 export interface Build {
-  link?: string
+  url?: string
   builtAt: string
   toolchain: string
   outcome: string
