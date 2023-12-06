@@ -61,18 +61,14 @@ if __name__ == "__main__":
     result = {
       'url': f"https://github.com/{TESTBED_REPO}/actions/runs/{args.run_id}/job/{jobId}#step:5:1",
       'builtAt': datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-      'toolchain': entry['toolchain'],
     }
-    outcome_file = os.path.join(args.results, entry['artifact'], 'outcome.txt')
-    if os.path.exists(outcome_file):
-      with open(outcome_file, 'r') as f:
-        result['outcome'] = f.read().strip()
-    else:
-      result['outcome'] = None
+    result_file = os.path.join(args.results, entry['artifact'], 'result.json')
+    if not os.path.exists(result_file):
+      continue
+    with open(result_file, 'r') as f:
+      result |= json.load(f)
     results[entry['fullName']] = result
-
-  if args.index_dir is not None:
-    for entry in matrix:
+    if args.index_dir is not None:
       pkg_dir = os.path.join(args.index_dir, entry['fullName'])
       if not os.path.exists(pkg_dir):
         continue
@@ -80,11 +76,11 @@ if __name__ == "__main__":
       if os.path.exists(builds_file):
         with open(os.path.join(pkg_dir, "builds.json"), 'r') as f:
           builds = json.loads(f)
-        builds = add_build(builds, results[entry['fullName']])
+        builds = add_build(builds, result)
       else:
-        builds = list()
+        builds = [result]
       with open(builds_file, 'w') as f:
-        f.write(json.dumps([results[entry['fullName']]], indent=2))
+        f.write(json.dumps(builds, indent=2))
         f.write("\n")
 
   if args.output is None:

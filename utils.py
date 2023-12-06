@@ -4,6 +4,15 @@ import logging
 import os
 import subprocess
 
+def configure_logging(verbosity):
+  if verbosity == 0:
+    level = logging.CRITICAL
+  elif verbosity == 1:
+    level = logging.INFO
+  else:
+    level = logging.DEBUG
+  logging.basicConfig(level=level, format='%(levelname)s: %(message)s')
+
 def load_index(path: str, include_builds=False):
   if os.path.isdir(path):
     pkgs = list()
@@ -41,10 +50,21 @@ def paginate(iterable, page_size):
   slicer = lambda: list(itertools.islice(it, page_size))
   return iter(slicer, [])
 
-def run_cmd(*args: str) -> bytes:
+class CommandError(RuntimeError):
+  pass
+
+def run_cmd(*args: str, allow_failure=False):
+  logging.info(f'> {" ".join(args)}')
+  rc = subprocess.run(args).returncode
+  if not allow_failure and rc != 0:
+    raise CommandError(f'external command exited with code {rc}')
+  return rc
+
+def capture_cmd(*args: str) -> bytes:
+  logging.debug(f'> {" ".join(args)}')
   child = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
   if child.returncode != 0:
-    raise RuntimeError(child.stderr.decode().strip())
+    raise CommandError(child.stderr.decode().strip())
   elif len(child.stderr) > 0:
     logging.error(child.stderr.decode())
   return child.stdout

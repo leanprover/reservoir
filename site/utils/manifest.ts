@@ -19,6 +19,7 @@ export type Source = GitHubSource
 export interface Build {
   url?: string
   builtAt: string
+  revision: string
   toolchain: string
   outcome: string
 }

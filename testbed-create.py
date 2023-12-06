@@ -8,7 +8,7 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument('index',
     help="package index (directory or manifest)")
-  parser.add_argument('toolchain',
+  parser.add_argument('toolchain', nargs='?', default=None,
     help="Lean toolchain on build the packages on")
   parser.add_argument('-n', '--num', type=int, default=10,
     help="max number of packages to test")

@@ -115,17 +115,19 @@ jobs:
         uses: actions/checkout@v3
       - id: build
         name: Build
-        continue-on-error: true
+        continue-on-error: true # e.g., clone failures
         # Note that this runs arbitrary untrusted code so we cannot give it secrets
-        run: ./build.sh ${{ matrix.gitUrl }} testbed ${{ matrix.toolchain }}
-      - name: Output Outcome
         run: |
-          echo ${{ steps.build.outcome }} > outcome.txt
-      - name: Upload Results
+          ./testbed-build.py -o result.json -v \
+            ${{ matrix.gitUrl }} testbed ${{ matrix.toolchain }}
+      - name: Check Build
+        run: test "`jq -r '.outcome' result.json`" = success
+        continue-on-error: true # build failures
+      - name: Upload Result
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.artifact }}
-          path: outcome.txt
+          path: result.json
   collect:
     needs: [setup, build]
     name: Collect Results

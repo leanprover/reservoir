@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from utils import paginate, run_cmd
+from utils import configure_logging, paginate, capture_cmd
 from datetime import datetime
 import argparse
 import os
@@ -34,7 +34,7 @@ def query_repo_data(repoIds: 'list[str]') -> dict:
     for id in page:
       fields.append('-f')
       fields.append(f'repoIds[]={id}')
-    out = run_cmd(
+    out = capture_cmd(
       'gh', 'api', 'graphql',
       "-H", "X-Github-Next-Global-ID: 1",
       '-f', f'query={REPO_QUERY}', *fields
@@ -47,14 +47,14 @@ def query_repo_data(repoIds: 'list[str]') -> dict:
 def query_lake_repos(limit: int) -> 'list[str]':
   query='filename:lakefile.lean path:/'
   if limit == 0:
-    out = run_cmd(
+    out = capture_cmd(
       'gh', 'api', 'search/code',
       '--paginate', '--cache', '1h',
       '-X', 'GET', '-f', f'q={query}',
       '-q', '.items[] | .repository.node_id'
     )
   else:
-    out = run_cmd(
+    out = capture_cmd(
       'gh', 'search', 'code', *query.split(' '), '-L', str(limit),
       '--json', 'path,repository', '-q', '.[] | .repository.id'
     )
@@ -86,13 +86,7 @@ if __name__ == "__main__":
     help='print verbose logging information')
   args = parser.parse_args()
 
-  if args.verbosity == 0:
-    level = logging.CRITICAL
-  elif args.verbosity == 1:
-    level = logging.INFO
-  else:
-    level = logging.DEBUG
-  logging.basicConfig(level=level, format='%(levelname)s: %(message)s')
+  configure_logging(args.verbosity)
 
   exclusions = set()
   with open(args.exclusions, 'r') as f:
@@ -140,8 +134,7 @@ if __name__ == "__main__":
   if args.index_dir is not None:
     for pkg in pkgs:
       pkg_dir = os.path.join(args.index_dir, pkg['owner'], pkg['name'])
-      if not os.path.exists(pkg_dir):
-        os.makedirs(pkg_dir)
+      os.makedirs(pkg_dir, exist_ok=True)
       with open(os.path.join(pkg_dir, "metadata.json"), 'w') as f:
         f.write(json.dumps(pkg, indent=2))
         f.write("\n")

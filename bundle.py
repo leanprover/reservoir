@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-from utils import run_cmd, load_index, add_build
+from utils import capture_cmd, load_index, add_build
 from datetime import datetime
 import argparse
 import json
 
 RELEASE_REPO = 'leanprover/lean4'
 def query_toolchain_releases():
-  out = run_cmd(
+  out = capture_cmd(
     'gh', 'api', '--paginate',
     f'repos/{RELEASE_REPO}/releases',
     '-q', '.[] | .tag_name'
