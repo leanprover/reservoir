@@ -94,9 +94,11 @@ jobs:
         run: npm run generate
       - name: Download Index Repository
         run: |
+          set -eo pipefail
           mkdir .output/public/index
           gh api repos/leanprover/reservoir-index/tarball \
             | tar -xvz -C .output/public/index --strip-component=1
+          cp site/manifest.json .output/public/index/manifest.json
         env:
           GH_TOKEN: ${{ github.token }}
       - id: deploy-info
