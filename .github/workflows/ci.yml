@@ -70,7 +70,7 @@ jobs:
     with:
       index-repo: ${{ needs.config.outputs.index-repo }}
       testbed-size: ${{ inputs.testbed-size == null && 10 || fromJson(inputs.testbed-size) }}
-      toolchain: ${{ inputs.toolchain }}
+      toolchain: ${{ inputs.toolchain || 'latest' }}
       update-index: ${{ inputs.save-testbed == true }}
   website:
     needs: [config, index, testbed]

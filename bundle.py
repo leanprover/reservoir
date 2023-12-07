@@ -1,17 +1,8 @@
 #!/usr/bin/env python3
-from utils import capture_cmd, load_index, add_build
+from utils import *
 from datetime import datetime
 import argparse
 import json
-
-RELEASE_REPO = 'leanprover/lean4'
-def query_toolchain_releases():
-  out = capture_cmd(
-    'gh', 'api', '--paginate',
-    f'repos/{RELEASE_REPO}/releases',
-    '-q', '.[] | .tag_name'
-  )
-  return [f'{RELEASE_REPO}:{ver}' for ver in out.decode().splitlines()]
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()

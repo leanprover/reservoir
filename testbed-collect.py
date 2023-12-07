@@ -59,7 +59,7 @@ if __name__ == "__main__":
   for entry in matrix:
     jobId = find_build_job(entry['fullName'])['id']
     result = {
-      'url': f"https://github.com/{TESTBED_REPO}/actions/runs/{args.run_id}/job/{jobId}#step:5:1",
+      'url': f"https://github.com/{TESTBED_REPO}/actions/runs/{args.run_id}/job/{jobId}#step:4:1",
       'builtAt': datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
     result_file = os.path.join(args.results, entry['artifact'], 'result.json')

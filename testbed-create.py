@@ -1,14 +1,27 @@
 #!/usr/bin/env python3
-from utils import load_index
+from utils import *
 import json
 import itertools
 import argparse
+
+def resolve_toolchain(toolchain: str):
+  toolchain = toolchain.strip()
+  if len(toolchain) == 0 or toolchain == 'package':
+    return None
+  elif toolchain == 'stable':
+    releases = filter(lambda r: not r['prerelease'], query_releases())
+    return f"{DEFAULT_ORIGIN}:{next(releases)['tag']}"
+  elif toolchain == 'latest':
+    releases = query_releases(paginate=False)
+    return f"{DEFAULT_ORIGIN}:{next(releases)['tag']}"
+  else:
+    return normalize_toolchain(toolchain)
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument('index',
     help="package index (directory or manifest)")
-  parser.add_argument('toolchain', nargs='?', default=None,
+  parser.add_argument('toolchain', nargs='?', default='',
     help="Lean toolchain on build the packages on")
   parser.add_argument('-n', '--num', type=int, default=10,
     help="max number of packages to test (<= 0 for all)")
@@ -23,6 +36,7 @@ if __name__ == "__main__":
     with open(file, 'r') as f:
       for line in f: exclusions.add(line.strip())
 
+  toolchain = resolve_toolchain(args.toolchain)
   def create_entry(pkg: 'dict[str, any]'):
     artifact = pkg['fullName'].replace('-', '--').replace('/', '-')
     src = next(filter(lambda src: 'gitUrl' in src, pkg['sources']))
@@ -30,7 +44,7 @@ if __name__ == "__main__":
       'artifact': artifact,
       'gitUrl': src['gitUrl'],
       'fullName': pkg['fullName'],
-      'toolchain': args.toolchain
+      'toolchain': toolchain
     }
 
   pkgs = load_index(args.index)

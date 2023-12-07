@@ -1,3 +1,4 @@
+from typing import Iterable, TypedDict
 import itertools
 import json
 import logging
@@ -68,3 +69,33 @@ def capture_cmd(*args: str) -> bytes:
   elif len(child.stderr) > 0:
     logging.error(child.stderr.decode())
   return child.stdout
+
+DEFAULT_ORIGIN = 'leanprover/lean4'
+
+class Release(TypedDict):
+  tag: str
+  prerelease: bool
+
+def query_releases(repo=DEFAULT_ORIGIN, paginate=True) -> 'Iterable[Release]':
+  out = capture_cmd(
+    'gh', 'api',
+    f'repos/{repo}/releases',
+    *(['--paginate'] if paginate else []),
+    '-q', '.[] | {tag: .tag_name, prerelease: .prerelease}'
+  )
+  return map(json.loads, out.decode().splitlines())
+
+def query_toolchain_releases(repo=DEFAULT_ORIGIN):
+  return [f'{repo}:{ver}' for ver in query_releases(repo)]
+
+def normalize_toolchain(toolchain: str):
+  parts = toolchain.split(':')
+  if len(parts) < 2:
+    origin = DEFAULT_ORIGIN
+    ver = parts[0]
+  else:
+    origin = parts[0]
+    ver = parts[1]
+  if ver[0].isdecimal():
+    ver = f'v{ver}'
+  return f'{origin}:{ver}'

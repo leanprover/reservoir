@@ -1,24 +1,10 @@
 #!/usr/bin/env python3
-from utils import CommandError, configure_logging, run_cmd, capture_cmd
-import subprocess
+from utils import *
 import os
 import argparse
 import shutil
 import logging
 import json
-
-DEFAULT_ORIGIN = 'leanprover/lean4'
-def normalize_toolchain(toolchain: str):
-  parts = toolchain.strip().split(':')
-  if len(parts) < 2:
-    origin = DEFAULT_ORIGIN
-    ver = parts[0]
-  else:
-    origin = parts[0]
-    ver = parts[1]
-  if ver[0].isdecimal():
-    ver = f'v{ver}'
-  return f'{origin}:{ver}'
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
@@ -59,7 +45,7 @@ if __name__ == "__main__":
       f.write('\n')
   else:
     with open(toolchain_file, 'r') as f:
-      toolchain = normalize_toolchain(f.read())
+      toolchain = normalize_toolchain(f.read().strip())
   result['toolchain'] = toolchain
 
   # Try build

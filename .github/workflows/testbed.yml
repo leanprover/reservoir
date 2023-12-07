@@ -60,15 +60,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - id: find-toolchain
-        name: Find Latest Toolchain
-        if: (!inputs.toolchain)
-        shell: bash -euo pipefail {0}
-        run: |
-          latest=$(gh release list -R leanprover/lean4 -L 1 | cut -f1)
-          echo "toolchain=leanprover/lean4:$latest" >> "$GITHUB_OUTPUT"
-        env:
-          GH_TOKEN: ${{ github.token }}
       - name: Download Index Artifact
         if: (!inputs.index-repo)
         uses: actions/download-artifact@v3
@@ -86,9 +77,11 @@ jobs:
         run: |
           ./testbed-create.py -o matrix.json \
             ${{ inputs.index-repo && 'index' || 'index.json' }} \
-            ${{ inputs.toolchain || steps.find-toolchain.outputs.toolchain }}  \
+            ${{ inputs.toolchain || '' }}  \
             -n ${{ inputs.testbed-size == null && 10 || inputs.testbed-size }} \
             -X ${{ inputs.update-index && 'testbed-exclusions.txt' || 'testbed-dev-exclusions.txt' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
       - name: Upload Matrix
         uses: actions/upload-artifact@v3
         with:
@@ -111,10 +104,9 @@ jobs:
       - name: Install Elan
         shell: bash -euo pipefail {0}
         run: |
-          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain ${{ matrix.toolchain }}
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
+            | sh -s -- -y --default-toolchain ${{ matrix.toolchain || 'none' }}
           echo "$HOME/.elan/bin" >> $GITHUB_PATH
-      - name: Check Lean
-        run: lean --version
       - name: Checkout
         uses: actions/checkout@v3
       - id: build
