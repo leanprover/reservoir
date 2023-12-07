@@ -58,10 +58,10 @@ jobs:
         if: inputs.index-repo
         run: |
           mkdir index
-          gh api repos/${{inputs.index-repo}}/tarball \
+          gh api repos/${{ inputs.index-repo }}/tarball \
             | tar -xvz -C index --strip-component=1
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.RESERVOIR_INDEX_TOKEN }}
       - name: Create Manifest
         run: |
           ./bundle.py -o manifest.json \
@@ -102,7 +102,7 @@ jobs:
             | tar -xvz -C .output/public/index --strip-component=1
           cp site/manifest.json .output/public/index/manifest.json
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.RESERVOIR_INDEX_TOKEN }}
       - id: deploy-info
         name: Compute Deploy Info
         run: |

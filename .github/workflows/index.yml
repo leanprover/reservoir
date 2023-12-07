@@ -36,7 +36,7 @@ jobs:
         if: inputs.repository
         uses: actions/checkout@v3
         with:
-          token: ${{ secrets.PUSH_RESERVOIR_INDEX_TOKEN }}
+          token: ${{ secrets.RESERVOIR_INDEX_TOKEN }}
           repository: ${{ inputs.repository }}
           path: index
       - name: Query Repositories

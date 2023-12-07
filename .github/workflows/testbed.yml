@@ -78,10 +78,10 @@ jobs:
         if: inputs.index-repo
         run: |
           mkdir index
-          gh api repos/${{inputs.index-repo}}/tarball \
+          gh api repos/${{ inputs.index-repo }}/tarball \
             | tar -xvz -C index --strip-component=1
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.RESERVOIR_INDEX_TOKEN  }}
       - name: Create Matrix
         run: |
           ./testbed-create.py -o matrix.json \
@@ -143,7 +143,7 @@ jobs:
         if: inputs.update-index
         uses: actions/checkout@v3
         with:
-          token: ${{ secrets.PUSH_RESERVOIR_INDEX_TOKEN }}
+          token: ${{ secrets.RESERVOIR_INDEX_TOKEN }}
           repository: ${{ inputs.index-repo }}
           path: index
       - name: Download Individual Results
