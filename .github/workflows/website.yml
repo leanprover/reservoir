@@ -1,9 +1,9 @@
-name: Pages
+name: Website
 
 on:
   push:
     branches:
-      - 'pages/**'  # branch pattern for pages-only changes
+      - 'website/**'  # branch pattern for website-only changes
   # Enable running this workflow from ci.yml
   workflow_call:
     inputs:
@@ -34,7 +34,7 @@ permissions:
 
 # Allow only one concurrent deployment per commit, cancelling previous ones.
 concurrency:
-  group: pages/${{ github.sha }}
+  group: website/${{ github.sha }}
   cancel-in-progress: true
 
 jobs:

@@ -36,7 +36,7 @@ on:
         required: false
         default: true
 
-# GITHUB_TOKEN permissions needed for deployment (copied from pages.yaml)
+# GITHUB_TOKEN permissions needed for deployment (copied from website.yml)
 permissions:
   contents: read
   deployments: none
@@ -56,7 +56,7 @@ jobs:
     name: Index
     needs: [config]
     if: (!needs.config.outputs.index-repo || inputs.reindex)
-    uses: ./.github/workflows/index.yaml
+    uses: ./.github/workflows/index.yml
     secrets: inherit
     with:
       repository: ${{ inputs.reindex && inputs.index-repo || '' }}
@@ -65,19 +65,19 @@ jobs:
     # Run even if `index` is skipped
     if: (!failure() && !cancelled() && needs.config.outputs.run-testbed == 'true')
     name: Testbed
-    uses: ./.github/workflows/testbed.yaml
+    uses: ./.github/workflows/testbed.yml
     secrets: inherit
     with:
       index-repo: ${{ needs.config.outputs.index-repo }}
       testbed-size: ${{ inputs.testbed-size == null && 10 || fromJson(inputs.testbed-size) }}
       toolchain: ${{ inputs.toolchain }}
       update-index: ${{ inputs.save-testbed == true }}
-  pages:
+  website:
     needs: [config, index, testbed]
     # Run even if `index` or `testbed` is skipped
     if: (!failure() && !cancelled())
-    name: Pages
-    uses: ./.github/workflows/pages.yaml
+    name: Website
+    uses: ./.github/workflows/website.yml
     secrets: inherit
     with:
       index-repo: ${{ needs.config.outputs.index-repo }}
