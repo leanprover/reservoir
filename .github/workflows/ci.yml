@@ -21,13 +21,13 @@ on:
         type: boolean
         required: false
         default: true
+      testbed-size:
+        description: "Max number of packages to test"
+        type: number
+        required: false
       toolchain:
         description: "Lean toolchain to test against"
         type: string
-        required: false
-      testbed-size:
-        description: "Number of packages to test"
-        type: number
         required: false
       save-testbed:
         description: "Save testbed results to index"
@@ -53,22 +53,22 @@ jobs:
   testbed:
     needs: index
     # Run even if `index` is skipped
-    if: (!failure() && !cancelled())
+    if: (!failure() && !cancelled() && (inputs.testbed-size == null || inputs.testbed-size != 0))
     name: Testbed
     uses: ./.github/workflows/testbed.yaml
     secrets: inherit
     with:
       index-repo: ${{ inputs.index-repo }}
-      testbed-size: ${{ inputs.testbed-size || 0 }}
+      testbed-size: ${{ inputs.testbed-size == null && 10 || fromJson(inputs.testbed-size) }}
       toolchain: ${{ inputs.toolchain }}
       update-index: ${{ inputs.save-testbed == true }}
   pages:
     needs: [index, testbed]
-    # Run even if `index` is skipped
+    # Run even if `index` or `testbed` is skipped
     if: (!failure() && !cancelled())
     name: Pages
     uses: ./.github/workflows/pages.yaml
     secrets: inherit
     with:
       index-repo: ${{ inputs.index-repo }}
-      testbed-artifact: ${{ !(inputs.index-repo && inputs.save-testbed) }}
+      testbed-artifact: ${{ !(inputs.index-repo && inputs.save-testbed) && (inputs.testbed-size == null || inputs.testbed-size != 0) }}

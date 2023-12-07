@@ -12,7 +12,7 @@ on:
         type: string
         required: false
       testbed-size:
-        description: "Number of packages to test"
+        description: "Max number of packages to test"
         type: number
         required: false
       toolchain:
@@ -33,7 +33,7 @@ on:
         required: true
         default: leanprover/reservoir-index
       testbed-size:
-        description: "Number of packages to test"
+        description: "Max number of packages to test"
         type: number
         required: false
       toolchain:
@@ -87,8 +87,8 @@ jobs:
           ./testbed-create.py -o matrix.json \
             ${{ inputs.index-repo && 'index' || 'index.json' }} \
             ${{ inputs.toolchain || steps.find-toolchain.outputs.toolchain }}  \
-            -n ${{inputs.testbed-size || (github.ref_name == 'master' && 200 || 15)}} \
-            -X ${{github.ref_name == 'master' && 'testbed-exclusions.txt' || 'testbed-dev-exclusions.txt'}}
+            -n ${{ inputs.testbed-size == null && 10 || inputs.testbed-size }} \
+            -X ${{ inputs.update-index && 'testbed-exclusions.txt' || 'testbed-dev-exclusions.txt' }}
       - name: Upload Matrix
         uses: actions/upload-artifact@v3
         with:

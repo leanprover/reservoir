@@ -43,7 +43,7 @@ jobs:
         run: |
           ./query.py -v \
             ${{ inputs.repository && '-D index' || '-o index.json' }} \
-            -L ${{ (!inputs.repository && github.ref_name != 'master') && 100 || 0 }}
+            -L ${{ (!inputs.repository && github.ref_name != 'master') && 100 || -1 }}
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Update Index Repository

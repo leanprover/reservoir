@@ -46,7 +46,7 @@ def query_repo_data(repoIds: 'list[str]') -> dict:
 # Thus, the strategy used here will need to change when we hit that limit.
 def query_lake_repos(limit: int) -> 'list[str]':
   query='filename:lakefile.lean path:/'
-  if limit == 0:
+  if limit <= 0:
     out = capture_cmd(
       'gh', 'api', 'search/code',
       '--paginate', '--cache', '1h',
@@ -73,7 +73,7 @@ def filter_ws(value: str | None):
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument('-L', '--limit', type=int, default=100,
-    help='(max) number of results to query from GitHub (0 for no limit)')
+    help='(max) number of results to query from GitHub (<= 0 for no limit)')
   parser.add_argument('-X', '--exclusions', default="query-exclusions.txt",
     help='file containing repos to exclude')
   parser.add_argument('-o', '--output-manifest',

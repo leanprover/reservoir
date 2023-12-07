@@ -11,7 +11,7 @@ if __name__ == "__main__":
   parser.add_argument('toolchain', nargs='?', default=None,
     help="Lean toolchain on build the packages on")
   parser.add_argument('-n', '--num', type=int, default=10,
-    help="max number of packages to test")
+    help="max number of packages to test (<= 0 for all)")
   parser.add_argument('-X', '--exclusions', nargs="*", action='extend', default=[],
     help='file containing repos to exclude')
   parser.add_argument('-o', '--output',
@@ -36,7 +36,9 @@ if __name__ == "__main__":
   pkgs = load_index(args.index)
   pkgs = filter(lambda pkg: pkg['fullName'] not in exclusions, pkgs)
   pkgs = map(create_entry, pkgs)
-  pkgs = list(itertools.islice(pkgs, args.num))
+  if args.num > 0:
+    pkgs = itertools.islice(pkgs, args.num)
+  pkgs = list(pkgs)
 
   if args.output is None:
     print(json.dumps(pkgs))
