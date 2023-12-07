@@ -11,18 +11,16 @@ on:
   # Enable running this workflow manually from the Actions tab
   workflow_dispatch:
     inputs:
-      index:
-        description: "What index to use"
-        type: choice
-        options:
-          # Use the current state of the index repository (i.e., reservoir-index)
-          - current
-          # Update the index repository and then use it
-          - updated
-          # Create and use a small local index artifact (e.g., for testing)
-          - local
-        required: true
-        default: current
+      index-repo:
+        description: "Registry index repository"
+        type: string
+        required: false
+        default: leanprover/reservoir-index
+      reindex:
+        description: "Reindex packages"
+        type: boolean
+        required: false
+        default: true
       toolchain:
         description: "Lean toolchain to test against"
         type: string
@@ -32,7 +30,7 @@ on:
         type: number
         required: false
       save-testbed:
-        description: "Save testbed results to reservoir-index"
+        description: "Save testbed results to index"
         type: boolean
         required: false
         default: true
@@ -47,11 +45,11 @@ permissions:
 jobs:
   index:
     name: Index
-    if: (!inputs.index || inputs.index != 'current')
+    if: (!inputs.index-repo || inputs.reindex)
     uses: ./.github/workflows/index.yaml
     secrets: inherit
     with:
-      update-index: ${{ inputs.index == 'updated' }}
+      repository: ${{ inputs.reindex && inputs.index-repo || '' }}
   testbed:
     needs: index
     # Run even if `index` is skipped
@@ -60,9 +58,9 @@ jobs:
     uses: ./.github/workflows/testbed.yaml
     secrets: inherit
     with:
-      index-artifact: ${{ !inputs.index || inputs.index == 'local' }}
-      toolchain: ${{ inputs.toolchain }}
+      index-repo: ${{ inputs.index-repo }}
       testbed-size: ${{ inputs.testbed-size || 0 }}
+      toolchain: ${{ inputs.toolchain }}
       update-index: ${{ inputs.save-testbed == true }}
   pages:
     needs: [index, testbed]
@@ -72,4 +70,5 @@ jobs:
     uses: ./.github/workflows/pages.yaml
     secrets: inherit
     with:
-      index-artifact: ${{ !inputs.index || inputs.index == 'local' }}
+      index-repo: ${{ inputs.index-repo }}
+      testbed-artifact: ${{ !(inputs.index-repo && inputs.save-testbed) }}

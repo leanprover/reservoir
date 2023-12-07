@@ -7,18 +7,23 @@ on:
   # Enable running this workflow from ci.yml
   workflow_call:
     inputs:
-      ci:
-        description: "Used to distinguish a CI workflow call from a standalone workflow"
-        type: boolean
+      index-repo:
+        description: "Registry index repository"
+        type: string
         required: false
-        default: true
-      index-artifact:
-        description: "Use local artifact, not reservoir-index"
+      testbed-artifact:
+        description: "Augment index with local testbed results"
         type: boolean
         required: false
         default: true
   # Enable running this workflow manually from the Actions tab
   workflow_dispatch:
+    inputs:
+      index-repo:
+        description: "Registry index repository"
+        type: string
+        required: true
+        default: leanprover/reservoir-index
 
 # Sets permissions of the GITHUB_TOKEN needed for deployment
 permissions:
@@ -27,11 +32,10 @@ permissions:
   pull-requests: write
   statuses: write
 
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+# Allow only one concurrent deployment per commit, cancelling previous ones.
 concurrency:
-  group: pages
-  cancel-in-progress: false
+  group: pages/${{ github.sha }}
+  cancel-in-progress: true
 
 jobs:
   bundle:
@@ -40,31 +44,29 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Download Testbed Results (CI)
-        if: inputs.ci
+      - name: Download Testbed Artifact
+        if: inputs.testbed-artifact
         uses: actions/download-artifact@v3
         with:
           name: results
-      - name: Download Testbed Results (Standalone)
-        if: (!inputs.ci)
-        run: gh run download -n results
-        env:
-          GH_TOKEN: ${{ github.token }}
       - name: Download Index Artifact
-        if: inputs.index-artifact
+        if: (!inputs.index-repo)
         uses:  actions/download-artifact@v3
         with:
           name: index
       - name: Download Index Repository
-        if: (!inputs.index-artifact)
+        if: inputs.index-repo
         run: |
           mkdir index
-          gh api repos/leanprover/reservoir-index/tarball \
+          gh api repos/${{inputs.index-repo}}/tarball \
             | tar -xvz -C index --strip-component=1
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Create Manifest
-        run: ./bundle.py ${{ inputs.index-artifact && 'index.json' || 'index' }} results.json -o manifest.json
+        run: |
+          ./bundle.py -o manifest.json \
+            ${{ inputs.index-repo && 'index' || 'index.json'}} \
+            ${{ inputs.testbed-artifact && 'results.json' || '' }}
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Upload Manifest

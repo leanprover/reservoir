@@ -7,44 +7,48 @@ on:
   # Enable running this workflow from ci.yml
   workflow_call:
     inputs:
-      index-artifact:
-        description: "Use local artifact, not reservoir-index"
-        type: boolean
-        required: false
-        default: true
-      toolchain:
-        description: "Lean toolchain to test against"
+      index-repo:
+        description: "Registry index repository"
         type: string
         required: false
       testbed-size:
         description: "Number of packages to test"
         type: number
         required: false
+      toolchain:
+        description: "Lean toolchain to test against"
+        type: string
+        required: false
       update-index:
-        description: "Save to reservoir-index"
+        description: "Save to index"
         type: boolean
         required: false
         default: false
   # Enable running this workflow manually from the Actions tab
   workflow_dispatch:
     inputs:
-      toolchain:
-        description: "Lean toolchain to test against"
+      index-repo:
+        description: "Registry index repository"
         type: string
-        required: false
+        required: true
+        default: leanprover/reservoir-index
       testbed-size:
         description: "Number of packages to test"
         type: number
         required: false
+      toolchain:
+        description: "Lean toolchain to test against"
+        type: string
+        required: false
       update-index:
-        description: "Save to reservoir-index"
+        description: "Save to index"
         type: boolean
         required: false
         default: true
 
-# Permit only 1 concurrent run per branch, cancelling previous ones
+# Permit only 1 concurrent update of the same index repository, cancelling previous ones.
 concurrency:
-  group: testbed/${{ github.ref_name }}
+  group: ${{ inputs.update-index && format('testbed/{0}', inputs.index-repo) || github.run_id }}
   cancel-in-progress: true
 
 jobs:
@@ -66,22 +70,22 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Download Index Artifact
-        if: inputs.index-artifact
+        if: (!inputs.index-repo)
         uses: actions/download-artifact@v3
         with:
           name: index
       - name: Download Index Repository
-        if: (!inputs.index-artifact)
+        if: inputs.index-repo
         run: |
           mkdir index
-          gh api repos/leanprover/reservoir-index/tarball \
+          gh api repos/${{inputs.index-repo}}/tarball \
             | tar -xvz -C index --strip-component=1
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Create Matrix
         run: |
           ./testbed-create.py -o matrix.json \
-            ${{ inputs.index-artifact && 'index.json' || 'index' }} \
+            ${{ inputs.index-repo && 'index' || 'index.json' }} \
             ${{ inputs.toolchain || steps.find-toolchain.outputs.toolchain }}  \
             -n ${{inputs.testbed-size || (github.ref_name == 'master' && 200 || 15)}} \
             -X ${{github.ref_name == 'master' && 'testbed-exclusions.txt' || 'testbed-dev-exclusions.txt'}}
@@ -140,7 +144,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           token: ${{ secrets.PUSH_RESERVOIR_INDEX_TOKEN }}
-          repository: leanprover/reservoir-index
+          repository: ${{ inputs.index-repo }}
           path: index
       - name: Download Individual Results
         uses: actions/download-artifact@v3

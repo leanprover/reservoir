@@ -7,49 +7,47 @@ on:
   # Enable running this workflow from ci.yml
   workflow_call:
     inputs:
-      update-index:
-        description: "Update reservoir-index"
-        type: boolean
+      repository:
+        description: "Registry index repository to update"
+        type: string
         required: false
-        default: false
   # Enable running this workflow manually from the Actions tab
   workflow_dispatch:
     inputs:
-      update-index:
-        description: "Update reservoir-index"
-        type: boolean
+      repository:
+        description: "Registry index repository to update"
+        type: string
         required: false
-        default: true
+        default: leanprover/reservoir-index
 
-# Permit only 1 concurrent update of the repository
-# and 1 concurrent artifact per branch, cancelling previous ones
+# Permit only 1 concurrent update of the same index repository, cancelling previous ones.
 concurrency:
-  group: ${{ inputs.update-index && 'index' || format('index/{0}', github.ref_name) }}
+  group: ${{ inputs.repository && format('index/{0}', inputs.repository) || github.run_id }}
   cancel-in-progress: true
 
 jobs:
   index:
-    name: ${{ inputs.update-index && 'Update' || 'Fetch'}}
+    name: ${{ inputs.repository && 'Update' || 'Fetch' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Checkout External Index
-        if: inputs.update-index
+      - name: Checkout Index Repository
+        if: inputs.repository
         uses: actions/checkout@v3
         with:
           token: ${{ secrets.PUSH_RESERVOIR_INDEX_TOKEN }}
-          repository: leanprover/reservoir-index
+          repository: ${{ inputs.repository }}
           path: index
       - name: Query Repositories
         run: |
           ./query.py -v \
-            ${{ inputs.update-index && '-D index' || '-o index.json' }} \
-            -L ${{ (!inputs.update-index && github.ref_name != 'master') && 100 || 0 }}
+            ${{ inputs.repository && '-D index' || '-o index.json' }} \
+            -L ${{ (!inputs.repository && github.ref_name != 'master') && 100 || 0 }}
         env:
           GH_TOKEN: ${{ github.token }}
-      - name: Update External Index
-        if: inputs.update-index
+      - name: Update Index Repository
+        if: inputs.repository
         uses: EndBug/add-and-commit@v9
         with:
           cwd: index
@@ -60,7 +58,7 @@ jobs:
             ${{github.server_url}}/${{github.repository}}/actions/runs/${{github.run_id}}/attempts/${{github.run_attempt}}
           default_author: github_actions
       - name: Upload Index Artifact
-        if: (!inputs.update-index)
+        if: (!inputs.repository)
         uses: actions/upload-artifact@v3
         with:
           name: index
