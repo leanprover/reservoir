@@ -24,7 +24,8 @@ on:
       testbed-size:
         description: "Max number of packages to test"
         type: number
-        required: false
+        required: true
+        default: 256
       toolchain:
         description: "Lean toolchain to test against"
         type: string
@@ -43,32 +44,41 @@ permissions:
   statuses: write
 
 jobs:
+  config:
+    name: Configure
+    runs-on: ubuntu-latest
+    outputs:
+      index-repo: ${{ inputs.index-repo || (github.ref_name == 'master' && 'leanprover/reservoir-index' || '') }}
+      run-testbed: ${{ inputs.testbed-size == null && github.ref_name != 'master' || inputs.testbed-size != 0 }}
+    steps:
+      - run: true
   index:
     name: Index
-    if: (!inputs.index-repo || inputs.reindex)
+    needs: [config]
+    if: (!needs.config.outputs.index-repo || inputs.reindex)
     uses: ./.github/workflows/index.yaml
     secrets: inherit
     with:
       repository: ${{ inputs.reindex && inputs.index-repo || '' }}
   testbed:
-    needs: index
+    needs: [config, index]
     # Run even if `index` is skipped
-    if: (!failure() && !cancelled() && (inputs.testbed-size == null || inputs.testbed-size != 0))
+    if: (!failure() && !cancelled() && needs.config.outputs.run-testbed == 'true')
     name: Testbed
     uses: ./.github/workflows/testbed.yaml
     secrets: inherit
     with:
-      index-repo: ${{ inputs.index-repo }}
+      index-repo: ${{ needs.config.outputs.index-repo }}
       testbed-size: ${{ inputs.testbed-size == null && 10 || fromJson(inputs.testbed-size) }}
       toolchain: ${{ inputs.toolchain }}
       update-index: ${{ inputs.save-testbed == true }}
   pages:
-    needs: [index, testbed]
+    needs: [config, index, testbed]
     # Run even if `index` or `testbed` is skipped
     if: (!failure() && !cancelled())
     name: Pages
     uses: ./.github/workflows/pages.yaml
     secrets: inherit
     with:
-      index-repo: ${{ inputs.index-repo }}
-      testbed-artifact: ${{ !(inputs.index-repo && inputs.save-testbed) && (inputs.testbed-size == null || inputs.testbed-size != 0) }}
+      index-repo: ${{ needs.config.outputs.index-repo }}
+      testbed-artifact: ${{ !(needs.config.outputs.index-repo && inputs.save-testbed) && needs.config.outputs.run-testbed == 'true' }}
