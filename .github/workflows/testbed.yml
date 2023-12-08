@@ -18,7 +18,8 @@ on:
       toolchain:
         description: "Lean toolchain to test against"
         type: string
-        required: false
+        required: true
+        default: package
       update-index:
         description: "Save to index"
         type: boolean
@@ -39,7 +40,8 @@ on:
       toolchain:
         description: "Lean toolchain to test against"
         type: string
-        required: false
+        required: true
+        default: package
       update-index:
         description: "Save to index"
         type: boolean
@@ -77,7 +79,7 @@ jobs:
         run: |
           ./testbed-create.py -o matrix.json \
             ${{ inputs.index-repo && 'index' || 'index.json' }} \
-            ${{ inputs.toolchain || '' }}  \
+            ${{ inputs.toolchain || 'package' }}  \
             -n ${{ inputs.testbed-size == null && 10 || inputs.testbed-size }} \
             -X ${{ inputs.update-index && 'testbed-exclusions.txt' || 'testbed-dev-exclusions.txt' }}
         env:

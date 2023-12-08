@@ -29,7 +29,8 @@ on:
       toolchain:
         description: "Lean toolchain to test against"
         type: string
-        required: false
+        required: true
+        default: latest
       save-testbed:
         description: "Save testbed results to index"
         type: boolean
