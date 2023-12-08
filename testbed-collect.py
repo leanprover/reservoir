@@ -75,7 +75,7 @@ if __name__ == "__main__":
       builds_file = os.path.join(pkg_dir, "builds.json")
       if os.path.exists(builds_file):
         with open(os.path.join(pkg_dir, "builds.json"), 'r') as f:
-          builds = json.loads(f)
+          builds = json.load(f)
         builds = add_build(builds, result)
       else:
         builds = [result]
