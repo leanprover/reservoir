@@ -11,20 +11,23 @@ on:
         description: "Registry index repository"
         type: string
         required: false
-      testbed-size:
+      pattern:
+        description: "Regex search for packages to test"
+        type: string
+        required: false
+      toolchain:
+        description: "Lean toolchain(s) to test against"
+        type: string
+        required: false
+      max-size:
         description: "Max number of packages to test"
         type: number
         required: false
-      toolchain:
-        description: "Lean toolchain to test against"
-        type: string
-        required: true
-        default: package
+        default: 256
       update-index:
         description: "Save to index"
         type: boolean
         required: false
-        default: false
   # Enable running this workflow manually from the Actions tab
   workflow_dispatch:
     inputs:
@@ -33,20 +36,26 @@ on:
         type: string
         required: true
         default: leanprover/reservoir-index
-      testbed-size:
-        description: "Max number of packages to test"
-        type: number
-        required: false
+      pattern:
+        description: "Regex search for packages to test"
+        type: string
+        required: true
+        default: ".*"
       toolchain:
-        description: "Lean toolchain to test against"
+        description: "Lean toolchain(s) to test against"
         type: string
         required: true
         default: package
+      max-size:
+        description: "Max number of testbed entries"
+        type: number
+        required: true
+        default: 10
       update-index:
         description: "Save to index"
         type: boolean
         required: false
-        default: true
+        default: false
 
 # Permit only 1 concurrent update of the same index repository, cancelling previous ones.
 concurrency:
@@ -79,8 +88,9 @@ jobs:
         run: |
           ./testbed-create.py -o matrix.json \
             ${{ inputs.index-repo && 'index' || 'index.json' }} \
-            ${{ inputs.toolchain || 'package' }}  \
-            -n ${{ inputs.testbed-size == null && 10 || inputs.testbed-size }} \
+            -e '${{ inputs.pattern || '.*' }}' \
+            -t '${{ inputs.toolchain || 'package' }}'  \
+            -n ${{ inputs.max-size == null && 10 || inputs.max-size }} \
             -X ${{ inputs.update-index && 'testbed-exclusions.txt' || 'testbed-dev-exclusions.txt' }}
         env:
           GH_TOKEN: ${{ github.token }}
@@ -95,8 +105,11 @@ jobs:
         run: (echo -n 'matrix='; cat matrix.json) >> "$GITHUB_OUTPUT"
   build:
     needs: setup
-    name: Build ${{ matrix.fullName }}
+    name: Build ${{ matrix.buildName }}
     runs-on: ubuntu-latest
+    # This job runs arbitrary untrusted code, so we need to harden permissions
+    permissions:
+      contents: read
     strategy:
       matrix:
         include: ${{ fromJson(needs.setup.outputs.matrix) }}
@@ -116,7 +129,7 @@ jobs:
       - id: build
         name: Build
         continue-on-error: true # e.g., clone failures
-        # Note that this runs arbitrary untrusted code so we cannot give it secrets
+        # We run arbitrary untrusted code here
         run: |
           ./testbed-build.py -o result.json -v \
             ${{ matrix.gitUrl }} testbed ${{ matrix.toolchain }}
@@ -149,7 +162,7 @@ jobs:
           path: testbed
       - name: Collect Outcomes
         run: |
-          ./testbed-collect.py \
+          ./testbed-collect.py -v \
             testbed ${{ github.run_id }} ${{ github.run_attempt }} \
             -o testbed/results.json ${{ inputs.update-index && '-D index' || '' }}
         env:

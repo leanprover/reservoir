@@ -40,9 +40,10 @@ def load_index(path: str, include_builds=False):
         pkg['builds'] = list()
   return pkgs
 
-def add_build(builds: list, result: dict) -> list:
-  builds = list(filter(lambda build: build['toolchain'] != result['toolchain'], builds))
-  builds.append(result)
+def insert_build_results(builds: list, results: 'list[dict]') -> list:
+  toolchains = set(r['toolchain'] for r in results)
+  builds = list(filter(lambda build: build['toolchain'] not in toolchains, builds))
+  builds.extend(results)
   return sorted(builds, key=lambda build: build['toolchain'], reverse=True)
 
 # from https://antonz.org/page-iterator/
@@ -79,6 +80,7 @@ class Release(TypedDict):
 def query_releases(repo=DEFAULT_ORIGIN, paginate=True) -> 'Iterable[Release]':
   out = capture_cmd(
     'gh', 'api',
+    '--cache', '1h',
     f'repos/{repo}/releases',
     *(['--paginate'] if paginate else []),
     '-q', '.[] | {tag: .tag_name, prerelease: .prerelease}'

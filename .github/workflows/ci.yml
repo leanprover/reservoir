@@ -21,16 +21,21 @@ on:
         type: boolean
         required: false
         default: true
-      testbed-size:
-        description: "Max number of packages to test"
-        type: number
+      testbed-pattern:
+        description: "Regex search for packages to test"
+        type: string
         required: true
-        default: 256
-      toolchain:
-        description: "Lean toolchain to test against"
+        default: ".*"
+      testbed-toolchain:
+        description: "Lean toolchain(s) to test against"
         type: string
         required: true
         default: latest
+      testbed-size:
+        description: "Max number of testbed entries"
+        type: number
+        required: true
+        default: 256
       save-testbed:
         description: "Save testbed results to index"
         type: boolean
@@ -70,8 +75,9 @@ jobs:
     secrets: inherit
     with:
       index-repo: ${{ needs.config.outputs.index-repo }}
-      testbed-size: ${{ inputs.testbed-size == null && 10 || fromJson(inputs.testbed-size) }}
-      toolchain: ${{ inputs.toolchain || 'latest' }}
+      pattern: ${{ inputs.testbed-pattern || '.*' }}
+      toolchain: ${{ inputs.testbed-toolchain || 'latest' }}
+      max-size: ${{ inputs.testbed-size == null && 10 || fromJson(inputs.testbed-size) }}
       update-index: ${{ inputs.save-testbed == true }}
   website:
     needs: [config, index, testbed]
