@@ -111,6 +111,8 @@ jobs:
           echo "$HOME/.elan/bin" >> $GITHUB_PATH
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          persist-credentials: false
       - id: build
         name: Build
         continue-on-error: true # e.g., clone failures
