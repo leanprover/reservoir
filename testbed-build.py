@@ -57,6 +57,7 @@ if __name__ == "__main__":
       run_cmd('lake', 'clean')
       run_cmd('lake', 'exe', 'cache', 'get', allow_failure=True)
       run_cmd('lake', 'build')
+      result['requiredUpdate'] = True
     logging.info(f'successfully built {args.url} on {toolchain}')
     result['outcome'] = 'success'
   except CommandError:

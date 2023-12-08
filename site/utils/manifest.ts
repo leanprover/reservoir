@@ -21,6 +21,7 @@ export interface Build {
   builtAt: string
   revision: string
   toolchain: string
+  requiredUpdate?: boolean
   outcome: string
 }
 
