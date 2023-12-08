@@ -86,7 +86,7 @@ def query_releases(repo=DEFAULT_ORIGIN, paginate=True) -> 'Iterable[Release]':
   return map(json.loads, out.decode().splitlines())
 
 def query_toolchain_releases(repo=DEFAULT_ORIGIN):
-  return [f'{repo}:{ver}' for ver in query_releases(repo)]
+  return [f"{repo}:{release['tag']}" for release in query_releases(repo)]
 
 def normalize_toolchain(toolchain: str):
   parts = toolchain.split(':')
