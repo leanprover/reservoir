@@ -2,7 +2,6 @@
 from utils import *
 from typing import TypedDict
 from datetime import datetime
-import logging
 import json
 import re
 import argparse
@@ -36,8 +35,6 @@ if __name__ == "__main__":
     help="the testbed run attempt")
   parser.add_argument('-m', '--matrix',
     help="file containing the JSON build matrix")
-  parser.add_argument('-D', '--index-dir', default=None,
-    help='directory to output hierarchical index')
   parser.add_argument('-o', '--output',
     help='file to output the bundle manifest')
   parser.add_argument('-q', '--quiet', dest="verbosity", action='store_const', const=0, default=1,
@@ -74,23 +71,6 @@ if __name__ == "__main__":
     if entry['fullName'] not in results:
       results[entry['fullName']] = list()
     results[entry['fullName']].append(result)
-
-  if args.index_dir is not None:
-    for (full_name, pkg_results) in results.items():
-      pkg_dir = os.path.join(args.index_dir, full_name)
-      if not os.path.exists(pkg_dir):
-        logging.error(f"{full_name}: build save failed: {pkg_dir} does not exist")
-        continue
-      builds_file = os.path.join(pkg_dir, 'builds.json')
-      if os.path.exists(builds_file):
-        with open(os.path.join(pkg_dir, 'builds.json'), 'r') as f:
-          builds = json.load(f)
-        builds = insert_build_results(builds, pkg_results)
-      else:
-        builds = pkg_results
-      with open(builds_file, 'w') as f:
-        f.write(json.dumps(builds, indent=2))
-        f.write('\n')
 
   if args.output is None:
     print(json.dumps(results, indent=2))

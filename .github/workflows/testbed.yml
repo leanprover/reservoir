@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - 'testbed/**' # branch pattern for testbed-only changes
-  # Enable running this workflow from ci.yml
+  # Enable running this workflow from ci.ymld
   workflow_call:
     inputs:
       index-repo:
@@ -56,11 +56,6 @@ on:
         type: boolean
         required: false
         default: false
-
-# Permit only 1 concurrent update of the same index repository, cancelling previous ones.
-concurrency:
-  group: ${{ inputs.update-index && format('testbed/{0}', inputs.index-repo) || github.run_id }}
-  cancel-in-progress: true
 
 jobs:
   setup:
@@ -142,19 +137,12 @@ jobs:
           name: ${{ matrix.artifact }}
           path: result.json
   collect:
-    needs: [setup, build]
+    needs: build
     name: Collect Results
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Checkout External Index
-        if: inputs.update-index
-        uses: actions/checkout@v3
-        with:
-          token: ${{ secrets.RESERVOIR_INDEX_TOKEN }}
-          repository: ${{ inputs.index-repo }}
-          path: index
       - name: Download Individual Results
         uses: actions/download-artifact@v3
         with:
@@ -162,13 +150,40 @@ jobs:
           path: testbed
       - name: Collect Outcomes
         run: |
-          ./testbed-collect.py -v \
-            testbed ${{ github.run_id }} ${{ github.run_attempt }} \
-            -o testbed/results.json ${{ inputs.update-index && '-D index' || '' }}
+          ./testbed-collect.py -o testbed/results.json -v \
+            testbed ${{ github.run_id }} ${{ github.run_attempt }}
         env:
           GH_TOKEN: ${{ github.token }}
+      - name: Upload Results Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: results
+          path: testbed/results.json
+          if-no-files-found: error
+  save:
+    needs: collect
+    name: Save Results
+    if: inputs.update-index
+    runs-on: ubuntu-latest
+    # Permit only 1 concurrent update of the same index repository.
+    concurrency:
+      group: testbed/${{ inputs.index-repo }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Checkout External Index
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.RESERVOIR_INDEX_TOKEN }}
+          repository: ${{ inputs.index-repo }}
+          path: index
+      - name: Download Results Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: results
+      - name: Write Results to Index
+        run: ./testbed-save.py -v results.json index
       - name: Update External Index
-        if: inputs.update-index
         uses: EndBug/add-and-commit@v9
         with:
           cwd: index
@@ -178,9 +193,3 @@ jobs:
 
             ${{github.server_url}}/${{github.repository}}/actions/runs/${{github.run_id}}/attempts/${{github.run_attempt}}
           default_author: github_actions
-      - name: Upload Results Artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: results
-          path: testbed/results.json
-          if-no-files-found: error
