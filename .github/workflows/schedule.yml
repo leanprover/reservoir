@@ -1,0 +1,52 @@
+name: Scheduled Update
+
+on:
+  schedule:
+    # 5:30AM ET
+    - cron: '30 10 * * 1,3,5'
+    - cron: '30 10 * * 0,2,4,6'
+  # Enable testing this workflow manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      index-repo:
+        description: "Registry index repository"
+        type: string
+        required: false
+        default: leanprover/reservoir-test-index
+      testbed-size:
+        description: "Max number of testbed entries"
+        type: number
+        required: false
+        default: 10
+
+# GITHUB_TOKEN permissions needed for deployment (copied from website.yml)
+permissions:
+  contents: read
+  deployments: none
+  pull-requests: write
+  statuses: write
+
+jobs:
+  index:
+    name: Index
+    uses: ./.github/workflows/index.yml
+    secrets: inherit
+    with:
+      repository: ${{ inputs.index-repo || 'leanprover/reservoir-index' }}
+  testbed:
+    needs: index
+    name: Testbed
+    uses: ./.github/workflows/testbed.yml
+    secrets: inherit
+    with:
+      index-repo: ${{ inputs.index-repo || 'leanprover/reservoir-index' }}
+      toolchain: ${{ github.event.schedule == '30 10 * * 1,3,5' && 'latest' || 'package' }}
+      max-size: ${{ inputs.testbed-size == null && 256 || fromJson(inputs.testbed-size) }}
+      update-index: true
+  website:
+    needs: [index, testbed]
+    name: Website
+    uses: ./.github/workflows/website.yml
+    secrets: inherit
+    with:
+      index-repo: ${{ inputs.index-repo || 'leanprover/reservoir-index' }}
