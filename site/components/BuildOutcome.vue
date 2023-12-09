@@ -4,7 +4,7 @@ import FailIcon from '~icons/mdi/close'
 import PassIcon from '~icons/mdi/check'
 import { Tippy } from 'vue-tippy'
 
-const props = defineProps<{build?: Build | null}>()
+const props = defineProps<{build?: Build | null, markOutdated?: boolean}>()
 const build = computed<Partial<Build>>(() => props.build || {});
 
 const outcomeIcon = computed(() => {
@@ -18,10 +18,12 @@ const outcomeIcon = computed(() => {
   }
 })
 
+const outdated = computed(() => build.value.toolchain != latestToolchain);
+
 const outcomeClass = computed(() => {
   switch (build.value.outcome) {
     case 'success':
-      return 'outcome-success'
+      return (outdated.value && props.markOutdated) ? 'outcome-semi-success' : 'outcome-success'
     case 'failure':
       return 'outcome-failure'
     default:
@@ -43,10 +45,12 @@ const outcomeClass = computed(() => {
   <template #content>
     <div class="tooltip">
       <span v-if="build.outcome == 'success'">
-        Builds on {{build.toolchain}}
+        Commit {{build.revision.slice(0, 9)}} builds on
+        the {{ outdated ? 'old' : 'latest' }} {{build.toolchain}}
+        <span v-if="build.requiredUpdate">after <code>lake update</code></span>
       </span>
       <span v-else-if="build.outcome == 'failure'">
-        Fails to build on {{build.toolchain}}
+        Commit {{build.revision.slice(0, 9)}} fails to build on {{build.toolchain}}
       </span>
       <span v-else>
         <span class="line">Build data not currently included on Reservoir. </span>
@@ -74,6 +78,10 @@ const outcomeClass = computed(() => {
 
     &.outcome-success {
       background-color: var(--success-color);
+    }
+
+    &.outcome-semi-success {
+      background-color: var(--warning-color);
     }
 
     &.outcome-failure {

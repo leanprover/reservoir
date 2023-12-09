@@ -55,6 +55,18 @@ const formatLicense = (id: string | null) => {
   }
 }
 
+const buildsByVer = computed(() => {
+  const map = pkg.builds.reduce((map, build) => {
+    if (!map.has(build.toolchain)) {
+      map.set(build.toolchain, build)
+    }
+    return map;
+  }, new Map<string, Build | null>())
+  if (!map.has(latestToolchain)) {
+    map.set(latestToolchain, null)
+  }
+  return map
+})
 const baseContentUrl = `https://raw.githubusercontent.com/${pkg.fullName}/HEAD/`
 const { data: readme } = await useFetch<string>(`${baseContentUrl}README.md`)
 </script>
@@ -93,9 +105,9 @@ const { data: readme } = await useFetch<string>(`${baseContentUrl}README.md`)
         <div>
           <h3>Lean</h3>
           <ul>
-            <li>
-              <BuildOutcome class="icon" :build="pkg.builds.find(b => b.toolchain === latestToolchain)"/>
-              {{ latestToolchain.split(':')[1] }}
+            <li v-for="entry in buildsByVer.entries()">
+              <BuildOutcome class="icon" :build="entry[1]"/>
+              {{ entry[0].split(':')[1] }}
             </li>
           </ul>
         </div>

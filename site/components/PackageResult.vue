@@ -3,7 +3,10 @@ import StarIcon from '~icons/mdi/star'
 const props = defineProps<{pkg: Package}>()
 const pkg = computed(() => props.pkg)
 const src = computed(() => pkg.value.sources.find(src => src.repoUrl))
-const build = computed(() => pkg.value.builds.find(b => b.toolchain === latestToolchain))
+const build = computed(() =>
+  pkg.value.builds.find(b => b.outcome == "success") ??
+  pkg.value.builds.find(b => b.toolchain === latestToolchain)
+)
 </script>
 
 <template>
@@ -23,7 +26,12 @@ const build = computed(() => pkg.value.builds.find(b => b.toolchain === latestTo
         <a class="hard-link" :href="src.repoUrl">Repository</a>
       </li>
       <li class="stars"><StarIcon class="prefix icon"/>{{ pkg.stars }}</li>
-      <li><BuildOutcome class="icon" :build="build"/></li>
+      <li v-if="build" class="build">
+        <BuildOutcome class="icon" :build="build"/>
+        <span v-if="build.outcome == 'success'" class="toolchain">
+          {{ build.toolchain.split(':')[1] }}
+        </span>
+      </li>
     </ul>
   </li>
 </template>
@@ -75,6 +83,17 @@ const build = computed(() => pkg.value.builds.find(b => b.toolchain === latestTo
           color: var(--star-color);
         }
       }
+
+      &.build {
+        display: flex;
+        align-items: center;
+        line-height: 1em;
+
+        .toolchain {
+          margin-left: 0.5em;
+        }
+      }
+
     }
   }
 }

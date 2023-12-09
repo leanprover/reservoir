@@ -29,6 +29,7 @@ useHead({
   --light-text-color: white;
   --dark-text-color: black;
   --success-color: rgb(26, 127, 55);
+  --warning-color: rgb(184, 134, 11);
   --failure-color: rgb(209, 36, 47);
   --neutral-color: var(--dark-color);
 
