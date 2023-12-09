@@ -49,6 +49,11 @@ permissions:
   pull-requests: write
   statuses: write
 
+# Permit only 1 concurrent run per bracnh when triggered automatically, cancelling previous ones.
+concurrency:
+  group: ci/${{ github.event_name == 'workflow_dispatch' && github.run_id || github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   config:
     name: Configure
