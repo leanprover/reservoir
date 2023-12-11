@@ -17,7 +17,7 @@ const findBuild = (pkg: Package) => (
       <li class="card" v-for="pkg in props.list" :key="pkg.id">
         <BuildOutcome class="prefix icon" :build="findBuild(pkg)" :mark-outdated="true"/>
         <Tippy class="text" :on-show="() => { if (!pkg.description) return false }">
-          <NuxtLink class="soft-link" :to="`/packages/${pkg.id}`">
+          <NuxtLink class="soft-link" :to="pkgLink(pkg)">
             <div class="name">{{ pkg.name }}</div>
             <ForwardIcon class="suffix icon"/>
           </NuxtLink>

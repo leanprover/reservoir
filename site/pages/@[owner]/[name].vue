@@ -6,7 +6,7 @@ import HomepageIcon from '~icons/mdi/home'
 import GitHubIcon from '~icons/mdi/github'
 
 const route = useRoute()
-const pkg = packages.find(e => e.id === route.params.id)
+const pkg = packages.find(p => p.owner === route.params.owner && p.name == route.params.name)
 if (!pkg) {
   throw createError({
     statusCode: 404,

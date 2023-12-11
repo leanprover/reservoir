@@ -1,4 +1,5 @@
-import manifest from './site/manifest.json'
+import pkgLink from './site/utils/pkgLink'
+import {packages} from './site/utils/manifest'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
@@ -37,7 +38,7 @@ export default defineNuxtConfig({
       // Needed to prevent GitHub Pages from automatically adding trailing
       // slashes to URLs (as otherwise they are directories rather than files)
       autoSubfolderIndex: false,
-      routes: ["/", ...manifest.packages.map(pkg => `/packages/${pkg.id}`)]
+      routes: ["/", ...packages.map(pkgLink)]
     },
   },
   site: {
