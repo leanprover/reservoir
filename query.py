@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-from utils import configure_logging, paginate, capture_cmd
-from datetime import datetime
+from utils import *
+from typing import TypedDict
 import argparse
 import os
 import json
 import logging
+import requests
 
 REPO_QUERY="""
 query($repoIds: [ID!]!) {
@@ -60,6 +61,28 @@ def query_lake_repos(limit: int) -> 'list[str]':
     )
   return out.decode().splitlines()
 
+class License(TypedDict):
+  reference: str
+  isDeprecatedLicenseId: bool
+  detailsUrl: str
+  referenceNumber: int
+  name: str
+  licenseId: str
+  seeAlso: 'list[str]'
+  isOsiApproved: bool
+
+SPDX_DATA_URL = "https://raw.githubusercontent.com/spdx/license-list-data/main/json/licenses.json"
+def query_licenses(url=SPDX_DATA_URL):
+  logging.debug(f"fetching SPDX license data from {url}")
+  response = requests.get(url, allow_redirects=True)
+  if response.status_code != 200:
+    RuntimeError(f"failed to fetch SPDX license data ({response.status_code})")
+  license_list: 'list[License]' = json.loads(response.content.decode())['licenses']
+  licenses: 'dict[str, License]' = dict()
+  for license in license_list:
+    licenses[license['licenseId']] = license
+  return licenses
+
 def filter_falsy(value):
   return value if value else None
 
@@ -68,7 +91,6 @@ def filter_ws(value: str | None):
   if value is not None:
     value = filter_falsy(value.strip())
   return value
-
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
@@ -118,8 +140,22 @@ if __name__ == "__main__":
       }],
     }
 
+  deprecatedIds = set()
+  licenses = query_licenses()
   def curate(pkg: dict):
-    return pkg['fullName'] not in exclusions and pkg['stars'] > 1
+    if pkg['fullName'] in exclusions or pkg['stars'] <= 1:
+      return False
+    spdxId = pkg['license']
+    if spdxId is not None:
+      license = licenses[spdxId]
+      if license is None:
+        logging.error(f"unknown SPDX ID '{spdxId}'")
+        return False
+      if license.get('isDeprecatedLicenseId', False) and spdxId not in deprecatedIds:
+        logging.warning(f"GitHub is using deprecated SPDX ID '{spdxId}'")
+        deprecatedIds.add(spdxId)
+      return license.get('isOsiApproved', False)
+    return False
 
   repos = query_lake_repos(args.limit)
   logging.info(f"found {len(repos)} repositories with root lakefiles")
@@ -129,7 +165,7 @@ if __name__ == "__main__":
   pkgs = filter(curate, pkgs)
   pkgs = sorted(pkgs, key=lambda pkg: pkg['stars'], reverse=True)
   pkgs = list(pkgs)
-  logging.info(f"found {len(pkgs)} notable repositories")
+  logging.info(f"found {len(pkgs)} notable OSI-licensed repositories")
 
   if args.index_dir is not None:
     for pkg in pkgs:
