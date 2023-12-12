@@ -1,9 +1,14 @@
 import { defineRedirectsModule } from './module'
-import { packages } from '../../utils/manifest'
+import { type Package, packages } from '../../utils/manifest'
 import pkgLink from '../../utils/pkgLink'
 
+const oldPkgLink = (pkg: Package) => {
+  const id = pkg['fullName'].replace('-', '--').replace('/', '-')
+  return `/packages/${encodeURIComponent(id)}`
+}
+
 export default defineRedirectsModule(packages.map(pkg => ({
-  from: `/packages/${encodeURIComponent(pkg.id)}`,
+  from: oldPkgLink(pkg),
   to: pkgLink(pkg),
   status: 301,
 })))

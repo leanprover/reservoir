@@ -10,7 +10,7 @@ const pkg = packages.find(p => p.owner === route.params.owner && p.name == route
 if (!pkg) {
   throw createError({
     statusCode: 404,
-    message: `Package ${route.params.id} not found`,
+    message: `Package ${route.params.fullName} not found`,
     fatal: true
   })
 }

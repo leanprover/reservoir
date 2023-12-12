@@ -119,9 +119,7 @@ if __name__ == "__main__":
     if license is not None: license = license['spdxId']
     if license in ['NONE', 'NOASSERTION']: license = None
     owner, name = repo['nameWithOwner'].split('/')
-    id = repo['nameWithOwner'].replace('-', '--').replace('/', '-')
     return {
-      'id': id,
       'name' : name,
       'owner': owner,
       'fullName': repo['nameWithOwner'],
