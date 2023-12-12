@@ -86,7 +86,7 @@ const resultPage = computed(() => {
         </div>
       </div>
       <ol class="results-list">
-        <PackageResult v-for="pkg in resultPage" :key="pkg.id" :pkg="pkg"/>
+        <PackageResult v-for="pkg in resultPage" :key="pkg.fullName" :pkg="pkg"/>
       </ol>
       <Paginator :pt="{root: 'paginator'}"
         v-model:first="first" :rows="numRows" :total-records="numResults"/>

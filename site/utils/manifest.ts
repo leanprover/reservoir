@@ -1,4 +1,4 @@
-import manifest from '~/manifest.json'
+import manifest from '../manifest.json'
 
 export interface GitSource {
   gitUrl: string
@@ -26,7 +26,6 @@ export interface Build {
 }
 
 export interface Package {
-  id: string
   name : string
   owner: string
   fullName: string
@@ -42,3 +41,7 @@ export interface Package {
 
 export const packages = manifest.packages as Package[]
 export const latestToolchain: string = manifest.toolchains[0]
+
+export const pkgLink = (pkg: Package) => {
+  return `/@${encodeURIComponent(pkg.owner)}/${encodeURIComponent(pkg.name)}`
+}

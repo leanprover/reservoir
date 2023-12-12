@@ -56,7 +56,7 @@ const commit = (event: Event, clickedPkg?: Package) => {
     query.value = ""
     selectedPkg.value = undefined
     console.log(pkg)
-    navigateTo(`/packages/${encodeURIComponent(pkg.id)}`)
+    navigateTo(pkgLink(pkg))
   } else {
     const q = query.value
     if (q) {

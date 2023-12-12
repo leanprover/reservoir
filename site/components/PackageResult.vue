@@ -11,7 +11,7 @@ const build = computed(() =>
 
 <template>
   <li class="pkg-result card">
-    <NuxtLink class="name" :to="`/packages/${encodeURIComponent(pkg.id)}`">
+    <NuxtLink class="name" :to="pkgLink(pkg)">
       <h3>{{pkg.fullName}}</h3>
     </NuxtLink>
     <p>

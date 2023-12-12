@@ -14,10 +14,10 @@ const findBuild = (pkg: Package) => (
   <div class="highlight-category">
     <h3 class="title">{{ props.title }}</h3>
     <ol class="short-list">
-      <li class="card" v-for="pkg in props.list" :key="pkg.id">
+      <li class="card" v-for="pkg in props.list" :key="pkg.fullName">
         <BuildOutcome class="prefix icon" :build="findBuild(pkg)" :mark-outdated="true"/>
         <Tippy class="text" :on-show="() => { if (!pkg.description) return false }">
-          <NuxtLink class="soft-link" :to="`/packages/${pkg.id}`">
+          <NuxtLink class="soft-link" :to="pkgLink(pkg)">
             <div class="name">{{ pkg.name }}</div>
             <ForwardIcon class="suffix icon"/>
           </NuxtLink>
