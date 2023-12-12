@@ -41,3 +41,7 @@ export interface Package {
 
 export const packages = manifest.packages as Package[]
 export const latestToolchain: string = manifest.toolchains[0]
+
+export const pkgLink = (pkg: Package) => {
+  return `/@${encodeURIComponent(pkg.owner)}/${encodeURIComponent(pkg.name)}`
+}

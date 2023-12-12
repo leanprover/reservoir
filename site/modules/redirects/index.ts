@@ -1,6 +1,5 @@
 import { defineRedirectsModule } from './module'
-import { type Package, packages } from '../../utils/manifest'
-import pkgLink from '../../utils/pkgLink'
+import { type Package, packages, pkgLink } from '../../utils/manifest'
 
 const oldPkgLink = (pkg: Package) => {
   const id = pkg['fullName'].replace('-', '--').replace('/', '-')

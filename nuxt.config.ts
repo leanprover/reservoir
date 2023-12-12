@@ -1,5 +1,4 @@
-import pkgLink from './site/utils/pkgLink'
-import {packages} from './site/utils/manifest'
+import {packages, pkgLink} from './site/utils/manifest'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
