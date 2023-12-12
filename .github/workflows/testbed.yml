@@ -28,6 +28,11 @@ on:
         description: "Save to index"
         type: boolean
         required: false
+      ci:
+        description: "Distinguishes a workflow call from a standalone one"
+        type: boolean
+        required: false
+        default: true
   # Enable running this workflow manually from the Actions tab
   workflow_dispatch:
     inputs:
@@ -67,22 +72,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
       - name: Download Index Artifact
-        if: (!inputs.index-repo)
+        if: (inputs.ci && !inputs.index-repo)
         uses: actions/download-artifact@v3
         with:
           name: index
       - name: Download Index Repository
-        if: inputs.index-repo
+        if: (inputs.index-repo || !inputs.ci)
         run: |
           mkdir index
-          gh api repos/${{ inputs.index-repo }}/tarball \
+          gh api repos/${{ inputs.index-repo || 'leanprover/reservoir-index' }}/tarball \
             | tar -xvz -C index --strip-component=1
         env:
           GH_TOKEN: ${{ secrets.RESERVOIR_INDEX_TOKEN  }}
       - name: Create Matrix
         run: |
           ./testbed-create.py -o matrix.json \
-            ${{ inputs.index-repo && 'index' || 'index.json' }} \
+            ${{ (inputs.index-repo || !inputs.ci) && 'index' || 'index.json' }} \
             -e '${{ inputs.pattern || '.*' }}' \
             -t '${{ inputs.toolchain || 'package' }}'  \
             -n ${{ inputs.max-size == null && 10 || inputs.max-size }} \

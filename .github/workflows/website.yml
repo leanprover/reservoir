@@ -15,6 +15,11 @@ on:
         description: "Augment index with local testbed results"
         type: boolean
         required: false
+      ci:
+        description: "Distinguishes a workflow call from a standalone one"
+        type: boolean
+        required: false
+        default: true
   # Enable running this workflow manually from the Actions tab
   workflow_dispatch:
     inputs:
@@ -49,22 +54,22 @@ jobs:
         with:
           name: results
       - name: Download Index Artifact
-        if: (!inputs.index-repo)
+        if: (inputs.ci && !inputs.index-repo)
         uses:  actions/download-artifact@v3
         with:
           name: index
       - name: Download Index Repository
-        if: inputs.index-repo
+        if: (inputs.index-repo || !inputs.ci)
         run: |
           mkdir index
-          gh api repos/${{ inputs.index-repo }}/tarball \
+          gh api repos/${{ inputs.index-repo || 'leanprover/reservoir-index' }}/tarball \
             | tar -xvz -C index --strip-component=1
         env:
           GH_TOKEN: ${{ secrets.RESERVOIR_INDEX_TOKEN }}
       - name: Create Manifest
         run: |
           ./bundle.py -o manifest.json \
-            ${{ inputs.index-repo && 'index' || 'index.json'}} \
+            ${{ (inputs.index-repo || !inputs.ci) && 'index' || 'index.json'}} \
             ${{ inputs.testbed-artifact && 'results.json' || '' }}
         env:
           GH_TOKEN: ${{ github.token }}
@@ -94,10 +99,11 @@ jobs:
       - name: Build Site
         run: npm run generate
       - name: Download Index Repository
+        if: (inputs.index-repo || !inputs.ci)
         run: |
           set -eo pipefail
           mkdir .output/public/index
-          gh api repos/leanprover/reservoir-index/tarball \
+          gh api repos/${{ inputs.index-repo || 'leanprover/reservoir-index' }}/tarball \
             | tar -xvz -C .output/public/index --strip-component=1
           cp site/manifest.json .output/public/index/manifest.json
         env:
