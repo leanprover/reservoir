@@ -20,8 +20,10 @@ useHead({
   meta: pkg.description ? [{name: 'description', content: pkg.description}] : undefined
 })
 
-defineOgImage({
-  hasNoDescription: !pkg.description,
+defineOgImageComponent('Generic', {
+  title: pkg.name,
+  description: pkg.description,
+  hasNoDescription: !pkg.description
 })
 
 const formatLicense = (id: string | null) => {

@@ -8,12 +8,16 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const siteTitle = 'Reservoir'
+const siteTitle = useSiteConfig().name
 const props = defineProps<{
   title: string
-  description: string,
+  description?: string
   hasNoDescription?: boolean
 }>()
+
+// cannot use `!pkg.description` because a falsy description
+// will just fallback to the application-wide site description
+const hasDescription = !props.hasNoDescription
 
 const mainStyles: CSSProperties = {
   width: '100%',
@@ -54,6 +58,9 @@ const titleStyles: CSSProperties = {
 const descrStyles: CSSProperties = {
   display: 'block',
   fontSize: "3em",
+  // Currently (as of 12-2023), this not actually do anything,
+  // as the Satori renderer does not support multiple embedded font families.
+  // This is simply reminder for whenever it might in the future.
   fontFamily: "'Open Sans', sans-serif",
   lineClamp: 5,
 }
@@ -63,11 +70,13 @@ const footerStyles: CSSProperties = {
   justifyContent: "flex-end",
   alignItems: "baseline",
   fontSize: "2em",
+  height: "1.2em",
   marginBottom: "1em",
   marginTop: "0.5em"
 }
 
 const siteTitleStyles: CSSProperties = {
+  display: props.title == siteTitle ? "none" : "flex",
   fontFamily: "'Merriweather', serif"
 }
 
@@ -84,11 +93,11 @@ const iconStyles: CSSProperties = {
     <article :style="articleStyles">
       <div :style="textStyles">
         <div :style="titleStyles">{{ props.title }}</div>
-        <div :style="descrStyles" v-if="!hasNoDescription">{{ props.description }}</div>
+        <div :style="descrStyles" v-if="hasDescription">{{ props.description }}</div>
       </div>
     </article>
     <footer :style="footerStyles">
-      <div :style="siteTitleStyles" v-show="props.title != siteTitle">{{ siteTitle }}</div>
+      <div :style="siteTitleStyles">{{ siteTitle }}</div>
       <LogoIcon :style="iconStyles"/>
     </footer>
   </main>

@@ -14,6 +14,10 @@ export default defineNuxtConfig({
     ['nuxt-svgo', {
       autoImportPath: false,
     }],
+    /*
+    TODO: We presently monkey-match critters in `modules/critters.ts`
+    to workaround a issue with Nuxt 3.8.2's new Nitro. We can switch back
+    to this once that issue is resolved.
     ['@nuxtjs/critters', {
       config: {
         preload: "swap",
@@ -21,6 +25,7 @@ export default defineNuxtConfig({
         reduceInlineStyles: false, // `true` breaks fonts
       }
     }],
+    */
     ['@nuxtjs/google-fonts', {
       families: {
         'Merriweather': [400, 700],
@@ -34,8 +39,6 @@ export default defineNuxtConfig({
   nitro: {
     prerender: {
       failOnError: true,
-      // Needed to prevent GitHub Pages from automatically adding trailing
-      // slashes to URLs (as otherwise they are directories rather than files)
       autoSubfolderIndex: false,
       routes: ["/", ...packages.map(pkgLink)]
     },
@@ -43,7 +46,9 @@ export default defineNuxtConfig({
   site: {
     url: 'https://reservoir.lean-lang.org',
     name: 'Reservoir',
-    description: "Lake's package registry for the Lean community.",
+    description:
+      "Reservoir is the package registry for Lake, the build system and " +
+      "package manager of the Lean programming language and theorem prover.",
     titleSeparator: '|',
     defaultLocale: 'en-US',
   },
@@ -52,13 +57,9 @@ export default defineNuxtConfig({
     fetchRemoteUrls: false,
   },
   ogImage: {
-    defaults: {
-      cache: false,
-      component: 'OgImageGeneric',
-    },
-    runtimeBrowser: false,
     runtimeCacheStorage: false,
-    fonts: [ 'Merriweather:400', 'Merriweather:700', 'Open+Sans:400' ],
+    // Since Satori does not support multiple fonts, we exclude Open Sans.
+    fonts: [ 'Merriweather:400', 'Merriweather:700' /* , 'Open+Sans:400' */ ],
   },
   vite: {
     build: {

@@ -5,6 +5,12 @@ useHead({
     { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
   ]
 })
+
+const site = useSiteConfig()
+defineOgImageComponent('Generic', {
+  title: site.name,
+  description: site.description,
+})
 </script>
 
 <template>

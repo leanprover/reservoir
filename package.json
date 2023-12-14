@@ -15,22 +15,21 @@
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare && patch-package"
+    "postinstall": "nuxt prepare"
   },
   "devDependencies": {
+    "critters": "^0.0.20",
     "@iconify-json/mdi": "^1.1.54",
     "@iconify-json/simple-icons": "^1.1.71",
-    "@nuxt/devtools": "latest",
-    "@nuxtjs/critters": "^0.5.0",
+    "@nuxt/devtools": "^1.0.0",
     "@nuxtjs/google-fonts": "^3.0.2",
     "@nuxtseo/module": "^2.0.0-beta.15",
     "dayjs": "^1.11.10",
     "hast-util-classnames": "^3.0.0",
     "highlight.js": "^11.8.0",
     "normalize.css": "^8.0.1",
-    "nuxt": "^3.7.4",
+    "nuxt": "^3.8.2",
     "nuxt-svgo": "^3.5.4",
-    "patch-package": "^8.0.0",
     "primevue": "^3.35.0",
     "rehype-autolink-headings": "^7.0.0",
     "rehype-external-links": "^3.0.0",
@@ -48,7 +47,7 @@
     "sass": "^1.67.0",
     "unified": "^11.0.3",
     "unist-util-visit": "^5.0.0",
-    "unplugin-icons": "^0.17.0",
+    "unplugin-icons": "^0.18.0",
     "vue-tippy": "^6.3.1"
   }
 }
