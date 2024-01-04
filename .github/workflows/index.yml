@@ -41,7 +41,7 @@ jobs:
           path: index
       - name: Query Repositories
         run: |
-          ./query.py -v \
+          scripts/index-query.py -v \
             ${{ inputs.repository && '-D index' || '-o index.json' }} \
             -L ${{ (!inputs.repository && github.ref_name != 'master') && 100 || -1 }}
         env:

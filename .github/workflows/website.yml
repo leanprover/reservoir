@@ -68,7 +68,7 @@ jobs:
           GH_TOKEN: ${{ secrets.RESERVOIR_INDEX_TOKEN }}
       - name: Create Manifest
         run: |
-          ./bundle.py -o manifest.json \
+          scripts/bundle.py -o manifest.json \
             ${{ (inputs.index-repo || !inputs.ci) && 'index' || 'index.json'}} \
             ${{ inputs.testbed-artifact && 'results.json' || '' }}
         env:

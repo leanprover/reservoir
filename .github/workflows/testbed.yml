@@ -91,12 +91,12 @@ jobs:
           GH_TOKEN: ${{ secrets.RESERVOIR_INDEX_TOKEN  }}
       - name: Create Matrix
         run: |
-          ./testbed-create.py -o matrix.json \
+          scripts/testbed-create.py -o matrix.json \
             ${{ (inputs.index-repo || !inputs.ci) && 'index' || 'index.json' }} \
             -e '${{ inputs.pattern || '.*' }}' \
             -t '${{ inputs.toolchain || 'package' }}'  \
             -n ${{ inputs.max-size == null && 10 || inputs.max-size }} \
-            -X ${{ inputs.dev && 'testbed-dev-exclusions.txt' || 'testbed-exclusions.txt' }}
+            -X ${{ inputs.dev && 'scripts/testbed-dev-exclusions.txt' || 'scripts/testbed-exclusions.txt' }}
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Upload Matrix
@@ -136,7 +136,7 @@ jobs:
         continue-on-error: true # e.g., clone failures
         # We run arbitrary untrusted code here
         run: |
-          ./testbed-build.py -o result.json -v \
+          scripts/testbed-build.py -o result.json -v \
             ${{ matrix.gitUrl }} testbed ${{ matrix.toolchain }}
       - name: Check Build
         run: test "`jq -r '.outcome' result.json`" = success
@@ -160,7 +160,7 @@ jobs:
           path: testbed
       - name: Collect Outcomes
         run: |
-          ./testbed-collect.py -o testbed/results.json -v \
+          scripts/testbed-collect.py -o testbed/results.json -v \
             testbed ${{ github.run_id }} ${{ github.run_attempt }}
         env:
           GH_TOKEN: ${{ github.token }}
@@ -192,7 +192,7 @@ jobs:
         with:
           name: results
       - name: Write Results to Index
-        run: ./testbed-save.py -v results.json index
+        run: scripts/testbed-save.py -v results.json index
       - name: Update External Index
         uses: EndBug/add-and-commit@v9
         with:
