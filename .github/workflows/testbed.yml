@@ -28,6 +28,11 @@ on:
         description: "Save to index"
         type: boolean
         required: false
+      dev:
+        description: "Run optimized for development (uses dev-exclusions)"
+        type: boolean
+        required: false
+        default: false
       ci:
         description: "Distinguishes a workflow call from a standalone one"
         type: boolean
@@ -91,7 +96,7 @@ jobs:
             -e '${{ inputs.pattern || '.*' }}' \
             -t '${{ inputs.toolchain || 'package' }}'  \
             -n ${{ inputs.max-size == null && 10 || inputs.max-size }} \
-            -X ${{ inputs.update-index && 'testbed-exclusions.txt' || 'testbed-dev-exclusions.txt' }}
+            -X ${{ inputs.dev && 'testbed-dev-exclusions.txt' || 'testbed-exclusions.txt' }}
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Upload Matrix

@@ -84,6 +84,7 @@ jobs:
       toolchain: ${{ inputs.testbed-toolchain || 'latest,package' }}
       max-size: ${{ inputs.testbed-size == null && 20 || fromJson(inputs.testbed-size) }}
       update-index: ${{ inputs.save-testbed == true }}
+      dev: ${{ github.event_name != 'workflow_dispatch' }}
   website:
     needs: [config, index, testbed]
     # Run even if `index` or `testbed` is skipped
