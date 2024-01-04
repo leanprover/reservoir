@@ -58,9 +58,9 @@ const titleStyles: CSSProperties = {
 const descrStyles: CSSProperties = {
   display: 'block',
   fontSize: "3em",
-  // Currently (as of 12-2023), this not actually do anything,
+  // Currently (as of 01-2024), this does not actually do anything,
   // as the Satori renderer does not support multiple embedded font families.
-  // This is simply reminder for whenever it might in the future.
+  // This is simply a reminder for whenever it might in the future.
   fontFamily: "'Open Sans', sans-serif",
   lineClamp: 5,
 }

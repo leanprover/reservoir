@@ -16,8 +16,9 @@ export default defineNuxtConfig({
     }],
     /*
     TODO: We presently monkey-match critters in `modules/critters.ts`
-    to workaround a issue with Nuxt 3.8.2's new Nitro. We can switch back
+    to workaround a issue with Nuxt 3.8.2+'s new Nitro. We can switch back
     to this once that issue is resolved.
+    https://github.com/nuxt-modules/critters/issues/311
     ['@nuxtjs/critters', {
       config: {
         preload: "swap",
@@ -58,8 +59,7 @@ export default defineNuxtConfig({
   },
   ogImage: {
     runtimeCacheStorage: false,
-    // Since Satori does not support multiple fonts, we exclude Open Sans.
-    fonts: [ 'Merriweather:400', 'Merriweather:700' /* , 'Open+Sans:400' */ ],
+    fonts: [ 'Merriweather:400', 'Merriweather:700', 'Open+Sans:400' ],
   },
   vite: {
     build: {
