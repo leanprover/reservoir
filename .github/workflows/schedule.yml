@@ -4,7 +4,8 @@ on:
   schedule:
     # 5:30AM ET
     - cron: '30 10 * * 1,3,5'
-    - cron: '30 10 * * 0,2,4,6'
+    - cron: '30 10 * * 0,4'
+    - cron: '30 10 * * 2,6'
   # Enable testing this workflow manually from the Actions tab
   workflow_dispatch:
     inputs:
@@ -18,6 +19,11 @@ on:
         type: number
         required: false
         default: 10
+      testbed-toolchain:
+        description: "Lean toolchain(s) to test against"
+        type: string
+        required: true
+        default: package
 
 # GITHUB_TOKEN permissions needed for deployment (copied from website.yml)
 permissions:
@@ -40,7 +46,7 @@ jobs:
     secrets: inherit
     with:
       index-repo: ${{ inputs.index-repo || 'leanprover/reservoir-index' }}
-      toolchain: ${{ github.event.schedule == '30 10 * * 1,3,5' && 'latest' || 'package' }}
+      toolchain: ${{ inputs.testbed-toolchain || github.event.schedule == '30 10 * * 1,3,5' && 'package' || github.event.schedule == '30 10 * * 0,4' && 'latest' || 'stable'}}
       max-size: ${{ inputs.testbed-size == null && 256 || fromJson(inputs.testbed-size) }}
       update-index: true
   website:
