@@ -41,10 +41,20 @@ def load_index(path: str, include_builds=False):
   return pkgs
 
 def insert_build_results(builds: list, results: 'list[dict]') -> list:
-  toolchains = set(r['toolchain'] for r in results)
-  builds = list(filter(lambda build: build['toolchain'] not in toolchains, builds))
-  builds.extend(results)
-  return sorted(builds, key=lambda build: build['toolchain'], reverse=True)
+  new_builds = list()
+  new_results = dict((r['toolchain'], r) for r in results)
+  for build in builds:
+    toolchain = build['toolchain']
+    result = new_results.get(toolchain, None)
+    if result is not None:
+      del new_results[toolchain]
+      if result['outcome'] == 'success' or build['outcome'] != 'success':
+        new_builds.append(result)
+        continue
+    new_builds.append(build)
+  for result in new_results.values():
+    new_builds.append(result)
+  return sorted(new_builds, key=lambda build: build['toolchain'], reverse=True)
 
 # from https://antonz.org/page-iterator/
 def paginate(iterable, page_size):
