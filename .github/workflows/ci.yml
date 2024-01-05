@@ -20,7 +20,7 @@ on:
         description: "Reindex packages"
         type: boolean
         required: false
-        default: true
+        default: false
       testbed-pattern:
         description: "Regex search for packages to test"
         type: string
@@ -40,7 +40,12 @@ on:
         description: "Save testbed results to index"
         type: boolean
         required: false
-        default: true
+        default: false
+      production-deploy:
+        description: "Deploy website to production"
+        type: boolean
+        required: false
+        default: false
 
 # GITHUB_TOKEN permissions needed for deployment (copied from website.yml)
 permissions:
@@ -49,7 +54,7 @@ permissions:
   pull-requests: write
   statuses: write
 
-# Permit only 1 concurrent run per bracnh when triggered automatically, cancelling previous ones.
+# Permit only 1 concurrent run per branch when triggered automatically, cancelling previous ones.
 concurrency:
   group: ci/${{ github.event_name == 'workflow_dispatch' && github.run_id || github.ref_name }}
   cancel-in-progress: true
@@ -59,10 +64,19 @@ jobs:
     name: Configure
     runs-on: ubuntu-latest
     outputs:
-      index-repo: ${{ inputs.index-repo || (github.ref_name == 'master' && 'leanprover/reservoir-index' || '') }}
-      run-testbed: ${{ inputs.testbed-size == null && github.ref_name != 'master' || inputs.testbed-size != 0 }}
+      index-repo: ${{ steps.compute.outputs.index-repo }}
+      run-testbed: ${{ steps.compute.outputs.run-testbed }}
+      testbed-size: ${{ steps.compute.outputs.testbed-size }}
+      production-deploy: ${{ steps.compute.outputs.production-deploy }}
     steps:
-      - run: true
+      # We echo these values out to make failures easier to debug from the logs
+      - id: compute
+        name: Compute Configuration
+        run: |
+          echo index-repo=${{ inputs.index-repo || (github.ref_name == 'master' && 'leanprover/reservoir-index' || '') }} >> "$GITHUB_OUTPUT"
+          echo run-testbed=${{ inputs.testbed-size == null && github.ref_name != 'master' || inputs.testbed-size != 0 }} >> "$GITHUB_OUTPUT"
+          echo testbed-size=${{ inputs.testbed-size == null && 20 || inputs.testbed-size }} >> "$GITHUB_OUTPUT"
+          echo production-deploy=${{ inputs.production-deploy || (toJson(inputs.production-deploy) == 'null' && github.ref_name == 'master') }} >> "$GITHUB_OUTPUT"
   index:
     name: Index
     needs: [config]
@@ -82,7 +96,7 @@ jobs:
       index-repo: ${{ needs.config.outputs.index-repo }}
       pattern: ${{ inputs.testbed-pattern || '.*' }}
       toolchain: ${{ inputs.testbed-toolchain || 'latest,package' }}
-      max-size: ${{ inputs.testbed-size == null && 20 || fromJson(inputs.testbed-size) }}
+      max-size: ${{ fromJson(needs.config.outputs.testbed-size) }}
       update-index: ${{ inputs.save-testbed == true }}
       dev: ${{ github.event_name != 'workflow_dispatch' }}
   website:
@@ -95,3 +109,4 @@ jobs:
     with:
       index-repo: ${{ needs.config.outputs.index-repo }}
       testbed-artifact: ${{ !(needs.config.outputs.index-repo && inputs.save-testbed) && needs.config.outputs.run-testbed == 'true' }}
+      production-deploy: ${{ needs.config.outputs.production-deploy == 'true' }}

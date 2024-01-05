@@ -15,6 +15,11 @@ on:
         description: "Augment index with local testbed results"
         type: boolean
         required: false
+      production-deploy:
+        description: "Deploy website to production"
+        type: boolean
+        required: false
+        default: false
       ci:
         description: "Distinguishes a workflow call from a standalone one"
         type: boolean
@@ -28,6 +33,11 @@ on:
         type: string
         required: true
         default: leanprover/reservoir-index
+      production-deploy:
+        description: "Deploy website to production"
+        type: boolean
+        required: false
+        default: false
 
 # Sets permissions of the GITHUB_TOKEN needed for deployment
 permissions:
@@ -36,9 +46,9 @@ permissions:
   pull-requests: write
   statuses: write
 
-# Allow only one concurrent deployment per commit, cancelling previous ones.
+# Allow only one concurrent deployment per commit or per prodcution, cancelling previous ones.
 concurrency:
-  group: website/${{ github.sha }}
+  group: website/${{ inputs.production-deploy && 'prod' || github.sha }}
   cancel-in-progress: true
 
 jobs:
@@ -119,7 +129,7 @@ jobs:
         uses: nwtgck/actions-netlify@v2.0
         with:
           publish-dir: .output/public
-          production-branch: master
+          production-deploy: ${{ inputs.production-deploy == true }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           deploy-message: |
             ${{ github.event_name == 'pull_request' && format('pr#{0}: {1}', github.event.number, github.event.pull_request.title) || format('ref/{0}: {1}', github.ref_name, steps.deploy-info.outputs.message) }}
