@@ -56,3 +56,4 @@ jobs:
     secrets: inherit
     with:
       index-repo: ${{ inputs.index-repo || 'leanprover/reservoir-index' }}
+      production-deploy: true
