@@ -42,7 +42,6 @@ on:
 # Sets permissions of the GITHUB_TOKEN needed for deployment
 permissions:
   contents: read
-  deployments: none # do not allow the Netlify action to produce a deployment
   pull-requests: write
   statuses: write
 
@@ -126,7 +125,7 @@ jobs:
           echo "message=`git log -1 --pretty=format:"%s"`" >> "$GITHUB_OUTPUT"
       - id: publish
         name: Publish to Netlify
-        uses: nwtgck/actions-netlify@v2.0
+        uses: nwtgck/actions-netlify@v2.1.0
         with:
           publish-dir: .output/public
           production-deploy: ${{ inputs.production-deploy == true }}
@@ -135,6 +134,7 @@ jobs:
             ${{ github.event_name == 'pull_request' && format('pr#{0}: {1}', github.event.number, github.event.pull_request.title) || format('ref/{0}: {1}', github.ref_name, steps.deploy-info.outputs.message) }}
           alias: ${{ steps.deploy-info.outputs.alias }}
           enable-commit-comment: false
+          enable-github-deployment: false
           fails-without-credentials: true
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}

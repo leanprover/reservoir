@@ -50,7 +50,6 @@ on:
 # GITHUB_TOKEN permissions needed for deployment (copied from website.yml)
 permissions:
   contents: read
-  deployments: none
   pull-requests: write
   statuses: write
 
