@@ -14,11 +14,6 @@ export default defineNuxtConfig({
     ['nuxt-svgo', {
       autoImportPath: false,
     }],
-    /*
-    TODO: We presently monkey-match critters in `modules/critters.ts`
-    to workaround a issue with Nuxt 3.8.2+'s new Nitro. We can switch back
-    to this once that issue is resolved.
-    https://github.com/nuxt-modules/critters/issues/311
     ['@nuxtjs/critters', {
       config: {
         preload: "swap",
@@ -26,7 +21,6 @@ export default defineNuxtConfig({
         reduceInlineStyles: false, // `true` breaks fonts
       }
     }],
-    */
     ['@nuxtjs/google-fonts', {
       families: {
         'Merriweather': [400, 700],
