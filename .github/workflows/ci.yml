@@ -72,9 +72,15 @@ jobs:
       - id: compute
         name: Compute Configuration
         run: |
-          echo index-repo=${{ inputs.index-repo || (github.ref_name == 'master' && 'leanprover/reservoir-index' || '') }} >> "$GITHUB_OUTPUT"
-          echo run-testbed=${{ inputs.testbed-size == null && github.ref_name != 'master' || inputs.testbed-size != 0 }} >> "$GITHUB_OUTPUT"
+          if ${{ github.event_name == 'pull_request' }}; then
+            echo run-testbed=${{ !contains(github.event.pull_request.labels.*.name, 'no-testbed') }} >> "$GITHUB_OUTPUT"
+          elif ${{ inputs.testbed-size == null }}; then
+            echo run-testbed=${{ github.ref_name != 'master' }} >> "$GITHUB_OUTPUT"
+          else
+            echo run-testbed=${{ inputs.testbed-size != 0  }} >> "$GITHUB_OUTPUT"
+          fi
           echo testbed-size=${{ inputs.testbed-size == null && 20 || inputs.testbed-size }} >> "$GITHUB_OUTPUT"
+          echo index-repo=${{ inputs.index-repo || (github.ref_name == 'master' && 'leanprover/reservoir-index' || '') }} >> "$GITHUB_OUTPUT"
           echo production-deploy=${{ inputs.production-deploy || (toJson(inputs.production-deploy) == 'null' && github.ref_name == 'master') }} >> "$GITHUB_OUTPUT"
   index:
     name: Index
