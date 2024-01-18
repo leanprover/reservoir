@@ -50,7 +50,6 @@ on:
 # GITHUB_TOKEN permissions needed for deployment (copied from website.yml)
 permissions:
   contents: read
-  pull-requests: write
   statuses: write
 
 # Permit only 1 concurrent run per branch when triggered automatically, cancelling previous ones.
