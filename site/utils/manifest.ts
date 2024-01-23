@@ -1,7 +1,9 @@
 import manifest from '../manifest.json'
 
 export interface GitSource {
+  type: 'git'
   gitUrl: string
+  defaultBranch?: string
 }
 
 export interface RepoSource {
@@ -12,6 +14,7 @@ export interface GitHubSource extends GitSource, RepoSource {
   host: 'github'
   id: string
   fullName: string
+  defaultBranch: string
 }
 
 export type Source = GitHubSource

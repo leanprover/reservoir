@@ -69,8 +69,14 @@ const buildsByVer = computed(() => {
   }
   return map
 })
-const baseContentUrl = `https://raw.githubusercontent.com/${pkg.fullName}/HEAD/`
-const { data: readme } = await useFetch<string>(`${baseContentUrl}README.md`)
+
+const baseContentUrl = computed(() => {
+  const githubSrc = pkg.sources.find(src => src.host == 'github')
+  if (!githubSrc) return null
+  return `https://raw.githubusercontent.com/${githubSrc.fullName}/${githubSrc.defaultBranch}/`
+})
+const readmeUrl = computed(() => `${baseContentUrl.value}README.md`)
+const {data: readme} = await useFetch<string>(readmeUrl)
 </script>
 
 <template>
@@ -86,7 +92,7 @@ const { data: readme } = await useFetch<string>(`${baseContentUrl}README.md`)
     </nav>
     <div class="page-body">
       <article class="page-main card">
-        <MarkdownView v-if="readme" :baseUrl="baseContentUrl" prefix="readme:" :value="readme"/>
+        <MarkdownView v-if="baseContentUrl && readme" :baseUrl="baseContentUrl" prefix="readme:" :value="readme"/>
         <div v-else><em>No <code>README.md</code> in repository.</em></div>
       </article>
       <aside>

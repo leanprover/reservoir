@@ -23,6 +23,9 @@ query($repoIds: [ID!]!) {
       url
       homepageUrl
       stargazerCount
+      defaultBranchRef {
+        name
+      }
     }
   }
 }
@@ -122,7 +125,7 @@ if __name__ == "__main__":
     if license in ['NONE', 'NOASSERTION']: license = None
     owner, name = repo['nameWithOwner'].split('/')
     return {
-      'name' : name,
+      'name': name,
       'owner': owner,
       'fullName': repo['nameWithOwner'],
       'description': filter_ws(repo['description']),
@@ -132,11 +135,13 @@ if __name__ == "__main__":
       'updatedAt':  max(repo['updatedAt'], repo['pushedAt']),
       'stars': repo['stargazerCount'],
       'sources': [{
+        'type': 'git',
         'host': 'github',
         'id': repo['id'],
         'fullName': repo['nameWithOwner'],
         'repoUrl': repo['url'],
         'gitUrl': repo['url'],
+        'defaultBranch': repo['defaultBranchRef']['name'],
       }],
     }
 
