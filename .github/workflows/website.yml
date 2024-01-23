@@ -20,7 +20,7 @@ on:
         type: boolean
         required: false
         default: false
-      ci:
+      call:
         description: "Distinguishes a workflow call from a standalone one"
         type: boolean
         required: false
@@ -62,12 +62,12 @@ jobs:
         with:
           name: results
       - name: Download Index Artifact
-        if: (inputs.ci && !inputs.index-repo)
+        if: (inputs.call && !inputs.index-repo)
         uses:  actions/download-artifact@v3
         with:
           name: index
       - name: Download Index Repository
-        if: (inputs.index-repo || !inputs.ci)
+        if: (inputs.index-repo || !inputs.call)
         run: |
           mkdir index
           gh api repos/${{ inputs.index-repo || 'leanprover/reservoir-index' }}/tarball \
@@ -77,7 +77,7 @@ jobs:
       - name: Create Manifest
         run: |
           scripts/bundle.py -o manifest.json \
-            ${{ (inputs.index-repo || !inputs.ci) && 'index' || 'index.json'}} \
+            ${{ (inputs.index-repo || !inputs.call) && 'index' || 'index.json'}} \
             ${{ inputs.testbed-artifact && 'results.json' || '' }}
         env:
           GH_TOKEN: ${{ github.token }}
@@ -112,7 +112,7 @@ jobs:
       - name: Build Site
         run: npm run generate
       - name: Download Index Repository
-        if: (inputs.index-repo || !inputs.ci)
+        if: (inputs.index-repo || !inputs.call)
         run: |
           set -eo pipefail
           mkdir .output/public/index
@@ -139,6 +139,7 @@ jobs:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
       - name: Set Commit Status
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
         uses: myrotvorets/set-commit-status-action@v2.0.0
         with:
           status: success
