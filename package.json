@@ -28,6 +28,7 @@
     "dayjs": "^1.11.10",
     "hast-util-classnames": "^3.0.0",
     "highlight.js": "^11.8.0",
+    "netlify-cli": "^17.15.2",
     "normalize.css": "^8.0.1",
     "nuxt": "~3.9.0",
     "nuxt-svgo": "^4.0.0",
