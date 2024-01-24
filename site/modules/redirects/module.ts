@@ -57,8 +57,8 @@ export const createRedirectContent = (redirect: Redirect) => {
 
   // query params
   if (redirect.query && !isEmptyObject(redirect.query)) {
-    content += Object.keys(redirect.query)
-      .map(k => `${k}=${redirect.query[k]}`)
+    content += Object.entries(redirect.query)
+      .map(([k,v]) => `${k}=${v}`)
       .join('  ')
     content += divider
   }
@@ -74,8 +74,8 @@ export const createRedirectContent = (redirect: Redirect) => {
   // conditions
   if (redirect.conditions && !isEmptyObject(redirect.conditions)) {
     content += divider
-    content += Object.keys(redirect.conditions)
-      .map(k => `${k}=${redirect.conditions[k].join(',')}`)
+    content += Object.entries(redirect.conditions)
+      .map(([k,vs]) => `${k}=${vs.join(',')}`)
       .join('  ')
   }
   return `${content}\n`
