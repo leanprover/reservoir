@@ -28,8 +28,6 @@ on:
 # GITHUB_TOKEN permissions needed for deployment (copied from website.yml)
 permissions:
   contents: read
-  deployments: none
-  pull-requests: write
   statuses: write
 
 jobs:
@@ -38,7 +36,8 @@ jobs:
     uses: ./.github/workflows/index.yml
     secrets: inherit
     with:
-      repository: ${{ inputs.index-repo || 'leanprover/reservoir-index' }}
+      index-repo: ${{ inputs.index-repo || 'leanprover/reservoir-index' }}
+      update-index: true
   testbed:
     needs: index
     name: Testbed

@@ -16,8 +16,8 @@ on:
         type: string
         required: false
         default: leanprover/reservoir-index
-      reindex:
-        description: "Reindex packages"
+      update-index:
+        description: "Update package index"
         type: boolean
         required: false
         default: false
@@ -63,6 +63,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       index-repo: ${{ steps.compute.outputs.index-repo }}
+      reindex: ${{ steps.compute.outputs.reindex }}
       run-testbed: ${{ steps.compute.outputs.run-testbed }}
       testbed-size: ${{ steps.compute.outputs.testbed-size }}
       production-deploy: ${{ steps.compute.outputs.production-deploy }}
@@ -72,28 +73,28 @@ jobs:
         name: Compute Configuration
         run: |
           if ${{ github.event_name == 'pull_request' }}; then
-            if ${{ contains(github.event.pull_request.labels.*.name, 'pr/skip-index') }}; then
-              echo index-repo=leanprover/reservoir-index >> "$GITHUB_OUTPUT"
-            fi
+            echo reindex=${{ !contains(github.event.pull_request.labels.*.name, 'pr/skip-index') }} >> "$GITHUB_OUTPUT"
             echo run-testbed=${{ !contains(github.event.pull_request.labels.*.name, 'pr/skip-testbed') }} >> "$GITHUB_OUTPUT"
           else
-            echo index-repo=${{ inputs.index-repo || (github.ref_name == 'master' && 'leanprover/reservoir-index' || '') }} >> "$GITHUB_OUTPUT"
+            echo reindex=${{ toJson(inputs.update-index) != 'false' }} >> "$GITHUB_OUTPUT"
             if ${{ inputs.testbed-size == null }}; then
               echo run-testbed=${{ github.ref_name != 'master' }} >> "$GITHUB_OUTPUT"
             else
               echo run-testbed=${{ inputs.testbed-size != 0  }} >> "$GITHUB_OUTPUT"
             fi
           fi
+          echo index-repo=${{ inputs.index-repo || 'leanprover/reservoir-index' }} >> "$GITHUB_OUTPUT"
           echo testbed-size=${{ inputs.testbed-size == null && 20 || inputs.testbed-size }} >> "$GITHUB_OUTPUT"
           echo production-deploy=${{ inputs.production-deploy || (toJson(inputs.production-deploy) == 'null' && github.ref_name == 'master') }} >> "$GITHUB_OUTPUT"
   index:
     name: Index
     needs: [config]
-    if: (!needs.config.outputs.index-repo || inputs.reindex)
+    if: needs.config.outputs.reindex == 'true'
     uses: ./.github/workflows/index.yml
     secrets: inherit
     with:
-      repository: ${{ inputs.reindex && inputs.index-repo || '' }}
+      index-repo: ${{ inputs.update-index && needs.config.outputs.index-repo || '' }}
+      update-index: ${{ inputs.update-index == true }}
   testbed:
     needs: [config, index]
     # Run even if `index` is skipped
@@ -103,6 +104,7 @@ jobs:
     secrets: inherit
     with:
       index-repo: ${{ needs.config.outputs.index-repo }}
+      index-artifact: ${{ needs.config.outputs.reindex == 'true' && !inputs.update-index }}
       pattern: ${{ inputs.testbed-pattern || '.*' }}
       toolchain: ${{ inputs.testbed-toolchain || 'latest,package' }}
       max-size: ${{ fromJson(needs.config.outputs.testbed-size) }}
@@ -117,5 +119,6 @@ jobs:
     secrets: inherit
     with:
       index-repo: ${{ needs.config.outputs.index-repo }}
-      testbed-artifact: ${{ !(needs.config.outputs.index-repo && inputs.save-testbed) && needs.config.outputs.run-testbed == 'true' }}
+      index-artifact: ${{ needs.config.outputs.reindex == 'true' && !inputs.update-index }}
+      testbed-artifact: ${{ needs.config.outputs.run-testbed == 'true' && !inputs.save-testbed }}
       production-deploy: ${{ needs.config.outputs.production-deploy == 'true' }}
