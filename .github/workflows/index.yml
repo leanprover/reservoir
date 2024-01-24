@@ -7,47 +7,64 @@ on:
   # Enable running this workflow from ci.yml
   workflow_call:
     inputs:
-      repository:
-        description: "Registry index repository to update"
+      index-repo:
+        description: "Registry index repository"
         type: string
         required: false
+      update-index:
+        description: "Update index"
+        type: boolean
+        required: false
+        default: false
   # Enable running this workflow manually from the Actions tab
   workflow_dispatch:
     inputs:
-      repository:
-        description: "Registry index repository to update"
+      index-repo:
+        description: "Registry index repository"
         type: string
-        required: false
+        required: true
         default: leanprover/reservoir-index
+      update-index:
+        description: "Update index"
+        type: boolean
+        required: false
+        default: false
 
-# Permit only 1 concurrent update of the same index repository, cancelling previous ones.
+# Permit only 1 concurrent update of the same index repository.
 concurrency:
-  group: ${{ inputs.repository && format('index/{0}', inputs.repository) || github.run_id }}
-  cancel-in-progress: true
+  group: ${{ inputs.update-index && format('index/{0}', inputs.index-repo) || github.run_id }}
 
 jobs:
   index:
-    name: ${{ inputs.repository && 'Update' || 'Fetch' }}
+    name: ${{ inputs.update-index && 'Update' || 'Fetch' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Checkout Index Repository
-        if: inputs.repository
+        if: inputs.index-repo && inputs.update-index
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.RESERVOIR_INDEX_TOKEN }}
-          repository: ${{ inputs.repository }}
+          repository: ${{ inputs.index-repo }}
           path: index
+      - name: Download Index Repository
+        if: inputs.index-repo && !inputs.update-index
+        run: |
+          set -eo pipefail
+          mkdir index
+          gh api repos/${{ inputs.index-repo || 'leanprover/reservoir-index' }}/tarball \
+            | tar -xvz -C index --strip-component=1
+        env:
+          GH_TOKEN: ${{ secrets.RESERVOIR_INDEX_TOKEN }}
       - name: Query Repositories
         run: |
-          scripts/index-query.py -v \
-            ${{ inputs.repository && '-D index' || '-o index.json' }} \
-            -L ${{ (!inputs.repository && github.ref_name != 'master') && 100 || -1 }}
+          scripts/index-query.py -v -D index \
+            -L ${{ inputs.update-index && -1 || 100 }}
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Update Index Repository
-        if: inputs.repository
+        if: inputs.index-repo && inputs.update-index
         uses: EndBug/add-and-commit@v9
         with:
           cwd: index
@@ -58,9 +75,9 @@ jobs:
             ${{github.server_url}}/${{github.repository}}/actions/runs/${{github.run_id}}/attempts/${{github.run_attempt}}
           default_author: github_actions
       - name: Upload Index Artifact
-        if: (!inputs.repository)
+        if: (!inputs.update-index)
         uses: actions/upload-artifact@v4
         with:
           name: index
-          path: index.json
+          path: index
           if-no-files-found: error

@@ -11,6 +11,11 @@ on:
         description: "Registry index repository"
         type: string
         required: false
+      index-artifact:
+        description: "Use local artifact for index"
+        type: boolean
+        required: false
+        default: false
       testbed-artifact:
         description: "Augment index with local testbed results"
         type: boolean
@@ -20,11 +25,6 @@ on:
         type: boolean
         required: false
         default: false
-      call:
-        description: "Distinguishes a workflow call from a standalone one"
-        type: boolean
-        required: false
-        default: true
   # Enable running this workflow manually from the Actions tab
   workflow_dispatch:
     inputs:
@@ -62,12 +62,13 @@ jobs:
         with:
           name: results
       - name: Download Index Artifact
-        if: (inputs.call && !inputs.index-repo)
+        if: inputs.index-artifact
         uses:  actions/download-artifact@v4
         with:
           name: index
+          path: index
       - name: Download Index Repository
-        if: (inputs.index-repo || !inputs.call)
+        if: (!inputs.index-artifact)
         run: |
           mkdir index
           gh api repos/${{ inputs.index-repo || 'leanprover/reservoir-index' }}/tarball \
@@ -76,8 +77,7 @@ jobs:
           GH_TOKEN: ${{ secrets.RESERVOIR_INDEX_TOKEN }}
       - name: Create Manifest
         run: |
-          scripts/bundle.py -o manifest.json \
-            ${{ (inputs.index-repo || !inputs.call) && 'index' || 'index.json'}} \
+          scripts/bundle.py -o manifest.json index \
             ${{ inputs.testbed-artifact && 'results.json' || '' }}
         env:
           GH_TOKEN: ${{ github.token }}
@@ -111,16 +111,23 @@ jobs:
         run: npm ci
       - name: Build Site
         run: npm run generate
+      - name: Download Index Artifact
+        if: inputs.index-artifact
+        uses:  actions/download-artifact@v4
+        with:
+          name: index
+          path: .output/public/index
       - name: Download Index Repository
-        if: (inputs.index-repo || !inputs.call)
+        if: (!inputs.index-artifact)
         run: |
           set -eo pipefail
           mkdir .output/public/index
           gh api repos/${{ inputs.index-repo || 'leanprover/reservoir-index' }}/tarball \
             | tar -xvz -C .output/public/index --strip-component=1
-          cp site/manifest.json .output/public/index/manifest.json
         env:
           GH_TOKEN: ${{ secrets.RESERVOIR_INDEX_TOKEN }}
+      - name: Copy Manifest to Site
+        run: cp site/manifest.json .output/public/index/manifest.json
       - id: deploy-info
         name: Compute Deploy Info
         run: |

@@ -11,6 +11,11 @@ on:
         description: "Registry index repository"
         type: string
         required: false
+      index-artifact:
+        description: "Use local artifact for index"
+        type: boolean
+        required: false
+        default: false
       pattern:
         description: "Regex search for packages to test"
         type: string
@@ -29,15 +34,10 @@ on:
         type: boolean
         required: false
       dev:
-        description: "Run optimized for development (uses dev-exclusions)"
+        description: "Optimize for development (uses dev-exclusions)"
         type: boolean
         required: false
         default: false
-      ci:
-        description: "Distinguishes a workflow call from a standalone one"
-        type: boolean
-        required: false
-        default: true
   # Enable running this workflow manually from the Actions tab
   workflow_dispatch:
     inputs:
@@ -77,12 +77,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Download Index Artifact
-        if: (inputs.ci && !inputs.index-repo)
+        if: inputs.index-artifact
         uses: actions/download-artifact@v4
         with:
           name: index
+          path: index
       - name: Download Index Repository
-        if: (inputs.index-repo || !inputs.ci)
+        if: (!inputs.index-artifact)
         run: |
           mkdir index
           gh api repos/${{ inputs.index-repo || 'leanprover/reservoir-index' }}/tarball \
@@ -91,8 +92,7 @@ jobs:
           GH_TOKEN: ${{ secrets.RESERVOIR_INDEX_TOKEN  }}
       - name: Create Matrix
         run: |
-          scripts/testbed-create.py -o matrix.json \
-            ${{ (inputs.index-repo || !inputs.ci) && 'index' || 'index.json' }} \
+          scripts/testbed-create.py index -o matrix.json  \
             -e '${{ inputs.pattern || '.*' }}' \
             -t '${{ inputs.toolchain || 'package' }}'  \
             -n ${{ inputs.max-size == null && 10 || inputs.max-size }} \
