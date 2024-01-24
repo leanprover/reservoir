@@ -175,8 +175,9 @@ if __name__ == "__main__":
         f.write(json.dumps(pkg, indent=2))
         f.write("\n")
 
-  if args.output_manifest is None:
-    print(json.dumps(pkgs, indent=2))
-  else:
+  if args.output_manifest is not None:
     with open(args.output_manifest, 'w') as f:
       f.write(json.dumps(pkgs, indent=2))
+
+  if args.output_manifest is None and args.index_dir is None:
+    print(json.dumps(pkgs, indent=2))
