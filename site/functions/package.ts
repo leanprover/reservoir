@@ -5,7 +5,7 @@ export default async (req: Request, context: Context) => {
   if (!owner || !name) {
     return new Response(null, {status: 404})
   }
-  const path = `${encodeURIComponent(owner)}/${encodeURIComponent(name)}`
+  const path = `${encodeURIComponent(owner.toLowerCase())}/${encodeURIComponent(name.toLowerCase())}`
   const fileUrl = `${new URL(req.url).origin}/index/${path}/metadata.json`
   console.log(`fetch ${fileUrl}`)
   const res = await fetch(fileUrl)

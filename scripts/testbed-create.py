@@ -49,7 +49,7 @@ if __name__ == "__main__":
   exclusions = set()
   for file in args.exclusions:
     with open(file, 'r') as f:
-      for line in f: exclusions.add(line.strip())
+      for line in f: exclusions.add(line.strip().lower())
 
   toolchains = resolve_toolchains(args.toolchain)
   def create_entries(pkgs: 'list[dict[str, any]]'):
@@ -71,7 +71,7 @@ if __name__ == "__main__":
         }
 
   pkgs, _ = load_index(args.index)
-  pkgs = filter(lambda pkg: pkg['fullName'] not in exclusions, pkgs)
+  pkgs = filter(lambda pkg: pkg['fullName'].lower() not in exclusions, pkgs)
   if args.regex is not None:
     r = re.compile(args.regex)
     pkgs = filter(lambda pkg: r.search(pkg['fullName']) is not None, pkgs)

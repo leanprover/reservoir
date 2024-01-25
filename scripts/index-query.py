@@ -223,10 +223,19 @@ if __name__ == "__main__":
       else:
         pkg = enrich_with_manifest(pkg_of_repo(repo))
         pkgMap[repo['id']] = pkg
+      if oldPkg['fullName'] != oldPkg['fullName'].lower():
+        # Ensures correct casing in index (can be removed when standardized)
+        logging.info(f"lowercase: '{oldPkg['fullName']}' -> '{oldPkg['fullName'].lower()}'")
+        old_path = os.path.join(args.index_dir, oldPkg['owner'])
+        new_path = os.path.join(args.index_dir, oldPkg['owner'].lower())
+        if os.path.exists(old_path): os.rename(old_path, new_path)
+        old_path = os.path.join(new_path, oldPkg['name'])
+        new_path = os.path.join(new_path, oldPkg['name'].lower())
+        if os.path.exists(old_path):  os.rename(old_path, new_path)
       if oldPkg['fullName'].lower() != pkg['fullName'].lower():
-        old_path = os.path.join(args.index_dir, oldPkg['owner'], oldPkg['name'])
+        old_path = os.path.join(args.index_dir, oldPkg['owner'].lower(), oldPkg['name'].lower())
         if os.path.isdir(old_path):
-          new_path = os.path.join(args.index_dir, pkg['owner'], pkg['name'])
+          new_path = os.path.join(args.index_dir, pkg['owner'].lower(), pkg['name'].lower())
           if os.path.isdir(new_path):
             logging.info(f"merge: '{oldPkg['fullName']}' -> '{pkg['fullName']}'")
             oldBuilds = load_builds(os.path.join(old_path, 'builds.json'))
@@ -240,13 +249,14 @@ if __name__ == "__main__":
             if os.path.isfile(new_path): os.remove(new_path)
             os.rename(old_path, new_path)
         with open(old_path, 'w') as f:
-          f.write(pkg['fullName'])
+          f.write(pkg['fullName'].lower())
       if repo['nameWithOwner'].lower() != pkg['fullName'].lower():
-        repo_path = os.path.join(args.index_dir, *repo['nameWithOwner'].split('/'))
+        owner, name = repo['nameWithOwner'].split('/')
+        repo_path = os.path.join(args.index_dir, owner.lower(), name.lower())
         if not os.path.exists(repo_path):
           logging.info(f"alias: '{repo['nameWithOwner']}' -> '{pkg['fullName']}'")
           with open(repo_path, 'w') as f:
-            f.write(pkg['fullName'])
+            f.write(pkg['fullName'].lower())
 
   limit = (0 if args.refresh else 100) if args.limit is None else args.limit
   if limit != 0:
@@ -278,7 +288,7 @@ if __name__ == "__main__":
 
   if args.index_dir is not None:
     for pkg in pkgs:
-      pkg_dir = os.path.join(args.index_dir, pkg['owner'], pkg['name'])
+      pkg_dir = os.path.join(args.index_dir, pkg['owner'].lower(), pkg['name'].lower())
       os.makedirs(pkg_dir, exist_ok=True)
       with open(os.path.join(pkg_dir, "metadata.json"), 'w') as f:
         json.dump(pkg, f, indent=2)
