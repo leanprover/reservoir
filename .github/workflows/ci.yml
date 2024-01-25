@@ -64,6 +64,7 @@ jobs:
     outputs:
       index-repo: ${{ steps.compute.outputs.index-repo }}
       reindex: ${{ steps.compute.outputs.reindex }}
+      update-index: ${{ steps.compute.outputs.update-index }}
       run-testbed: ${{ steps.compute.outputs.run-testbed }}
       testbed-size: ${{ steps.compute.outputs.testbed-size }}
       production-deploy: ${{ steps.compute.outputs.production-deploy }}
@@ -76,7 +77,13 @@ jobs:
             echo reindex=${{ !contains(github.event.pull_request.labels.*.name, 'pr/skip-index') }} >> "$GITHUB_OUTPUT"
             echo run-testbed=${{ !contains(github.event.pull_request.labels.*.name, 'pr/skip-testbed') }} >> "$GITHUB_OUTPUT"
           else
-            echo reindex=${{ toJson(inputs.update-index) != 'false' }} >> "$GITHUB_OUTPUT"
+            if ${{ github.event_name == 'push' && github.ref_name == 'master' && contains(github.event.head_commit.message, 'UPDATE-INDEX') }}; then
+              echo reindex=true >> "$GITHUB_OUTPUT"
+              echo update-index=true >> "$GITHUB_OUTPUT"
+            else
+              echo reindex=${{ toJson(inputs.update-index) != 'false' }} >> "$GITHUB_OUTPUT"
+              echo update-index=${{ inputs.update-index == true }} >> "$GITHUB_OUTPUT"
+            fi
             if ${{ inputs.testbed-size == null }}; then
               echo run-testbed=${{ github.ref_name != 'master' }} >> "$GITHUB_OUTPUT"
             else
@@ -93,8 +100,8 @@ jobs:
     uses: ./.github/workflows/index.yml
     secrets: inherit
     with:
-      index-repo: ${{ inputs.update-index && needs.config.outputs.index-repo || '' }}
-      update-index: ${{ inputs.update-index == true }}
+      index-repo: ${{ needs.config.outputs.update-index == 'true' && needs.config.outputs.index-repo || '' }}
+      update-index: ${{ needs.config.outputs.update-index == 'true' }}
   testbed:
     needs: [config, index]
     # Run even if `index` is skipped
@@ -104,7 +111,7 @@ jobs:
     secrets: inherit
     with:
       index-repo: ${{ needs.config.outputs.index-repo }}
-      index-artifact: ${{ needs.config.outputs.reindex == 'true' && !inputs.update-index }}
+      index-artifact: ${{ needs.config.outputs.reindex == 'true' && needs.config.outputs.update-index != 'true' }}
       pattern: ${{ inputs.testbed-pattern || '.*' }}
       toolchain: ${{ inputs.testbed-toolchain || 'latest,package' }}
       max-size: ${{ fromJson(needs.config.outputs.testbed-size) }}
@@ -119,6 +126,6 @@ jobs:
     secrets: inherit
     with:
       index-repo: ${{ needs.config.outputs.index-repo }}
-      index-artifact: ${{ needs.config.outputs.reindex == 'true' && !inputs.update-index }}
+      index-artifact: ${{ needs.config.outputs.reindex == 'true' && needs.config.outputs.update-index != 'true' }}
       testbed-artifact: ${{ needs.config.outputs.run-testbed == 'true' && !inputs.save-testbed }}
       production-deploy: ${{ needs.config.outputs.production-deploy == 'true' }}
