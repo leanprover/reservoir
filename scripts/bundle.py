@@ -20,7 +20,7 @@ if __name__ == "__main__":
 
   configure_logging(args.verbosity)
 
-  pkgs = load_index(args.index, include_builds=True)
+  pkgs, aliases = load_index(args.index, include_builds=True)
   fullPkgs: 'dict[str, any]' = dict()
   for pkg in pkgs:
     fullPkgs[pkg['fullName']] = pkg
@@ -34,7 +34,8 @@ if __name__ == "__main__":
   data = {
     'bundledAt': datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
     'toolchains': query_toolchain_releases(),
-    'packages': list(fullPkgs.values())
+    'packages': list(fullPkgs.values()),
+    'packageAliases': flatten_aliases(aliases),
   }
   if args.output is None:
     print(json.dumps(data, indent=2))

@@ -4,6 +4,7 @@ from typing import TypedDict
 import argparse
 import re
 import os
+import shutil
 import json
 import logging
 import requests
@@ -119,7 +120,9 @@ if __name__ == "__main__":
   script_dir = os.path.dirname(os.path.realpath(__file__))
   default_exclusions = os.path.join(script_dir, "index-exclusions.txt")
   parser = argparse.ArgumentParser()
-  parser.add_argument('-L', '--limit', type=int, default=100,
+  parser.add_argument('-R', '--refresh', action='store_true',
+    help='update existing packages in the index')
+  parser.add_argument('-L', '--limit', type=int, default=None,
     help='(max) number of results to query from GitHub (<= 0 for no limit)')
   parser.add_argument('-X', '--exclusions', default=default_exclusions,
     help='file containing repos to exclude')
@@ -209,16 +212,69 @@ if __name__ == "__main__":
       pkg['fullName'] = f"{pkg['owner']}/{name}"
     return pkg
 
-  repos = query_lake_repos(args.limit)
-  logging.info(f"found {len(repos)} repositories with root lakefiles")
+  pkgMap = dict()
+  if args.index_dir is not None and args.refresh:
+    oldPkgs, _ = load_index(args.index_dir)
+    logging.info(f"found {len(oldPkgs)} existing packages")
+    repoIds = map(lambda pkg: github_repo(pkg)['id'], oldPkgs)
+    for (oldPkg, repo) in zip(oldPkgs, query_repo_data(repoIds)):
+      if repo['id'] in pkgMap:
+        pkg = pkgMap[repo['id']]
+      else:
+        pkg = enrich_with_manifest(pkg_of_repo(repo))
+        pkgMap[repo['id']] = pkg
+      if oldPkg['fullName'].lower() != pkg['fullName'].lower():
+        old_path = os.path.join(args.index_dir, oldPkg['owner'], oldPkg['name'])
+        if os.path.isdir(old_path):
+          new_path = os.path.join(args.index_dir, pkg['owner'], pkg['name'])
+          if os.path.isdir(new_path):
+            logging.info(f"merge: '{oldPkg['fullName']}' -> '{pkg['fullName']}'")
+            oldBuilds = load_builds(os.path.join(old_path, 'builds.json'))
+            newBuilds = load_builds(os.path.join(new_path, 'builds.json'))
+            builds = insert_build_results(oldBuilds, newBuilds)
+            with open(os.path.join(new_path, 'builds.json'), 'w') as f:
+              json.dump(builds, f, indent=2)
+            shutil.rmtree(old_path)
+          else:
+            logging.info(f"rename: '{oldPkg['fullName']}' -> '{pkg['fullName']}'")
+            if os.path.isfile(new_path): os.remove(new_path)
+            os.rename(old_path, new_path)
+        with open(old_path, 'w') as f:
+          f.write(pkg['fullName'])
+      if repo['nameWithOwner'].lower() != pkg['fullName'].lower():
+        repo_path = os.path.join(args.index_dir, *repo['nameWithOwner'].split('/'))
+        if not os.path.exists(repo_path):
+          logging.info(f"alias: '{repo['nameWithOwner']}' -> '{pkg['fullName']}'")
+          with open(repo_path, 'w') as f:
+            f.write(pkg['fullName'])
 
-  repos = query_repo_data(repos)
-  pkgs = map(pkg_of_repo, repos)
-  pkgs = filter(curate, pkgs)
-  pkgs = map(enrich_with_manifest, pkgs)
-  pkgs = sorted(pkgs, key=lambda pkg: pkg['stars'], reverse=True)
-  pkgs = list(pkgs)
-  logging.info(f"found {len(pkgs)} notable OSI-licensed repositories")
+  limit = (0 if args.refresh else 100) if args.limit is None else args.limit
+  if limit != 0:
+    repoIds = query_lake_repos(limit)
+    logging.info(f"found {len(repoIds)} candidate repositories with root lakefiles")
+    repos = query_repo_data(repoIds)
+    if len(pkgMap) != 0:
+      repoMap = dict([repo['id'], repo] for repo in repos)
+      newIds = set(repoMap.keys()).difference(pkgMap.keys())
+      repos = list(map(repoMap.get, newIds))
+      logging.info(f"{len(repos)} candidate repositories not in index")
+    newPkgs = list(map(enrich_with_manifest, filter(curate, map(pkg_of_repo, repos))))
+    note = 'notable new' if len(pkgMap) != 0 else 'notable'
+    logging.info(f"found {len(newPkgs)} {note} OSI-licensed packages")
+  else:
+    newPkgs = list()
+
+  pkgs = itertools.chain(pkgMap.values(), newPkgs)
+  pkgs = list(sorted(pkgs, key=lambda pkg: pkg['stars'], reverse=True))
+  if len(pkgMap) != 0:
+    logging.info(f"indexed {len(pkgs)} total packages")
+
+  if args.output_manifest is not None:
+    with open(args.output_manifest, 'w') as f:
+      json.dump(pkgs, f, indent=2)
+
+  if len(pkgs) == 0:
+    exit(0)
 
   if args.index_dir is not None:
     for pkg in pkgs:

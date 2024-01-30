@@ -70,7 +70,7 @@ if __name__ == "__main__":
           'toolchain': toolchain
         }
 
-  pkgs = load_index(args.index)
+  pkgs, _ = load_index(args.index)
   pkgs = filter(lambda pkg: pkg['fullName'] not in exclusions, pkgs)
   if args.regex is not None:
     r = re.compile(args.regex)
