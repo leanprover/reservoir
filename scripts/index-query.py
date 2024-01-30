@@ -2,6 +2,7 @@
 from utils import *
 from typing import TypedDict
 import argparse
+import re
 import os
 import json
 import logging
@@ -181,12 +182,40 @@ if __name__ == "__main__":
       return license.get('isOsiApproved', False)
     return False
 
+  def github_repo(pkg: Package) -> Source:
+    return next(filter(lambda src: src['host'] == 'github', pkg['sources']), None)
+
+  ghuc = requests.Session()
+  def query_repo_manifest(repo: Source) -> dict | None:
+    url=f"https://raw.githubusercontent.com/{repo['fullName']}/{repo.get('defaultBranch', 'HEAD')}/lake-manifest.json"
+    logging.debug(f"fetching Lake manifest from {url}")
+    response = ghuc.get(url, allow_redirects=True)
+    if response.status_code == 404:
+      return None
+    if response.status_code != 200:
+      raise RuntimeError(f"failed to fetch Lake manifest ({response.status_code})")
+    return json.loads(response.content.decode())
+
+  FRENCH_QUOTE_PATTERN = re.compile('[«»]')
+  def enrich_with_manifest(pkg: Package) -> Package:
+    repo = github_repo(pkg)
+    if repo is None: return pkg
+    manifest = query_repo_manifest(repo)
+    if manifest is None: return pkg
+    name: str | None = manifest.get('name', None)
+    if name is not None:
+      name = FRENCH_QUOTE_PATTERN.sub('', name)
+      pkg['name'] = name
+      pkg['fullName'] = f"{pkg['owner']}/{name}"
+    return pkg
+
   repos = query_lake_repos(args.limit)
   logging.info(f"found {len(repos)} repositories with root lakefiles")
 
   repos = query_repo_data(repos)
   pkgs = map(pkg_of_repo, repos)
   pkgs = filter(curate, pkgs)
+  pkgs = map(enrich_with_manifest, pkgs)
   pkgs = sorted(pkgs, key=lambda pkg: pkg['stars'], reverse=True)
   pkgs = list(pkgs)
   logging.info(f"found {len(pkgs)} notable OSI-licensed repositories")
