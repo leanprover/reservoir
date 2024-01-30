@@ -1,9 +1,11 @@
-from typing import Iterable, TypedDict
+from typing import Iterable, TypeVar, TypedDict
 import itertools
 import json
 import logging
 import os
 import subprocess
+
+T = TypeVar('T')
 
 def configure_logging(verbosity):
   if verbosity == 0:
@@ -14,7 +16,46 @@ def configure_logging(verbosity):
     level = logging.DEBUG
   logging.basicConfig(level=level, format='%(levelname)s: %(message)s')
 
-def load_index(path: str, include_builds=False):
+class Source(TypedDict):
+  type: str
+  host: str
+  id: str
+  fullName: str
+  repoUrl: str
+  gitUrl: str
+  defaultBranch: str
+
+class Build(TypedDict):
+  url: str
+  builtAt: str
+  revision: str
+  toolchain: str
+  requiredUpdate: bool
+  outcome: str
+
+class PackageBase(TypedDict):
+  name: str
+  owner: str
+  fullName: str
+  description: str | None
+  homepage: str | None
+  license: str | None
+  createdAt: str
+  updatedAt: str
+  stars: int
+  sources: list[Source]
+
+class Package(PackageBase, total=False):
+  builds: list[Build]
+
+def load_builds(path: str) -> 'list[Build]':
+  if os.path.exists(path):
+    with open(path, 'r') as f:
+      return json.load(f)
+  else:
+    return list()
+
+def load_index(path: str, include_builds=False) -> 'list[Package]':
   if os.path.isdir(path):
     pkgs = list()
     for owner in os.listdir(path):
@@ -24,12 +65,7 @@ def load_index(path: str, include_builds=False):
         with open(os.path.join(pkg_dir, 'metadata.json'), 'r') as f:
           pkg = json.load(f)
         if include_builds:
-          builds_file = os.path.join(pkg_dir, 'builds.json')
-          if os.path.exists(builds_file):
-            with open(builds_file, 'r') as f:
-              pkg['builds'] = json.load(f)
-          else:
-            pkg['builds'] = list()
+          pkg['builds'] = load_builds(os.path.join(pkg_dir, 'builds.json'))
         pkgs.append(pkg)
     pkgs = sorted(pkgs, key=lambda pkg: pkg['stars'], reverse=True)
   else:
@@ -40,7 +76,7 @@ def load_index(path: str, include_builds=False):
         pkg['builds'] = list()
   return pkgs
 
-def insert_build_results(builds: list, results: 'list[dict]') -> list:
+def insert_build_results(builds: 'list[Build]', results: 'list[Build]') -> 'list[Build]':
   new_builds = list()
   new_results = dict((r['toolchain'], r) for r in results)
   for build in builds:
@@ -57,7 +93,7 @@ def insert_build_results(builds: list, results: 'list[dict]') -> list:
   return sorted(new_builds, key=lambda build: build['toolchain'], reverse=True)
 
 # from https://antonz.org/page-iterator/
-def paginate(iterable, page_size):
+def paginate(iterable: 'Iterable[T]', page_size: int) -> 'Iterable[list[T]]':
   it = iter(iterable)
   slicer = lambda: list(itertools.islice(it, page_size))
   return iter(slicer, [])

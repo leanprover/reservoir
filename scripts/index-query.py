@@ -31,9 +31,28 @@ query($repoIds: [ID!]!) {
 }
 """
 
-def query_repo_data(repoIds: 'list[str]') -> dict:
+class RepoDefaultBranchRef(TypedDict):
+  name: str
+
+class RepoLicense(TypedDict):
+  spdxId: str
+
+class Repo(TypedDict):
+  id: str
+  nameWithOwner: str
+  description: str
+  license: RepoLicense
+  createdAt: str
+  updatedAt: str
+  pushedAt: str
+  url: str
+  homepageUrl: str
+  stargazerCount: int
+  defaultBranchRef: RepoDefaultBranchRef
+
+def query_repo_data(repo_ids: 'Iterable[str]') -> 'list[Repo]':
   results = list()
-  for page in paginate(repoIds, 100):
+  for page in paginate(repo_ids, 100):
     fields = list()
     for id in page:
       fields.append('-f')
@@ -43,7 +62,7 @@ def query_repo_data(repoIds: 'list[str]') -> dict:
       "-H", "X-Github-Next-Global-ID: 1",
       '-f', f'query={REPO_QUERY}', *fields
     )
-    results = results + json.loads(out)['data']['nodes']
+    results += json.loads(out)['data']['nodes']
   return results
 
 # NOTE: GitHub limits code searches to 10 requests/min, which is 1000 results.
@@ -79,7 +98,7 @@ def query_licenses(url=SPDX_DATA_URL):
   logging.debug(f"fetching SPDX license data from {url}")
   response = requests.get(url, allow_redirects=True)
   if response.status_code != 200:
-    RuntimeError(f"failed to fetch SPDX license data ({response.status_code})")
+    raise RuntimeError(f"failed to fetch SPDX license data ({response.status_code})")
   license_list: 'list[License]' = json.loads(response.content.decode())['licenses']
   licenses: 'dict[str, License]' = dict()
   for license in license_list:
@@ -119,7 +138,7 @@ if __name__ == "__main__":
   with open(args.exclusions, 'r') as f:
     for line in f: exclusions.add(line.strip())
 
-  def enrich(repo: dict):
+  def pkg_of_repo(repo: Repo) -> Package:
     license = repo['licenseInfo']
     if license is not None: license = license['spdxId']
     if license in ['NONE', 'NOASSERTION']: license = None
@@ -147,7 +166,7 @@ if __name__ == "__main__":
 
   deprecatedIds = set()
   licenses = query_licenses()
-  def curate(pkg: dict):
+  def curate(pkg: Package):
     if pkg['fullName'] in exclusions or pkg['stars'] <= 1:
       return False
     spdxId = pkg['license']
@@ -166,7 +185,7 @@ if __name__ == "__main__":
   logging.info(f"found {len(repos)} repositories with root lakefiles")
 
   repos = query_repo_data(repos)
-  pkgs = map(enrich, repos)
+  pkgs = map(pkg_of_repo, repos)
   pkgs = filter(curate, pkgs)
   pkgs = sorted(pkgs, key=lambda pkg: pkg['stars'], reverse=True)
   pkgs = list(pkgs)
@@ -177,12 +196,12 @@ if __name__ == "__main__":
       pkg_dir = os.path.join(args.index_dir, pkg['owner'], pkg['name'])
       os.makedirs(pkg_dir, exist_ok=True)
       with open(os.path.join(pkg_dir, "metadata.json"), 'w') as f:
-        f.write(json.dumps(pkg, indent=2))
+        json.dump(pkg, f, indent=2)
         f.write("\n")
 
   if args.output_manifest is not None:
     with open(args.output_manifest, 'w') as f:
-      f.write(json.dumps(pkgs, indent=2))
+      json.dump(pkgs, f, indent=2)
 
   if args.output_manifest is None and args.index_dir is None:
     print(json.dumps(pkgs, indent=2))

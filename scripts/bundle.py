@@ -12,7 +12,13 @@ if __name__ == "__main__":
     help="testbed results")
   parser.add_argument('-o', '--output',
     help='file to output the bundle manifest')
+  parser.add_argument('-q', '--quiet', dest="verbosity", action='store_const', const=0, default=1,
+    help='print no logging information')
+  parser.add_argument('-v', '--verbose', dest="verbosity", action='store_const', const=2,
+    help='print verbose logging information')
   args = parser.parse_args()
+
+  configure_logging(args.verbosity)
 
   pkgs = load_index(args.index, include_builds=True)
   fullPkgs: 'dict[str, any]' = dict()
