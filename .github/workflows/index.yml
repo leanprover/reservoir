@@ -31,10 +31,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout Index Repository
         if: inputs.repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           token: ${{ secrets.RESERVOIR_INDEX_TOKEN }}
           repository: ${{ inputs.repository }}
@@ -59,7 +59,7 @@ jobs:
           default_author: github_actions
       - name: Upload Index Artifact
         if: (!inputs.repository)
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: index
           path: index.json

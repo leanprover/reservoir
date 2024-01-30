@@ -75,10 +75,10 @@ jobs:
       matrix: ${{ steps.output-matrix.outputs.matrix }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Download Index Artifact
         if: (inputs.ci && !inputs.index-repo)
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: index
       - name: Download Index Repository
@@ -100,7 +100,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Upload Matrix
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: matrix
           path: matrix.json
@@ -128,7 +128,7 @@ jobs:
             | sh -s -- -y --default-toolchain ${{ matrix.toolchain || 'none' }}
           echo "$HOME/.elan/bin" >> $GITHUB_PATH
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
       - id: build
@@ -142,7 +142,7 @@ jobs:
         run: test "`jq -r '.outcome' result.json`" = success
         continue-on-error: true # build failures
       - name: Upload Result
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
           path: result.json
@@ -152,9 +152,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Download Individual Results
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           # Without a name, downloads all artifacts
           path: testbed
@@ -165,7 +165,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Upload Results Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: results
           path: testbed/results.json
@@ -180,15 +180,15 @@ jobs:
       group: testbed/${{ inputs.index-repo }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout External Index
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           token: ${{ secrets.RESERVOIR_INDEX_TOKEN }}
           repository: ${{ inputs.index-repo }}
           path: index
       - name: Download Results Artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: results
       - name: Write Results to Index
