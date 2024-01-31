@@ -212,32 +212,34 @@ if __name__ == "__main__":
       pkg['fullName'] = f"{pkg['owner']}/{name}"
     return pkg
 
-  pkgMap = dict()
+  pkg_map = dict()
   if args.index_dir is not None and args.refresh:
-    oldPkgs, _ = load_index(args.index_dir)
-    logging.info(f"found {len(oldPkgs)} existing packages")
-    repoIds = map(lambda pkg: github_repo(pkg)['id'], oldPkgs)
-    for (oldPkg, repo) in zip(oldPkgs, query_repo_data(repoIds)):
-      if repo['id'] in pkgMap:
-        pkg = pkgMap[repo['id']]
+    old_pkgs, aliases = load_index(args.index_dir)
+    logging.info(f"found {len(old_pkgs)} existing packages")
+    repo_ids = map(lambda pkg: github_repo(pkg)['id'], old_pkgs)
+    for (oldPkg, repo) in zip(old_pkgs, query_repo_data(repo_ids)):
+      if repo['id'] in pkg_map:
+        pkg = pkg_map[repo['id']]
       else:
         pkg = enrich_with_manifest(pkg_of_repo(repo))
-        pkgMap[repo['id']] = pkg
-      if oldPkg['fullName'] != oldPkg['fullName'].lower():
+        pkg_map[repo['id']] = pkg
+      old_pathname = oldPkg['fullName'].lower()
+      new_pathname = pkg['fullName'].lower()
+      if oldPkg['fullName'] != old_pathname:
         # Ensures correct casing in index (can be removed when standardized)
-        logging.info(f"lowercase: '{oldPkg['fullName']}' -> '{oldPkg['fullName'].lower()}'")
+        logging.info(f"lowercase: '{oldPkg['fullName']}' -> '{new_pathname}'")
         old_path = os.path.join(args.index_dir, oldPkg['owner'])
         new_path = os.path.join(args.index_dir, oldPkg['owner'].lower())
         if os.path.exists(old_path): os.rename(old_path, new_path)
         old_path = os.path.join(new_path, oldPkg['name'])
         new_path = os.path.join(new_path, oldPkg['name'].lower())
         if os.path.exists(old_path):  os.rename(old_path, new_path)
-      if oldPkg['fullName'].lower() != pkg['fullName'].lower():
+      if old_pathname != new_pathname:
         old_path = os.path.join(args.index_dir, oldPkg['owner'].lower(), oldPkg['name'].lower())
         if os.path.isdir(old_path):
           new_path = os.path.join(args.index_dir, pkg['owner'].lower(), pkg['name'].lower())
           if os.path.isdir(new_path):
-            logging.info(f"merge: '{oldPkg['fullName']}' -> '{pkg['fullName']}'")
+            logging.info(f"merge: '{old_pathname}' -> '{new_pathname}'")
             oldBuilds = load_builds(os.path.join(old_path, 'builds.json'))
             newBuilds = load_builds(os.path.join(new_path, 'builds.json'))
             builds = insert_build_results(oldBuilds, newBuilds)
@@ -245,54 +247,70 @@ if __name__ == "__main__":
               json.dump(builds, f, indent=2)
             shutil.rmtree(old_path)
           else:
-            logging.info(f"rename: '{oldPkg['fullName']}' -> '{pkg['fullName']}'")
-            if os.path.isfile(new_path): os.remove(new_path)
+            logging.info(f"rename: '{old_pathname}' -> '{new_pathname}'")
+            if os.path.isfile(new_path):
+              os.remove(new_path)
+              del aliases[new_pathname]
             os.rename(old_path, new_path)
-        with open(old_path, 'w') as f:
-          f.write(pkg['fullName'].lower())
-      if repo['nameWithOwner'].lower() != pkg['fullName'].lower():
+        aliases[old_pathname] = new_pathname
+      alias = repo['nameWithOwner'].lower()
+      if alias not in aliases and alias != new_pathname:
         owner, name = repo['nameWithOwner'].split('/')
         repo_path = os.path.join(args.index_dir, owner.lower(), name.lower())
         if not os.path.exists(repo_path):
-          logging.info(f"alias: '{repo['nameWithOwner']}' -> '{pkg['fullName']}'")
-          with open(repo_path, 'w') as f:
-            f.write(pkg['fullName'].lower())
+          logging.info(f"alias: '{alias}' -> '{new_pathname}'")
+          aliases[alias] = new_pathname
+  else:
+    aliases = dict()
 
   limit = (0 if args.refresh else 100) if args.limit is None else args.limit
   if limit != 0:
-    repoIds = query_lake_repos(limit)
-    logging.info(f"found {len(repoIds)} candidate repositories with root lakefiles")
-    repos = query_repo_data(repoIds)
-    if len(pkgMap) != 0:
+    repo_ids = query_lake_repos(limit)
+    logging.info(f"found {len(repo_ids)} candidate repositories with root lakefiles")
+    repos = query_repo_data(repo_ids)
+    if len(pkg_map) != 0:
       repoMap = dict([repo['id'], repo] for repo in repos)
-      newIds = set(repoMap.keys()).difference(pkgMap.keys())
+      newIds = set(repoMap.keys()).difference(pkg_map.keys())
       repos = list(map(repoMap.get, newIds))
       logging.info(f"{len(repos)} candidate repositories not in index")
     newPkgs = list(map(enrich_with_manifest, filter(curate, map(pkg_of_repo, repos))))
-    note = 'notable new' if len(pkgMap) != 0 else 'notable'
+    note = 'notable new' if len(pkg_map) != 0 else 'notable'
     logging.info(f"found {len(newPkgs)} {note} OSI-licensed packages")
   else:
     newPkgs = list()
 
-  pkgs = itertools.chain(pkgMap.values(), newPkgs)
+  pkgs = itertools.chain(pkg_map.values(), newPkgs)
   pkgs = list(sorted(pkgs, key=lambda pkg: pkg['stars'], reverse=True))
-  if len(pkgMap) != 0:
+  if len(pkg_map) != 0:
     logging.info(f"indexed {len(pkgs)} total packages")
 
   if args.output_manifest is not None:
     with open(args.output_manifest, 'w') as f:
       json.dump(pkgs, f, indent=2)
 
-  if len(pkgs) == 0:
-    exit(0)
-
   if args.index_dir is not None:
     for pkg in pkgs:
       pkg_dir = os.path.join(args.index_dir, pkg['owner'].lower(), pkg['name'].lower())
+      if os.path.isfile(pkg_dir):
+        os.remove(pkg_dir)
+        alias = f"{pkg['owner'].lower()}/{pkg['name'].lower()}"
+        del aliases[alias]
       os.makedirs(pkg_dir, exist_ok=True)
       with open(os.path.join(pkg_dir, "metadata.json"), 'w') as f:
         json.dump(pkg, f, indent=2)
         f.write("\n")
+    flatten_aliases(aliases)
+    for alias, target in aliases.items():
+      owner, name = alias.split('/')
+      owner_dir = os.path.join(args.index_dir, owner)
+      alias_path = os.path.join(owner_dir, name)
+      if os.path.isdir(alias_path):
+        logging.warning(f"package located at '{alias}': could not write alias '{alias}' -> '{target}'")
+      else:
+        os.makedirs(owner_dir, exist_ok=True)
+        with open(alias_path, 'w') as f:
+          f.write(target)
+          f.write("\n")
 
   if args.output_manifest is not None:
     with open(args.output_manifest, 'w') as f:
