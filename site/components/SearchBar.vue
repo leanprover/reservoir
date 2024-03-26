@@ -128,9 +128,8 @@ const commit = (event: Event, clickedPkg?: Package) => {
 
   .search-button {
     cursor: pointer;
-    padding: 0 0.3em;
     height: 1.3em;
-    flex: 0 0 auto;
+    width: 2em;
 
     &:focus {
       outline: none
