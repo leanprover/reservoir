@@ -9,6 +9,10 @@ import json
 import logging
 import requests
 
+# ===
+# Index Utilities
+# ===
+
 REPO_QUERY="""
 query($repoIds: [ID!]!) {
   nodes(ids: $repoIds) {
@@ -43,7 +47,7 @@ class Repo(TypedDict):
   id: str
   nameWithOwner: str
   description: str
-  license: RepoLicense
+  licenseInfo: RepoLicense
   createdAt: str
   updatedAt: str
   pushedAt: str
@@ -107,14 +111,101 @@ def query_licenses(url=SPDX_DATA_URL):
     licenses[license['licenseId']] = license
   return licenses
 
+def filter_license(license: RepoLicense | None) -> str | None:
+  if license is None: return None
+  if license['spdxId'] in ['NONE', 'NOASSERTION']: return None
+  return license['spdxId']
+
 def filter_falsy(value):
   return value if value else None
 
 def filter_ws(value: str | None):
-  value: str | None = value
   if value is not None:
     value = filter_falsy(value.strip())
   return value
+
+class Manifest(TypedDict, total=False):
+  name: str
+
+GH_SESSION = requests.Session()
+def query_repo_manifest(repo: Repo) -> Manifest | None:
+  url=f"https://raw.githubusercontent.com/{repo['nameWithOwner']}/{repo['defaultBranchRef']['name']}/lake-manifest.json"
+  logging.debug(f"fetching Lake manifest from {url}")
+  response = GH_SESSION.get(url, allow_redirects=True)
+  if response.status_code == 404:
+    return None
+  if response.status_code != 200:
+    raise RuntimeError(f"failed to fetch Lake manifest ({response.status_code})")
+  return json.loads(response.content.decode())
+
+FRENCH_QUOTE_PATTERN = re.compile('[«»]')
+def enrich_with_manifest(pkg: Package, manifest: Manifest) -> Package:
+  name = manifest.get('name', None)
+  if name is not None:
+    name = FRENCH_QUOTE_PATTERN.sub('', name)
+    pkg['name'] = name
+    pkg['fullName'] = f"{pkg['owner']}/{name}"
+  return pkg
+
+def github_repo(pkg: Package) -> Source | None:
+  return next(filter(lambda src: src['host'] == 'github', pkg['sources']), None)
+
+def github_repo_id(pkg: Package) -> str | None:
+  repo = github_repo(pkg)
+  return None if repo is None else repo['id']
+
+def src_of_repo(repo: Repo) -> Source:
+  return {
+    'type': 'git',
+    'host': 'github',
+    'id': repo['id'],
+    'fullName': repo['nameWithOwner'],
+    'repoUrl': repo['url'],
+    'gitUrl': repo['url'],
+    'defaultBranch': repo['defaultBranchRef']['name'],
+  }
+
+def pkg_of_repo(repo: Repo) -> Package:
+  owner, name = repo['nameWithOwner'].split('/')
+  return {
+    'name': name,
+    'owner': owner,
+    'fullName': repo['nameWithOwner'],
+    'description': filter_ws(repo['description']),
+    'homepage': filter_ws(repo['homepageUrl']),
+    'license': filter_license(repo['licenseInfo']),
+    'createdAt': repo['createdAt'],
+    'updatedAt': max(repo['updatedAt'], repo['pushedAt']),
+    'stars': repo['stargazerCount'],
+    'sources': [src_of_repo(repo)],
+  }
+
+def enriched_pkg_of_repo(repo: Repo) -> Package:
+  pkg = pkg_of_repo(repo)
+  manifest = query_repo_manifest(repo)
+  if manifest is not None: pkg = enrich_with_manifest(pkg, manifest)
+  return pkg
+
+deprecatedIds = set()
+licenses = query_licenses()
+def curate(repo: Repo):
+  if repo['nameWithOwner'] in exclusions or repo['stargazerCount'] <= 1:
+    return False
+  spdxId = filter_license(repo['licenseInfo'])
+  if spdxId is not None:
+    license = licenses[spdxId]
+    if license is None:
+      logging.error(f"unknown SPDX ID '{spdxId}'")
+      return False
+    if license.get('isDeprecatedLicenseId', False) and spdxId not in deprecatedIds:
+      logging.warning(f"GitHub is using deprecated SPDX ID '{spdxId}'")
+      deprecatedIds.add(spdxId)
+    return license.get('isOsiApproved', False)
+  return False
+
+# ===
+# Main Processing
+# ===
 
 if __name__ == "__main__":
   script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -123,7 +214,7 @@ if __name__ == "__main__":
   parser.add_argument('-R', '--refresh', action='store_true',
     help='update existing packages in the index')
   parser.add_argument('-L', '--limit', type=int, default=None,
-    help='(max) number of results to query from GitHub (<= 0 for no limit)')
+    help='(max) number of results to query from GitHub (< 0 for no limit)')
   parser.add_argument('-X', '--exclusions', default=default_exclusions,
     help='file containing repos to exclude')
   parser.add_argument('-o', '--output-manifest',
@@ -142,98 +233,23 @@ if __name__ == "__main__":
   with open(args.exclusions, 'r') as f:
     for line in f: exclusions.add(line.strip())
 
-  def pkg_of_repo(repo: Repo) -> Package:
-    license = repo['licenseInfo']
-    if license is not None: license = license['spdxId']
-    if license in ['NONE', 'NOASSERTION']: license = None
-    owner, name = repo['nameWithOwner'].split('/')
-    return {
-      'name': name,
-      'owner': owner,
-      'fullName': repo['nameWithOwner'],
-      'description': filter_ws(repo['description']),
-      'homepage': filter_ws(repo['homepageUrl']),
-      'license': license,
-      'createdAt': repo['createdAt'],
-      'updatedAt':  max(repo['updatedAt'], repo['pushedAt']),
-      'stars': repo['stargazerCount'],
-      'sources': [{
-        'type': 'git',
-        'host': 'github',
-        'id': repo['id'],
-        'fullName': repo['nameWithOwner'],
-        'repoUrl': repo['url'],
-        'gitUrl': repo['url'],
-        'defaultBranch': repo['defaultBranchRef']['name'],
-      }],
-    }
-
-  deprecatedIds = set()
-  licenses = query_licenses()
-  def curate(pkg: Package):
-    if pkg['fullName'] in exclusions or pkg['stars'] <= 1:
-      return False
-    spdxId = pkg['license']
-    if spdxId is not None:
-      license = licenses[spdxId]
-      if license is None:
-        logging.error(f"unknown SPDX ID '{spdxId}'")
-        return False
-      if license.get('isDeprecatedLicenseId', False) and spdxId not in deprecatedIds:
-        logging.warning(f"GitHub is using deprecated SPDX ID '{spdxId}'")
-        deprecatedIds.add(spdxId)
-      return license.get('isOsiApproved', False)
-    return False
-
-  def github_repo(pkg: Package) -> Source:
-    return next(filter(lambda src: src['host'] == 'github', pkg['sources']), None)
-
-  ghuc = requests.Session()
-  def query_repo_manifest(repo: Source) -> dict | None:
-    url=f"https://raw.githubusercontent.com/{repo['fullName']}/{repo.get('defaultBranch', 'HEAD')}/lake-manifest.json"
-    logging.debug(f"fetching Lake manifest from {url}")
-    response = ghuc.get(url, allow_redirects=True)
-    if response.status_code == 404:
-      return None
-    if response.status_code != 200:
-      raise RuntimeError(f"failed to fetch Lake manifest ({response.status_code})")
-    return json.loads(response.content.decode())
-
-  FRENCH_QUOTE_PATTERN = re.compile('[«»]')
-  def enrich_with_manifest(pkg: Package) -> Package:
-    repo = github_repo(pkg)
-    if repo is None: return pkg
-    manifest = query_repo_manifest(repo)
-    if manifest is None: return pkg
-    name: str | None = manifest.get('name', None)
-    if name is not None:
-      name = FRENCH_QUOTE_PATTERN.sub('', name)
-      pkg['name'] = name
-      pkg['fullName'] = f"{pkg['owner']}/{name}"
-    return pkg
+  # ---
+  # Refresh Index
+  # ---
 
   pkg_map = dict()
   if args.index_dir is not None and args.refresh:
     old_pkgs, aliases = load_index(args.index_dir)
     logging.info(f"found {len(old_pkgs)} existing packages")
-    repo_ids = map(lambda pkg: github_repo(pkg)['id'], old_pkgs)
+    repo_ids = filter(None, map(github_repo_id, old_pkgs))
     for (oldPkg, repo) in zip(old_pkgs, query_repo_data(repo_ids)):
       if repo['id'] in pkg_map:
         pkg = pkg_map[repo['id']]
       else:
-        pkg = enrich_with_manifest(pkg_of_repo(repo))
+        pkg = enriched_pkg_of_repo(repo)
         pkg_map[repo['id']] = pkg
       old_pathname = oldPkg['fullName'].lower()
       new_pathname = pkg['fullName'].lower()
-      if oldPkg['fullName'] != old_pathname:
-        # Ensures correct casing in index (can be removed when standardized)
-        logging.info(f"lowercase: '{oldPkg['fullName']}' -> '{new_pathname}'")
-        old_path = os.path.join(args.index_dir, oldPkg['owner'])
-        new_path = os.path.join(args.index_dir, oldPkg['owner'].lower())
-        if os.path.exists(old_path): os.rename(old_path, new_path)
-        old_path = os.path.join(new_path, oldPkg['name'])
-        new_path = os.path.join(new_path, oldPkg['name'].lower())
-        if os.path.exists(old_path):  os.rename(old_path, new_path)
       if old_pathname != new_pathname:
         old_path = os.path.join(args.index_dir, oldPkg['owner'].lower(), oldPkg['name'].lower())
         if os.path.isdir(old_path):
@@ -263,21 +279,29 @@ if __name__ == "__main__":
   else:
     aliases = dict()
 
+  # ---
+  # Query New Repos
+  # ---
+
   limit = (0 if args.refresh else 100) if args.limit is None else args.limit
   if limit != 0:
     repo_ids = query_lake_repos(limit)
     logging.info(f"found {len(repo_ids)} candidate repositories with root lakefiles")
     repos = query_repo_data(repo_ids)
     if len(pkg_map) != 0:
-      repoMap = dict([repo['id'], repo] for repo in repos)
+      repoMap = dict((repo['id'], repo) for repo in repos)
       newIds = set(repoMap.keys()).difference(pkg_map.keys())
-      repos = list(map(repoMap.get, newIds))
+      repos = list(map(repoMap.__getitem__, newIds))
       logging.info(f"{len(repos)} candidate repositories not in index")
-    newPkgs = list(map(enrich_with_manifest, filter(curate, map(pkg_of_repo, repos))))
+    newPkgs = list(map(enriched_pkg_of_repo, filter(curate, repos)))
     note = 'notable new' if len(pkg_map) != 0 else 'notable'
     logging.info(f"found {len(newPkgs)} {note} OSI-licensed packages")
   else:
     newPkgs = list()
+
+  # ---
+  # Output Results
+  # ---
 
   pkgs = itertools.chain(pkg_map.values(), newPkgs)
   pkgs = list(sorted(pkgs, key=lambda pkg: pkg['stars'], reverse=True))
