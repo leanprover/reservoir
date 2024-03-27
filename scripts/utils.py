@@ -61,6 +61,7 @@ def load_index(path: str, include_builds=False) -> 'Tuple[list[Package], dict[st
     pkgs: 'list[Package]' = list()
     for owner in os.listdir(path):
       owner_dir = os.path.join(path, owner)
+      if (owner.startswith('.')): continue
       for pkg in os.listdir(owner_dir):
         pkg_path = os.path.join(owner_dir, pkg)
         if os.path.isdir(pkg_path):
