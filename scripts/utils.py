@@ -1,4 +1,4 @@
-from typing import Iterable, TypeVar, TypedDict
+from typing import Iterable, Tuple, TypeVar, TypedDict
 import itertools
 import json
 import logging
@@ -55,18 +55,23 @@ def load_builds(path: str) -> 'list[Build]':
   else:
     return list()
 
-def load_index(path: str, include_builds=False) -> 'list[Package]':
+def load_index(path: str, include_builds=False) -> 'Tuple[list[Package], dict[str,str]]':
+  aliases = dict()
   if os.path.isdir(path):
-    pkgs = list()
+    pkgs: 'list[Package]' = list()
     for owner in os.listdir(path):
       owner_dir = os.path.join(path, owner)
       for pkg in os.listdir(owner_dir):
-        pkg_dir = os.path.join(owner_dir, pkg)
-        with open(os.path.join(pkg_dir, 'metadata.json'), 'r') as f:
-          pkg = json.load(f)
-        if include_builds:
-          pkg['builds'] = load_builds(os.path.join(pkg_dir, 'builds.json'))
-        pkgs.append(pkg)
+        pkg_path = os.path.join(owner_dir, pkg)
+        if os.path.isdir(pkg_path):
+          with open(os.path.join(pkg_path, 'metadata.json'), 'r') as f:
+            pkg: Package = json.load(f)
+          if include_builds:
+            pkg['builds'] = load_builds(os.path.join(pkg_path, 'builds.json'))
+          pkgs.append(pkg)
+        else:
+          with open(pkg_path, 'r') as f:
+            aliases[f"{owner}/{pkg}"] = f.read().strip()
     pkgs = sorted(pkgs, key=lambda pkg: pkg['stars'], reverse=True)
   else:
     with open(path, 'r') as f:
@@ -74,7 +79,23 @@ def load_index(path: str, include_builds=False) -> 'list[Package]':
     if include_builds:
       for pkg in pkgs:
         pkg['builds'] = list()
-  return pkgs
+  return pkgs, aliases
+
+# assumes aliases are acyclic; mutates the input
+def flatten_aliases(aliases: 'dict[T, T]') -> 'dict[T, T]':
+  def follow(parents: 'list[T]', target: T):
+    if target in aliases:
+      parents.append(target)
+      follow(parents, aliases[target])
+    else:
+      for parent in parents:
+        aliases[parent] = target
+  parents = list()
+  for alias, target in aliases.items():
+    parents.append(alias)
+    follow(parents, target)
+    parents.clear()
+  return aliases
 
 def insert_build_results(builds: 'list[Build]', results: 'list[Build]') -> 'list[Build]':
   new_builds = list()

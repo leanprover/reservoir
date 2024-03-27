@@ -43,8 +43,13 @@ export interface Package {
 }
 
 export const packages = manifest.packages as Package[]
+export const packageAliases = new Map<string, string>(Object.entries(manifest.packageAliases))
 export const latestToolchain: string = manifest.toolchains[0]
 
-export const pkgLink = (pkg: Package) => {
-  return `/@${encodeURIComponent(pkg.owner)}/${encodeURIComponent(pkg.name)}`
+export function rawPkgLink(owner: string, name: string) {
+  return `/@${encodeURIComponent(owner)}/${encodeURIComponent(name)}`
+}
+
+export function pkgLink(pkg: Package) {
+  return rawPkgLink(pkg.owner, pkg.name)
 }

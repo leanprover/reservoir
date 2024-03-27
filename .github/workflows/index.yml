@@ -59,7 +59,7 @@ jobs:
           GH_TOKEN: ${{ secrets.RESERVOIR_INDEX_TOKEN }}
       - name: Query Repositories
         run: |
-          scripts/index-query.py -v -D index \
+          scripts/index-query.py -v -D index -R \
             -L ${{ inputs.update-index && -1 || 100 }}
         env:
           GH_TOKEN: ${{ github.token }}

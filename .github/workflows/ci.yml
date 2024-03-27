@@ -100,7 +100,7 @@ jobs:
     uses: ./.github/workflows/index.yml
     secrets: inherit
     with:
-      index-repo: ${{ needs.config.outputs.update-index == 'true' && needs.config.outputs.index-repo || '' }}
+      index-repo: ${{ needs.config.outputs.index-repo }}
       update-index: ${{ needs.config.outputs.update-index == 'true' }}
   testbed:
     needs: [config, index]
