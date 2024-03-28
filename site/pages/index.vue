@@ -47,9 +47,15 @@ defineOgImage({
               <span>Get Started with Lean</span>
             </a>
           </div>
-          <div class="blurb">
-            <p>Reservoir indexes, builds, and tests packages within the Lean and Lake ecosystem.</p>
-          </div>
+          <p class="blurb">
+            <span>
+              Reservoir indexes, builds, and tests packages within the Lean and Lake ecosystem.
+            </span>
+            <span>
+              If you wish to see your package here, ensure that it meets the
+              <NuxtLink class="hard-link" to="inclusion-criteria">Reservoir inclusion criteria</NuxtLink>.
+            </span>
+          </p>
         </div>
         <div class="highlights">
           <HighlightCategory title="Most Popular" :list="popular" :to="{path: '/packages', query: {sort: 'stars'}}"/>
@@ -170,6 +176,11 @@ defineOgImage({
     .blurb {
       @media only screen and (max-width: 600px) {
         text-align: center;
+      }
+
+      @media only screen and (min-width: 960px) {
+        display: flex;
+        flex-wrap: wrap;
       }
     }
   }
