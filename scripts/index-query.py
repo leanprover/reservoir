@@ -74,7 +74,7 @@ def query_repo_data(repo_ids: 'Iterable[str]') -> 'list[Repo]':
 # NOTE: GitHub limits code searches to 10 requests/min, which is 1000 results.
 # Thus, the strategy used here will need to change when we hit that limit.
 def query_lake_repos(limit: int) -> 'list[str]':
-  query='filename:lakefile.lean path:/'
+  query='filename:lake-manifest.json path:/'
   if limit <= 0:
     out = capture_cmd(
       'gh', 'api', 'search/code',
@@ -286,7 +286,7 @@ if __name__ == "__main__":
   limit = (0 if args.refresh else 100) if args.limit is None else args.limit
   if limit != 0:
     repo_ids = query_lake_repos(limit)
-    logging.info(f"found {len(repo_ids)} candidate repositories with root lakefiles")
+    logging.info(f"found {len(repo_ids)} candidate repositories with root Lake manifests")
     repos = query_repo_data(repo_ids)
     if len(pkg_map) != 0:
       repoMap = dict((repo['id'], repo) for repo in repos)
