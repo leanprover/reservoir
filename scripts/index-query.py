@@ -74,7 +74,7 @@ def query_repo_data(repo_ids: 'Iterable[str]') -> 'list[Repo]':
 # NOTE: GitHub limits code searches to 10 requests/min, which is 1000 results.
 # Thus, the strategy used here will need to change when we hit that limit.
 def query_lake_repos(limit: int) -> 'list[str]':
-  query='filename:lakefile.lean path:/'
+  query='filename:lake-manifest.json path:/'
   if limit <= 0:
     out = capture_cmd(
       'gh', 'api', 'search/code',
