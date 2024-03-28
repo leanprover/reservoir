@@ -194,4 +194,11 @@ header {
     }
   }
 }
+
+.page-header {
+  padding: 1em;
+  background-color: var(--medium-color);
+  border-radius: 6px;
+  margin-bottom: 1em;
+}
 </style>

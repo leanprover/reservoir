@@ -59,9 +59,17 @@ const resultPage = computed(() => {
     </div>
     <div class="no-results" v-if="numResults === 0">
       <h3>
-        <span>0 packages found. </span>
-        <a href="https://lean-lang.org/lean4/doc/quickstart.html">Get started</a>
-        <span> to create your own!</span>
+        <p>
+          <span>0 packages found. </span>
+          <span>
+            <a class="hard-link" href="https://lean-lang.org/lean4/doc/quickstart.html">Get started</a>
+            to create your own!
+          </span>
+        </p>
+        <p>
+          Your package not here? Verify that your package meets the
+          <NuxtLink class="hard-link" to="inclusion-criteria">Reservoir inclusion criteria</NuxtLink>.
+        </p>
       </h3>
     </div>
     <div v-else class="results">
@@ -98,28 +106,17 @@ const resultPage = computed(() => {
 .search-page {
   max-width: 100vw;
 
-  .page-header {
-    padding: 1em;
-    background-color: var(--medium-color);
-    border-radius: 6px;
-    margin-bottom: 1em;
-
-    .query {
-      color: var(--dark-color);
-    }
+  .page-header .query {
+    color: var(--dark-color);
   }
 
   .no-results {
     margin-top: 2em;
 
-    a {
-      color: var(--dark-accent-color);
-
-      &:hover {
-        color: var(--light-accent-color);
-      }
+    p {
+      margin-bottom: 1em;
     }
-}
+  }
 
   .results {
     .results-header {
