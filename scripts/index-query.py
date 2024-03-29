@@ -186,23 +186,6 @@ def enriched_pkg_of_repo(repo: Repo) -> Package:
   if manifest is not None: pkg = enrich_with_manifest(pkg, manifest)
   return pkg
 
-deprecatedIds = set()
-licenses = query_licenses()
-def curate(repo: Repo):
-  if repo['nameWithOwner'] in exclusions or repo['stargazerCount'] <= 1:
-    return False
-  spdxId = filter_license(repo['licenseInfo'])
-  if spdxId is not None:
-    license = licenses[spdxId]
-    if license is None:
-      logging.error(f"unknown SPDX ID '{spdxId}'")
-      return False
-    if license.get('isDeprecatedLicenseId', False) and spdxId not in deprecatedIds:
-      logging.warning(f"GitHub is using deprecated SPDX ID '{spdxId}'")
-      deprecatedIds.add(spdxId)
-    return license.get('isOsiApproved', False)
-  return False
-
 # ===
 # Main Processing
 # ===
@@ -282,6 +265,23 @@ if __name__ == "__main__":
   # ---
   # Query New Repos
   # ---
+
+  deprecatedIds = set()
+  licenses = query_licenses()
+  def curate(repo: Repo):
+    if repo['nameWithOwner'] in exclusions or repo['stargazerCount'] <= 1:
+      return False
+    spdxId = filter_license(repo['licenseInfo'])
+    if spdxId is not None:
+      license = licenses[spdxId]
+      if license is None:
+        logging.error(f"unknown SPDX ID '{spdxId}'")
+        return False
+      if license.get('isDeprecatedLicenseId', False) and spdxId not in deprecatedIds:
+        logging.warning(f"GitHub is using deprecated SPDX ID '{spdxId}'")
+        deprecatedIds.add(spdxId)
+      return license.get('isOsiApproved', False)
+    return False
 
   limit = (0 if args.refresh else 100) if args.limit is None else args.limit
   if limit != 0:

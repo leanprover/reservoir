@@ -59,11 +59,11 @@ def load_index(path: str, include_builds=False) -> 'Tuple[list[Package], dict[st
   aliases = dict()
   if os.path.isdir(path):
     pkgs: 'list[Package]' = list()
-    for owner in os.listdir(path):
-      owner_dir = os.path.join(path, owner)
-      if (owner.startswith('.')): continue
-      for pkg in os.listdir(owner_dir):
-        pkg_path = os.path.join(owner_dir, pkg)
+    for owner_dir in os.listdir(path):
+      if (owner_dir.startswith('.')): continue
+      owner_path = os.path.join(path, owner_dir)
+      for pkg_dir in os.listdir(owner_path):
+        pkg_path = os.path.join(owner_path, pkg_dir)
         if os.path.isdir(pkg_path):
           with open(os.path.join(pkg_path, 'metadata.json'), 'r') as f:
             pkg: Package = json.load(f)
@@ -72,7 +72,7 @@ def load_index(path: str, include_builds=False) -> 'Tuple[list[Package], dict[st
           pkgs.append(pkg)
         else:
           with open(pkg_path, 'r') as f:
-            aliases[f"{owner}/{pkg}"] = f.read().strip()
+            aliases[f"{owner_dir}/{pkg_dir}"] = f.read().strip()
     pkgs = sorted(pkgs, key=lambda pkg: pkg['stars'], reverse=True)
   else:
     with open(path, 'r') as f:
