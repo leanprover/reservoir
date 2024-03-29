@@ -5,7 +5,7 @@ import PassIcon from '~icons/mdi/check'
 import { Tippy } from 'vue-tippy'
 
 const props = defineProps<{build?: Build | null, markOutdated?: boolean}>()
-const build = computed<Partial<Build>>(() => props.build || {});
+const build = computed<Build | {[_ in keyof Build]?: undefined}>(() => props.build || {});
 
 const outcomeIcon = computed(() => {
   switch (build.value.outcome) {
@@ -18,7 +18,10 @@ const outcomeIcon = computed(() => {
   }
 })
 
-const outdated = computed(() => build.value.toolchain != latestToolchain);
+const outdated = computed(() => {
+  const buildToolchain = toolchains.find(t => t.name == build.value.toolchain)
+  return !buildToolchain || new Date(buildToolchain.date).getTime() < latestCutoff
+});
 
 const outcomeClass = computed(() => {
   switch (build.value.outcome) {
@@ -45,12 +48,12 @@ const outcomeClass = computed(() => {
   <template #content>
     <div class="tooltip">
       <span v-if="build.outcome == 'success'">
-        Commit {{build.revision.slice(0, 9)}} builds on
-        the {{ outdated ? 'old' : 'latest' }} {{build.toolchain}}
+        Commit {{build.revision.slice(0, 7)}} builds on
+        the {{ outdated ? 'old' : 'recent' }} {{build.toolchain}}
         <span v-if="build.requiredUpdate">after <code>lake update</code></span>
       </span>
       <span v-else-if="build.outcome == 'failure'">
-        Commit {{build.revision.slice(0, 9)}} fails to build on {{build.toolchain}}
+        Commit {{build.revision.slice(0, 7)}} fails to build on {{build.toolchain}}
       </span>
       <span v-else>
         <span class="line">Build data not currently included on Reservoir. </span>

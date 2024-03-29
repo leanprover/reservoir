@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from utils import *
 from typing import TypedDict
-from datetime import datetime
 import json
 import re
 import argparse
@@ -12,17 +11,17 @@ class Job(TypedDict):
   name: str
 
 TESTBED_REPO = "leanprover/reservoir"
-def query_jobs(run_id: int, run_attempt: int = 1) -> 'list[Job]':
+def query_jobs(repo, run_id: int, run_attempt: int = 1) -> 'list[Job]':
   out = capture_cmd(
     'gh', 'api', '--paginate',
-    f"repos/{TESTBED_REPO}/actions/runs/{run_id}/attempts/{run_attempt}/jobs",
+    f"repos/{repo}/actions/runs/{run_id}/attempts/{run_attempt}/jobs",
     '-q', '.jobs[] | {id,name}'
   )
   return list(map(json.loads, out.splitlines()))
 
-BUILD_RE = re.compile("Build (.*)")
+BUILD_JOB_PATTERN = re.compile("Build (.*)")
 def is_build_job(job: Job, name: str):
-  match = BUILD_RE.search(job['name'])
+  match = BUILD_JOB_PATTERN.search(job['name'])
   return match is not None and match.group(1) == name
 
 if __name__ == "__main__":
@@ -52,7 +51,7 @@ if __name__ == "__main__":
   with open(matrix_file, 'r') as f:
     matrix = json.load(f)
 
-  jobs = query_jobs(args.run_id, args.run_attempt)
+  jobs = query_jobs(TESTBED_REPO, args.run_id, args.run_attempt)
   def find_build_job(name: str) -> Job:
     return next(job for job in jobs if is_build_job(job, name))
 
@@ -61,7 +60,7 @@ if __name__ == "__main__":
     jobId = find_build_job(entry['buildName'])['id']
     result = {
       'url': f"https://github.com/{TESTBED_REPO}/actions/runs/{args.run_id}/job/{jobId}#step:4:1",
-      'builtAt': datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+      'builtAt': utc_iso_now(),
     }
     result_file = os.path.join(args.results, entry['artifact'], 'result.json')
     if not os.path.exists(result_file):

@@ -57,17 +57,17 @@ const formatLicense = (id: string | null) => {
   }
 }
 
-const buildsByVer = computed(() => {
+const toolchainBuilds = computed(() => {
   const map = pkg.builds.reduce((map, build) => {
     if (!map.has(build.toolchain)) {
       map.set(build.toolchain, build)
     }
     return map;
   }, new Map<string, Build | null>())
-  if (!map.has(latestToolchain)) {
-    map.set(latestToolchain, null)
+  if (!map.has(latestToolchain.name)) {
+    map.set(latestToolchain.name, null)
   }
-  return map
+  return Array(...map.entries())
 })
 
 const baseContentUrl = computed(() => {
@@ -113,9 +113,9 @@ const {data: readme} = await useFetch<string>(readmeUrl)
         <div>
           <h3>Lean</h3>
           <ul>
-            <li v-for="entry in buildsByVer.entries()">
-              <BuildOutcome class="icon" :build="entry[1]"/>
-              {{ entry[0].split(':')[1] }}
+            <li v-for="[toolchain, build] in toolchainBuilds">
+              <BuildOutcome class="icon" :build="build"/>
+              {{ toolchain.split(':')[1] }}
             </li>
           </ul>
         </div>
@@ -176,6 +176,7 @@ const {data: readme} = await useFetch<string>(readmeUrl)
 
       aside {
         max-width: 15em;
+        flex: 0 0 auto;
       }
 
       .page-main {

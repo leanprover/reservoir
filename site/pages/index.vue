@@ -39,8 +39,8 @@ defineOgImage({
         <div class="intro">
           <div class="top-line">
             <div class="toolchain">
-              <h4 class="label">Latest Lean Toolchain:</h4>
-              <span class="name">{{ latestToolchain }}</span>
+              <h4 class="label">Latest Lean Stable:</h4>
+              <a :href="latestStableToolchain.releaseUrl" class="name">{{ latestStableToolchain.name }}</a>
             </div>
             <a class="get-started" href="https://lean-lang.org/lean4/doc/quickstart.html">
               <GetStartedIcon class="prefix icon"/>
