@@ -5,7 +5,7 @@ const pkg = computed(() => props.pkg)
 const src = computed(() => pkg.value.sources.find(src => src.repoUrl))
 const build = computed(() =>
   pkg.value.builds.find(b => b.outcome == "success") ??
-  pkg.value.builds.find(b => b.toolchain === latestToolchain)
+  pkg.value.builds.find(b => b.toolchain === latestToolchain.name)
 )
 </script>
 

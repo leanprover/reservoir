@@ -7,29 +7,6 @@ import json
 import itertools
 import argparse
 
-NIGHTLY_REPO='leanprover/lean4-nightly'
-def resolve_toolchain(toolchain: str):
-  toolchain = toolchain.strip()
-  if len(toolchain) == 0 or toolchain == 'package':
-    return None
-  elif toolchain == 'stable':
-    releases = filter(lambda r: not r['prerelease'], query_releases())
-    return f"{DEFAULT_ORIGIN}:{next(releases)['tag']}"
-  elif toolchain == 'nightly':
-    releases = query_releases(NIGHTLY_REPO, paginate=False)
-    return f"{DEFAULT_ORIGIN}:{next(releases)['tag']}"
-  elif toolchain == 'latest':
-    releases = query_releases(paginate=False)
-    return f"{DEFAULT_ORIGIN}:{next(releases)['tag']}"
-  else:
-    return normalize_toolchain(toolchain)
-
-def resolve_toolchains(toolchains: 'list[str]') -> 'set[str | None]':
-  if len(toolchains) == 0:
-    return set([None])
-  else:
-    return set(resolve_toolchain(t) for ts in toolchains for t in ts.split(','))
-
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument('index',
@@ -52,7 +29,7 @@ if __name__ == "__main__":
       for line in f: exclusions.add(line.strip().lower())
 
   toolchains = resolve_toolchains(args.toolchain)
-  def create_entries(pkgs: 'list[dict[str, any]]'):
+  def create_entries(pkgs: 'Iterable[Package]'):
     for pkg in pkgs:
       src = next(filter(lambda src: 'gitUrl' in src, pkg['sources']))
       for toolchain in toolchains:

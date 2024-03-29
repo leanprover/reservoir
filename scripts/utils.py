@@ -1,5 +1,7 @@
-from typing import Iterable, Tuple, TypeVar, TypedDict
+from typing import overload, Iterator, Literal, Union, Iterable, Tuple, TypeVar, TypedDict
+from datetime import datetime, timezone
 import itertools
+import re
 import json
 import logging
 import os
@@ -48,6 +50,9 @@ class PackageBase(TypedDict):
 class Package(PackageBase, total=False):
   builds: list[Build]
 
+class PackageWithBuilds(PackageBase):
+  builds: list[Build]
+
 def load_builds(path: str) -> 'list[Build]':
   if os.path.exists(path):
     with open(path, 'r') as f:
@@ -55,7 +60,16 @@ def load_builds(path: str) -> 'list[Build]':
   else:
     return list()
 
-def load_index(path: str, include_builds=False) -> 'Tuple[list[Package], dict[str,str]]':
+@overload
+def load_index(path: str) -> 'Tuple[list[Package], dict[str,str]]': ...
+
+@overload
+def load_index(path: str, include_builds: Literal[False]) -> 'Tuple[list[Package], dict[str,str]]': ...
+
+@overload
+def load_index(path: str, include_builds: Literal[True]) -> 'Tuple[list[PackageWithBuilds], dict[str,str]]': ...
+
+def load_index(path: str, include_builds=False) -> 'Tuple[Union[list[Package], list[PackageWithBuilds]], dict[str,str]]':
   aliases = dict()
   if os.path.isdir(path):
     pkgs: 'list[Package]' = list()
@@ -115,7 +129,7 @@ def insert_build_results(builds: 'list[Build]', results: 'list[Build]') -> 'list
   return sorted(new_builds, key=lambda build: build['toolchain'], reverse=True)
 
 # from https://antonz.org/page-iterator/
-def paginate(iterable: 'Iterable[T]', page_size: int) -> 'Iterable[list[T]]':
+def paginate(iterable: 'Iterable[T]', page_size: int) -> 'Iterator[list[T]]':
   it = iter(iterable)
   slicer = lambda: list(itertools.islice(it, page_size))
   return iter(slicer, [])
@@ -142,21 +156,50 @@ def capture_cmd(*args: str) -> bytes:
 DEFAULT_ORIGIN = 'leanprover/lean4'
 
 class Release(TypedDict):
-  tag: str
+  tag_name: str
+  created_at: str
+  html_url: str
   prerelease: bool
 
-def query_releases(repo=DEFAULT_ORIGIN, paginate=True) -> 'Iterable[Release]':
+def query_releases(repo=DEFAULT_ORIGIN, paginate=True) -> 'Iterator[Release]':
   out = capture_cmd(
     'gh', 'api',
     '--cache', '1h',
     f'repos/{repo}/releases',
     *(['--paginate'] if paginate else []),
-    '-q', '.[] | {tag: .tag_name, prerelease: .prerelease}'
+    '-q', '.[]'
   )
   return map(json.loads, out.decode().splitlines())
 
-def query_toolchain_releases(repo=DEFAULT_ORIGIN):
-  return [f"{repo}:{release['tag']}" for release in query_releases(repo)]
+class Toolchain(TypedDict):
+  name: str
+  version: int | None
+  tag: str
+  date: str
+  releaseUrl: str
+  prerelease: bool
+
+def utc_iso_now():
+  return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+def of_utc_iso(iso: str) -> datetime:
+  return datetime.strptime(iso, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+
+TOOLCHAIN_VER_PATTERN = re.compile("v4\\.(\\d+)\\..*")
+def query_toolchains(repo=DEFAULT_ORIGIN) -> 'list[Toolchain]':
+  def toolchain_of_release(rel: Release) -> Toolchain:
+    match = TOOLCHAIN_VER_PATTERN.search(rel['tag_name'])
+    version = int(match.group(1)) if match is not None else None
+    return {
+      "name": f"{repo}:{rel['tag_name']}",
+      "version": version,
+      "tag": rel['tag_name'],
+      "date": rel['created_at'],
+      "releaseUrl": rel['html_url'],
+      "prerelease": rel['prerelease']
+    }
+  toolchains = map(toolchain_of_release, query_releases(repo))
+  return sorted(toolchains, key=lambda t: of_utc_iso(t['date']), reverse=True)
 
 def normalize_toolchain(toolchain: str):
   parts = toolchain.split(':')
@@ -169,3 +212,26 @@ def normalize_toolchain(toolchain: str):
   if ver[0].isdecimal():
     ver = f'v{ver}'
   return f'{origin}:{ver}'
+
+NIGHTLY_REPO='leanprover/lean4-nightly'
+def resolve_toolchain(toolchain: str):
+  toolchain = toolchain.strip()
+  if len(toolchain) == 0 or toolchain == 'package':
+    return None
+  elif toolchain == 'stable':
+    releases = filter(lambda r: not r['prerelease'], query_releases())
+    return f"{DEFAULT_ORIGIN}:{next(releases)['tag_name']}"
+  elif toolchain == 'nightly':
+    releases = query_releases(NIGHTLY_REPO, paginate=False)
+    return f"{DEFAULT_ORIGIN}:{next(releases)['tag_name']}"
+  elif toolchain == 'latest':
+    releases = query_releases(paginate=False)
+    return f"{DEFAULT_ORIGIN}:{next(releases)['tag_name']}"
+  else:
+    return normalize_toolchain(toolchain)
+
+def resolve_toolchains(toolchains: 'list[str]') -> 'set[str | None]':
+  if len(toolchains) == 0:
+    return set([None])
+  else:
+    return set(resolve_toolchain(t) for ts in toolchains for t in ts.split(','))
