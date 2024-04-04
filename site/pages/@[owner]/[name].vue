@@ -64,10 +64,11 @@ const toolchainBuilds = computed(() => {
     }
     return map;
   }, new Map<string, Build | null>())
+  const entries = Array(...map.entries())
   if (!map.has(latestToolchain.name)) {
-    map.set(latestToolchain.name, null)
+    entries.unshift([latestToolchain.name, null])
   }
-  return Array(...map.entries())
+  return entries
 })
 
 const baseContentUrl = computed(() => {
