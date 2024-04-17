@@ -87,12 +87,9 @@ jobs:
           name: manifest
           path: manifest.json
           if-no-files-found: error
-  deploy:
+  build:
     needs: bundle
-    name: Deploy
-    environment:
-      name: netlify
-      url: ${{ steps.publish.outputs.deploy-url }}
+    name: Build Site
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -106,7 +103,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: npm
       - name: Install Node Modules
         run: npm ci
       - name: Build Site
@@ -116,18 +113,46 @@ jobs:
         uses:  actions/download-artifact@v4
         with:
           name: index
-          path: .output/public/index
+          path: dist/index
       - name: Download Index Repository
         if: (!inputs.index-artifact)
         run: |
           set -eo pipefail
-          mkdir .output/public/index
+          mkdir dist/index
           gh api repos/${{ inputs.index-repo || 'leanprover/reservoir-index' }}/tarball \
-            | tar -xvz -C .output/public/index --strip-component=1
+            | tar -xvz -C dist/index --strip-component=1
         env:
           GH_TOKEN: ${{ secrets.RESERVOIR_INDEX_TOKEN }}
       - name: Copy Manifest to Site
-        run: cp site/manifest.json .output/public/index/manifest.json
+        run: cp site/manifest.json dist/index/manifest.json
+      - name: Upload Site
+        uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: dist
+          if-no-files-found: error
+  deploy: # separate job, so it can be restarted without rebuilding
+    needs: build
+    name: Deploy Site
+    environment:
+      name: netlify
+      url: ${{ steps.publish.outputs.deploy-url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Download Site
+        uses: actions/download-artifact@v4
+        with:
+          name: site
+          path: dist
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install Node Modules
+        run: npm ci --ignore-scripts
       - id: deploy-info
         name: Compute Deploy Info
         run: |
@@ -137,7 +162,7 @@ jobs:
       - id: publish
         name: Publish to Netlify
         run: |
-          npx netlify-cli deploy --json --dir=.output/public --functions=site/functions --skip-functions-cache \
+          npx netlify-cli deploy --json --dir=dist --functions=site/functions --skip-functions-cache \
             ${{ inputs.production-deploy && '--prod' || format('--alias={0}', steps.deploy-info.outputs.alias) }} \
             --message '${{ github.event_name == 'pull_request' && format('pr#{0}: {1}', github.event.number, github.event.pull_request.title) || format('ref/{0}: {1}', github.ref_name, steps.deploy-info.outputs.message) }}' \
             > deploy.json
