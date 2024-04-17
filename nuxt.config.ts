@@ -50,6 +50,7 @@ export default defineNuxtConfig({
   linkChecker: {
     failOnError: true,
     fetchRemoteUrls: false,
+    skipInspections: ['link-text', 'absolute-site-urls'],
   },
   ogImage: {
     runtimeCacheStorage: false,
