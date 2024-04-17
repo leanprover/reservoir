@@ -15,7 +15,7 @@
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "postinstall": "nuxt prepare && patch-package"
   },
   "devDependencies": {
     "@iconify-json/mdi": "^1.1.54",
@@ -51,5 +51,8 @@
     "unist-util-visit": "^5.0.0",
     "unplugin-icons": "^0.18.0",
     "vue-tippy": "^6.3.1"
+  },
+  "dependencies": {
+    "patch-package": "^8.0.0"
   }
 }
