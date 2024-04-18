@@ -12,6 +12,7 @@
         <li>
           <b>Public GitHub source repository.</b>
           Reservoir does not index forks or private repositories.
+          Repositories generated from a template are considered forks.
         </li>
         <li>
           <b>A root <code>lake-manifest.json</code>.</b>
