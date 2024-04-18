@@ -120,6 +120,7 @@ jobs:
         include: ${{ fromJson(needs.setup.outputs.matrix) }}
       # complete all jobs
       fail-fast: false
+    continue-on-error: true # e.g., upload/download failures
     steps:
       - name: Install Elan
         shell: bash -euo pipefail {0}
