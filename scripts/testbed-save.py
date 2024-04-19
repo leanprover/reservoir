@@ -20,12 +20,14 @@ if __name__ == "__main__":
   configure_logging(args.verbosity)
 
   with open(args.results) as f:
-    results = json.load(f)
+    results: 'dict[str, list[Build]]' = json.load(f)
 
+  did_error = False
   for (full_name, pkg_results) in results.items():
-    pkg_dir = os.path.join(args.index, full_name)
+    pkg_dir = os.path.join(args.index, full_name.lower())
     if not os.path.exists(pkg_dir):
       logging.error(f"{full_name}: build save failed: {pkg_dir} does not exist")
+      did_error = True
       continue
     builds_file = os.path.join(pkg_dir, 'builds.json')
     if os.path.exists(builds_file):
@@ -37,3 +39,6 @@ if __name__ == "__main__":
     with open(builds_file, 'w') as f:
       f.write(json.dumps(builds, indent=2))
       f.write('\n')
+
+  if did_error:
+    exit(1)
