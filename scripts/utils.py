@@ -157,7 +157,7 @@ DEFAULT_ORIGIN = 'leanprover/lean4'
 
 class Release(TypedDict):
   tag_name: str
-  created_at: str
+  published_at: str
   html_url: str
   prerelease: bool
 
@@ -194,7 +194,7 @@ def query_toolchains(repo=DEFAULT_ORIGIN) -> 'list[Toolchain]':
       "name": f"{repo}:{rel['tag_name']}",
       "version": version,
       "tag": rel['tag_name'],
-      "date": rel['created_at'],
+      "date": rel['published_at'],
       "releaseUrl": rel['html_url'],
       "prerelease": rel['prerelease']
     }
