@@ -32,6 +32,11 @@ query($repoIds: [ID!]!) {
       defaultBranchRef {
         name
       }
+      lakeManifest: object(expression: "HEAD:lake-manifest.json") {
+        ... on Blob {
+          text
+        }
+      }
     }
   }
 }
@@ -43,11 +48,14 @@ class RepoDefaultBranchRef(TypedDict):
 class RepoLicense(TypedDict):
   spdxId: str
 
+class RepoLakeManifest(TypedDict):
+  text: str
+
 class Repo(TypedDict):
   id: str
   nameWithOwner: str
   description: str
-  licenseInfo: RepoLicense
+  licenseInfo: RepoLicense | None
   createdAt: str
   updatedAt: str
   pushedAt: str
@@ -55,6 +63,7 @@ class Repo(TypedDict):
   homepageUrl: str
   stargazerCount: int
   defaultBranchRef: RepoDefaultBranchRef
+  lakeManifest: RepoLakeManifest | None
 
 def query_repo_data(repo_ids: 'Iterable[str]') -> 'list[Repo]':
   results = list()
@@ -124,29 +133,6 @@ def filter_ws(value: str | None):
     value = filter_falsy(value.strip())
   return value
 
-class Manifest(TypedDict, total=False):
-  name: str
-
-GH_SESSION = requests.Session()
-def query_repo_manifest(repo: Repo) -> Manifest | None:
-  url=f"https://raw.githubusercontent.com/{repo['nameWithOwner']}/{repo['defaultBranchRef']['name']}/lake-manifest.json"
-  logging.debug(f"fetching Lake manifest from {url}")
-  response = GH_SESSION.get(url, allow_redirects=True)
-  if response.status_code == 404:
-    return None
-  if response.status_code != 200:
-    raise RuntimeError(f"failed to fetch Lake manifest ({response.status_code})")
-  return json.loads(response.content.decode())
-
-FRENCH_QUOTE_PATTERN = re.compile('[«»]')
-def enrich_with_manifest(pkg: Package, manifest: Manifest) -> Package:
-  name = manifest.get('name', None)
-  if name is not None:
-    name = FRENCH_QUOTE_PATTERN.sub('', name)
-    pkg['name'] = name
-    pkg['fullName'] = f"{pkg['owner']}/{name}"
-  return pkg
-
 def github_repo(pkg: Package) -> Source | None:
   return next(filter(lambda src: src['host'] == 'github', pkg['sources']), None)
 
@@ -165,9 +151,13 @@ def src_of_repo(repo: Repo) -> Source:
     'defaultBranch': repo['defaultBranchRef']['name'],
   }
 
+class Manifest(TypedDict, total=False):
+  name: str
+
+FRENCH_QUOTE_PATTERN = re.compile('[«»]')
 def pkg_of_repo(repo: Repo) -> Package:
   owner, name = repo['nameWithOwner'].split('/')
-  return {
+  pkg: Package = {
     'name': name,
     'owner': owner,
     'fullName': repo['nameWithOwner'],
@@ -179,11 +169,16 @@ def pkg_of_repo(repo: Repo) -> Package:
     'stars': repo['stargazerCount'],
     'sources': [src_of_repo(repo)],
   }
-
-def enriched_pkg_of_repo(repo: Repo) -> Package:
-  pkg = pkg_of_repo(repo)
-  manifest = query_repo_manifest(repo)
-  if manifest is not None: pkg = enrich_with_manifest(pkg, manifest)
+  if repo['lakeManifest'] is not None:
+    try:
+      manifest: Manifest = json.loads(repo['lakeManifest']['text'])
+      name = manifest.get('name', None)
+      if name is not None:
+        name = FRENCH_QUOTE_PATTERN.sub('', name)
+        pkg['name'] = name
+        pkg['fullName'] = f"{pkg['owner']}/{name}"
+    except json.JSONDecodeError:
+      pass
   return pkg
 
 # ===
@@ -229,8 +224,7 @@ if __name__ == "__main__":
       if repo['id'] in pkg_map:
         pkg = pkg_map[repo['id']]
       else:
-        pkg = enriched_pkg_of_repo(repo)
-        pkg_map[repo['id']] = pkg
+        pkg = pkg_map[repo['id']] = pkg_of_repo(repo)
       old_pathname = oldPkg['fullName'].lower()
       new_pathname = pkg['fullName'].lower()
       if old_pathname != new_pathname:
@@ -283,6 +277,7 @@ if __name__ == "__main__":
       return license.get('isOsiApproved', False)
     return False
 
+  newPkgs: list[Package] = list()
   limit = (0 if args.refresh else 100) if args.limit is None else args.limit
   if limit != 0:
     repo_ids = query_lake_repos(limit)
@@ -293,11 +288,9 @@ if __name__ == "__main__":
       newIds = set(repoMap.keys()).difference(pkg_map.keys())
       repos = list(map(repoMap.__getitem__, newIds))
       logging.info(f"{len(repos)} candidate repositories not in index")
-    newPkgs = list(map(enriched_pkg_of_repo, filter(curate, repos)))
+    newPkgs = list(map(pkg_of_repo, filter(curate, repos)))
     note = 'notable new' if len(pkg_map) != 0 else 'notable'
     logging.info(f"found {len(newPkgs)} {note} OSI-licensed packages")
-  else:
-    newPkgs = list()
 
   # ---
   # Output Results
