@@ -44,7 +44,7 @@ permissions:
   contents: read
   statuses: write
 
-# Allow only one concurrent deployment per commit or per prodcution, cancelling previous ones.
+# Allow only one concurrent deployment per commit or per production, cancelling previous ones.
 concurrency:
   group: website/${{ inputs.production-deploy && 'prod' || github.sha }}
   cancel-in-progress: true

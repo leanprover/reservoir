@@ -178,7 +178,7 @@ jobs:
     runs-on: ubuntu-latest
     # Permit only 1 concurrent update of the same index repository.
     concurrency:
-      group: testbed/${{ inputs.index-repo }}
+      group: update-index/${{ inputs.index-repo }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
