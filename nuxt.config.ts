@@ -10,7 +10,7 @@ export default defineNuxtConfig({
   },
   modules: [
     'unplugin-icons/nuxt',
-    '@nuxtseo/module',
+    '@nuxtjs/seo',
     ['nuxt-svgo', {
       autoImportPath: false,
     }],
