@@ -4,6 +4,7 @@ export interface GitSource {
   type: 'git'
   gitUrl: string
   defaultBranch?: string
+  subDir?: string
 }
 
 export interface RepoSource {
@@ -56,7 +57,7 @@ export const packageAliases = new Map<string, string>(Object.entries(manifest.pa
 export const toolchains = manifest.toolchains as Toolchain[]
 export const latestToolchain = toolchains[0]
 export const latestStableToolchain = toolchains.find(t => !t.prerelease) ?? latestToolchain
-export const oldestStableVerToolchain = toolchains.findLast(t => t.version == latestStableToolchain.version)
+export const oldestStableVerToolchain = toolchains.findLast(t => t.version == latestStableToolchain.version) ?? latestToolchain
 export const latestCutoff = new Date(oldestStableVerToolchain.date).getTime()
 
 export function rawPkgLink(owner: string, name: string) {
