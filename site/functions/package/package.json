@@ -1,0 +1,6 @@
+{
+  "type": "module",
+  "dependencies": {
+    "@netlify/functions": "^2.8.0"
+  }
+}
