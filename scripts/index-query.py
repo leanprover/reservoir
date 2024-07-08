@@ -244,7 +244,7 @@ if __name__ == "__main__":
             if os.path.isfile(new_path):
               os.remove(new_path)
               del aliases[new_pathname]
-            os.rename(old_path, new_path)
+            os.renames(old_path, new_path)
         aliases[old_pathname] = new_pathname
       alias = repo['nameWithOwner'].lower()
       if alias not in aliases and alias != new_pathname:
