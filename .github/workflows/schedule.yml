@@ -13,12 +13,12 @@ on:
         description: "Registry index repository"
         type: string
         required: false
-        default: leanprover/reservoir-test-index
+        default: leanprover/reservoir-index
       testbed-size:
         description: "Max number of testbed entries"
         type: number
         required: false
-        default: 10
+        default: 256
       testbed-toolchain:
         description: "Lean toolchain(s) to test against"
         type: string
