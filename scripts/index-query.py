@@ -39,6 +39,9 @@ query($repoIds: [ID!]!) {
       }
     }
   }
+  rateLimit {
+    cost
+  }
 }
 """
 
@@ -65,38 +68,69 @@ class Repo(TypedDict):
   defaultBranchRef: RepoDefaultBranchRef
   lakeManifest: RepoLakeManifest | None
 
-def query_repo_data(repo_ids: 'Iterable[str]') -> 'list[Repo]':
-  results = list()
-  for page in paginate(repo_ids, 100):
-    fields = list()
-    for id in page:
-      fields.append('-f')
-      fields.append(f'repoIds[]={id}')
-    out = capture_cmd(
-      'gh', 'api', 'graphql',
-      "-H", "X-Github-Next-Global-ID: 1",
-      '-f', f'query={REPO_QUERY}', *fields
-    )
-    results += json.loads(out)['data']['nodes']
-  return results
+GH_TOKEN = os.environ['GH_TOKEN']
+GH_API_SESSION = requests.Session()
+GH_API_HEADERS = {
+  "User-Agent": "Reservoir",
+  "Accept":"application/vnd.github+json",
+  "Authorization": f"Bearer {GH_TOKEN}",
+  "X-GitHub-Api-Version": "2022-11-28",
+  "X-Github-Next-Global-ID": "1",
+}
 
-# NOTE: GitHub limits code searches to 10 requests/min, which is 1000 results.
-# Thus, the strategy used here will need to change when we hit that limit.
-def query_lake_repos(limit: int) -> 'list[str]':
-  query='filename:lake-manifest.json path:/'
-  if limit <= 0:
-    out = capture_cmd(
-      'gh', 'api', 'search/code',
-      '--paginate', '--cache', '1h',
-      '-X', 'GET', '-f', f'q={query}',
-      '-q', '.items[] | .repository.node_id'
-    )
+def query_github_api(endpoint: str, fields: dict | None = None, method="GET") -> dict:
+  url=f"https://api.github.com/{endpoint}"
+  if method == "GET":
+    resp = GH_API_SESSION.get(url, params=fields, headers=GH_API_HEADERS)
   else:
-    out = capture_cmd(
-      'gh', 'search', 'code', *query.split(' '), '-L', str(limit),
-      '--json', 'path,repository', '-q', '.[] | .repository.id'
-    )
-  return out.decode().splitlines()
+    resp = GH_API_SESSION.post(url, data=json.dumps(fields), headers=GH_API_HEADERS)
+  resource = resp.headers['x-ratelimit-resource']
+  usage = f"{resp.headers['x-ratelimit-used']}/{resp.headers['x-ratelimit-limit']}"
+  reset = int(resp.headers['x-ratelimit-reset'])
+  reset = datetime.fromtimestamp(reset).astimezone().strftime("%Y-%m-%d %I:%M:%S %p %z")
+  logging.debug(f"GitHub API usage: {usage} of {resource}, resets {reset}")
+  content = resp.json()
+  if resp.status_code != 200:
+    raise RuntimeError(f"GitHub API request failed ({resp.status_code}): {content['message']}")
+  return content
+
+def query_github_graphql(query: str, variables: dict) -> dict:
+  return query_github_api("graphql", {"query": query, "variables": variables}, "POST")
+
+def query_github_results(limit: int, endpoint: str, params: dict) -> Iterable[dict]:
+  params['page'] = 1
+  params['per_page'] = 100
+  while limit > 100:
+    res = query_github_api(endpoint, params)
+    yield from res['items']
+    params['page'] += 1
+    limit -= 100
+  if limit != 0:
+    params['per_page'] = limit
+    res = query_github_api(endpoint, params)
+    yield from res['items']
+
+def query_repo_data(repo_ids: 'Iterable[str]') -> 'Iterable[Repo]':
+  for page in paginate(repo_ids, 100):
+    data = query_github_graphql(REPO_QUERY, {"repoIds": page})['data']
+    logging.debug(f"GitHub GraphQL request cost: {data['rateLimit']['cost']}")
+    yield from data['nodes']
+
+def query_lake_repos(limit: int) -> 'list[str]':
+  # NOTE: For some reason, the GitHub rate limit is currently (07-08-24) off by one.
+  rate_limit = query_github_api("rate_limit")['resources']['code_search']
+  if limit < 0:
+    # NOTE: GitHub limits code searches to 10 requests/min, which is 1000 results.
+    # Thus, the strategy used here will need to change when we hit that limit.
+    limit = (rate_limit['limit']-1)*100
+  gh_limit = (rate_limit['remaining']-1)*100
+  if limit > gh_limit:
+    logging.warning(f"due to API rate limit, restricted results to a max of {gh_limit} instead of {limit}")
+    limit = gh_limit
+  logging.debug(f"querying at most {limit} repositories")
+  query='filename:lake-manifest.json path:/'
+  items = query_github_results(limit, "search/code", {"q": query})
+  return [item['repository']['node_id'] for item in items]
 
 class License(TypedDict):
   reference: str
