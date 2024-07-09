@@ -78,7 +78,7 @@ GH_API_HEADERS = {
   "X-Github-Next-Global-ID": "1",
 }
 
-def query_github_api(endpoint: str, fields: dict, method="GET") -> dict:
+def query_github_api(endpoint: str, fields: dict | None = None, method="GET") -> dict:
   url=f"https://api.github.com/{endpoint}"
   if method == "GET":
     resp = GH_API_SESSION.get(url, params=fields, headers=GH_API_HEADERS)
@@ -91,7 +91,7 @@ def query_github_api(endpoint: str, fields: dict, method="GET") -> dict:
   logging.debug(f"GitHub API usage: {usage} of {resource}, resets {reset}")
   content = resp.json()
   if resp.status_code != 200:
-    raise RuntimeError(f"GitHub API request failed {resp.status_code}): {content['message']}")
+    raise RuntimeError(f"GitHub API request failed ({resp.status_code}): {content['message']}")
   return content
 
 def query_github_graphql(query: str, variables: dict) -> dict:
@@ -117,10 +117,17 @@ def query_repo_data(repo_ids: 'Iterable[str]') -> 'Iterable[Repo]':
     yield from data['nodes']
 
 def query_lake_repos(limit: int) -> 'list[str]':
-  if limit <= 0:
+  # NOTE: For some reason, the GitHub rate limit is currently (07-08-24) off by one.
+  rate_limit = query_github_api("rate_limit")['resources']['code_search']
+  if limit < 0:
     # NOTE: GitHub limits code searches to 10 requests/min, which is 1000 results.
     # Thus, the strategy used here will need to change when we hit that limit.
-    limit = 1000
+    limit = (rate_limit['limit']-1)*100
+  gh_limit = (rate_limit['remaining']-1)*100
+  if limit > gh_limit:
+    logging.warning(f"due to API rate limit, restricted results to a max of {gh_limit} instead of {limit}")
+    limit = gh_limit
+  logging.debug(f"querying at most {limit} repositories")
   query='filename:lake-manifest.json path:/'
   items = query_github_results(limit, "search/code", {"q": query})
   return [item['repository']['node_id'] for item in items]
