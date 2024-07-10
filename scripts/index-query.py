@@ -84,10 +84,11 @@ def query_github_api(endpoint: str, fields: dict | None = None, method="GET") ->
     resp = GH_API_SESSION.get(url, params=fields, headers=GH_API_HEADERS)
   else:
     resp = GH_API_SESSION.post(url, data=json.dumps(fields), headers=GH_API_HEADERS)
-  resource = resp.headers['x-ratelimit-resource']
-  usage = f"{resp.headers['x-ratelimit-used']}/{resp.headers['x-ratelimit-limit']}"
-  reset = int(resp.headers['x-ratelimit-reset'])
-  reset = datetime.fromtimestamp(reset).astimezone().strftime("%Y-%m-%d %I:%M:%S %p %z")
+  resource = resp.headers.get('x-ratelimit-resource', '?')
+  usage = f"{resp.headers.get('x-ratelimit-used', '?')}/{resp.headers.get('x-ratelimit-limit', '?')}"
+  reset = resp.headers.get('x-ratelimit-reset', '?')
+  if reset != '?':
+    reset = datetime.fromtimestamp(int(reset)).astimezone().strftime("%Y-%m-%d %I:%M:%S %p %z")
   logging.debug(f"GitHub API usage: {usage} of {resource}, resets {reset}")
   content = resp.json()
   if resp.status_code != 200:
