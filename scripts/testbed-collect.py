@@ -6,6 +6,14 @@ import re
 import argparse
 import os
 
+# adapted from https://stackoverflow.com/questions/1094841/get-a-human-readable-version-of-a-file-size
+def fmt_bytes(num):
+  for unit in ("", "K", "M", "G", "T", "P", "E", "Z"):
+    if abs(num) < 1000.0:
+      return f"{num:3.1f} {unit}B"
+    num /= 1000.0
+  return f"{num:.1f}YB"
+
 class Job(TypedDict):
   id: int
   name: str
@@ -76,7 +84,7 @@ if __name__ == "__main__":
       archiveSizes.append(archiveSize)
 
   avg = round(sum(archiveSizes)/len(archiveSizes))
-  logging.info(f'Average build archive size: {avg}')
+  logging.info(f'Average build archive size: {fmt_bytes(avg)} ({avg} bytes)')
 
   if args.output is None:
     print(json.dumps(results, indent=2))
