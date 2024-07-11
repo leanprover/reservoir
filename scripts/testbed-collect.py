@@ -12,7 +12,7 @@ def fmt_bytes(num):
     if abs(num) < 1000.0:
       return f"{num:3.1f} {unit}B"
     num /= 1000.0
-  return f"{num:.1f}YB"
+  return f"{num:.1f} YB"
 
 class Job(TypedDict):
   id: int
@@ -63,6 +63,9 @@ if __name__ == "__main__":
   def find_build_job(name: str) -> Job:
     return next(job for job in jobs if is_build_job(job, name))
 
+  logging.info(f"{len(matrix)} total testbed entries")
+
+  num_results = 0
   results: 'dict[str, list[Build]]'= dict()
   archiveSizes: 'list[int]' = list()
   for entry in matrix:
@@ -78,12 +81,17 @@ if __name__ == "__main__":
       result: Build = header | json.load(f)
     if entry['fullName'] not in results:
       results[entry['fullName']] = list()
+    num_results += 1
     results[entry['fullName']].append(result)
     archiveSize = result.get('archiveSize', None)
     if archiveSize is not None:
       archiveSizes.append(archiveSize)
 
-  avg = round(sum(archiveSizes)/len(archiveSizes))
+  logging.info(f"{len(results)} testbed entries with results")
+
+  num_archives = len(archiveSizes)
+  avg = round(sum(archiveSizes)/num_archives)
+  logging.info(f"{num_archives} testbed entries with archives")
   logging.info(f'Average build archive size: {fmt_bytes(avg)} ({avg} bytes)')
 
   if args.output is None:
