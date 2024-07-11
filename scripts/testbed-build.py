@@ -5,6 +5,7 @@ import argparse
 import shutil
 import logging
 import json
+import tempfile
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
@@ -25,7 +26,8 @@ if __name__ == "__main__":
   args = parser.parse_args()
 
   configure_logging(args.verbosity)
-  result = dict()
+
+  result: PartialBuild = {}
 
   # Clone package
   if not (args.reuse_clone and os.path.exists(args.test_dir)):
@@ -63,6 +65,16 @@ if __name__ == "__main__":
   except CommandError:
     logging.error(f'failed to build {args.url} on {toolchain}')
     result['outcome'] = 'failure'
+
+  # Try to pack result
+  try:
+    with tempfile.TemporaryDirectory() as tmp:
+      archive = os.path.join(tmp, 'build.tgz')
+      run_cmd('lake', 'pack', archive)
+      result['archiveSize'] = os.path.getsize(archive)
+  except Exception as e:
+    logging.error(f'failed to pack build archive: {e}')
+    result['archiveSize'] = None
 
   # Output result
   os.chdir(iwd)

@@ -35,7 +35,7 @@ if __name__ == "__main__":
   parser.add_argument('-m', '--matrix',
     help="file containing the JSON build matrix")
   parser.add_argument('-o', '--output',
-    help='file to output the bundle manifest')
+    help='file to output the collected results')
   parser.add_argument('-q', '--quiet', dest="verbosity", action='store_const', const=0, default=1,
     help='print no logging information')
   parser.add_argument('-v', '--verbose', dest="verbosity", action='store_const', const=2,
@@ -55,10 +55,11 @@ if __name__ == "__main__":
   def find_build_job(name: str) -> Job:
     return next(job for job in jobs if is_build_job(job, name))
 
-  results: 'dict[str, list]'= dict()
+  results: 'dict[str, list[Build]]'= dict()
+  archiveSizes: 'list[int]' = list()
   for entry in matrix:
     jobId = find_build_job(entry['buildName'])['id']
-    result = {
+    header: RunHeader = {
       'url': f"https://github.com/{TESTBED_REPO}/actions/runs/{args.run_id}/job/{jobId}#step:4:1",
       'builtAt': utc_iso_now(),
     }
@@ -66,10 +67,16 @@ if __name__ == "__main__":
     if not os.path.exists(result_file):
       continue
     with open(result_file, 'r') as f:
-      result |= json.load(f)
+      result: Build = header | json.load(f)
     if entry['fullName'] not in results:
       results[entry['fullName']] = list()
     results[entry['fullName']].append(result)
+    archiveSize = result.get('archiveSize', None)
+    if archiveSize is not None:
+      archiveSizes.append(archiveSize)
+
+  avg = round(sum(archiveSizes)/len(archiveSizes))
+  logging.info(f'Average build archive size: {avg}')
 
   if args.output is None:
     print(json.dumps(results, indent=2))
