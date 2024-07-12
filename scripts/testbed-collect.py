@@ -6,6 +6,14 @@ import re
 import argparse
 import os
 
+# adapted from https://stackoverflow.com/questions/1094841/get-a-human-readable-version-of-a-file-size
+def fmt_bytes(num):
+  for unit in ("", "K", "M", "G", "T", "P", "E", "Z"):
+    if abs(num) < 1000.0:
+      return f"{num:3.1f} {unit}B"
+    num /= 1000.0
+  return f"{num:.1f} YB"
+
 class Job(TypedDict):
   id: int
   name: str
@@ -35,7 +43,7 @@ if __name__ == "__main__":
   parser.add_argument('-m', '--matrix',
     help="file containing the JSON build matrix")
   parser.add_argument('-o', '--output',
-    help='file to output the bundle manifest')
+    help='file to output the collected results')
   parser.add_argument('-q', '--quiet', dest="verbosity", action='store_const', const=0, default=1,
     help='print no logging information')
   parser.add_argument('-v', '--verbose', dest="verbosity", action='store_const', const=2,
@@ -55,10 +63,14 @@ if __name__ == "__main__":
   def find_build_job(name: str) -> Job:
     return next(job for job in jobs if is_build_job(job, name))
 
-  results: 'dict[str, list]'= dict()
+  logging.info(f"{len(matrix)} total testbed entries")
+
+  num_results = 0
+  results: 'dict[str, list[Build]]'= dict()
+  archiveSizes: 'list[int]' = list()
   for entry in matrix:
     jobId = find_build_job(entry['buildName'])['id']
-    result = {
+    header: RunHeader = {
       'url': f"https://github.com/{TESTBED_REPO}/actions/runs/{args.run_id}/job/{jobId}#step:4:1",
       'builtAt': utc_iso_now(),
     }
@@ -66,10 +78,21 @@ if __name__ == "__main__":
     if not os.path.exists(result_file):
       continue
     with open(result_file, 'r') as f:
-      result |= json.load(f)
+      result: Build = header | json.load(f)
     if entry['fullName'] not in results:
       results[entry['fullName']] = list()
+    num_results += 1
     results[entry['fullName']].append(result)
+    archiveSize = result.get('archiveSize', None)
+    if archiveSize is not None:
+      archiveSizes.append(archiveSize)
+
+  logging.info(f"{len(results)} testbed entries with results")
+
+  num_archives = len(archiveSizes)
+  avg = round(sum(archiveSizes)/num_archives)
+  logging.info(f"{num_archives} testbed entries with archives")
+  logging.info(f'Average build archive size: {fmt_bytes(avg)} ({avg} bytes)')
 
   if args.output is None:
     print(json.dumps(results, indent=2))

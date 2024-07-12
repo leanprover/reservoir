@@ -27,13 +27,25 @@ class Source(TypedDict):
   gitUrl: str
   defaultBranch: str
 
-class Build(TypedDict):
+class RunHeader(TypedDict):
   url: str
   builtAt: str
+
+class BuildBase(RunHeader):
+  revision: str
+  toolchain: str
+  outcome: str
+
+class Build(BuildBase, total=False):
+  requiredUpdate: bool
+  archiveSize: int | None
+
+class PartialBuild(TypedDict, total=False):
   revision: str
   toolchain: str
   requiredUpdate: bool
   outcome: str
+  archiveSize: int | None
 
 class PackageBase(TypedDict):
   name: str

@@ -1,5 +1,6 @@
 leanprover-community/mathlib
 leanprover-community/SphereEversion
+ImperialCollegeLondon/FLT
 semorrison/lean-training-data
 lecopivo/scilean
 ufmg-smite/smt
