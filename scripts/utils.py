@@ -197,6 +197,11 @@ def utc_iso_now():
 def of_utc_iso(iso: str) -> datetime:
   return datetime.strptime(iso, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
 
+def toolchain_sort_key(t: Toolchain):
+    return (t['version'] or 0, of_utc_iso(t['date']))
+
+MIN_TOOLCHAIN_SORT_KEY = (0, datetime.min.replace(tzinfo=timezone.utc))
+
 TOOLCHAIN_VER_PATTERN = re.compile("v4\\.(\\d+)\\..*")
 def query_toolchains(repo=DEFAULT_ORIGIN) -> 'list[Toolchain]':
   def toolchain_of_release(rel: Release) -> Toolchain:
@@ -211,7 +216,7 @@ def query_toolchains(repo=DEFAULT_ORIGIN) -> 'list[Toolchain]':
       "prerelease": rel['prerelease']
     }
   toolchains = map(toolchain_of_release, query_releases(repo))
-  return sorted(toolchains, key=lambda t: of_utc_iso(t['date']), reverse=True)
+  return sorted(toolchains, key=toolchain_sort_key, reverse=True)
 
 def normalize_toolchain(toolchain: str):
   parts = toolchain.split(':')
