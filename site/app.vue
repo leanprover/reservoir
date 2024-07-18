@@ -62,6 +62,7 @@ h1, * {
 a {
   color: inherit;
   text-decoration: none;
+  cursor: pointer;
 
   &.soft-link {
     &:hover, &:focus {

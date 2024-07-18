@@ -57,7 +57,8 @@ const formatLicense = (id: string | null) => {
   }
 }
 
-const toolchainBuilds = computed(() => {
+type ToolchainBuild = [string, Build | null]
+const allToolchainBuilds = computed<ToolchainBuild[]>(() => {
   const map = pkg.builds.reduce((map, build) => {
     if (!map.has(build.toolchain)) {
       map.set(build.toolchain, build)
@@ -69,6 +70,11 @@ const toolchainBuilds = computed(() => {
     entries.unshift([latestToolchain.name, null])
   }
   return entries
+})
+const shortBuildLimit = 10
+const shortBuildToggle = ref(allToolchainBuilds.value.length > shortBuildLimit)
+const toolchainBuilds = computed<ToolchainBuild[]>(() => {
+  return allToolchainBuilds.value.slice(0, shortBuildToggle.value ? shortBuildLimit : undefined)
 })
 
 const baseContentUrl = computed(() => {
@@ -117,6 +123,11 @@ const {data: readme} = await useFetch<string>(readmeUrl)
             <li v-for="[toolchain, build] in toolchainBuilds">
               <BuildOutcome class="icon" :build="build"/>
               {{ toolchain.split(':')[1] }}
+            </li>
+            <li v-if="shortBuildToggle" @click="shortBuildToggle = false" >
+              <a class="hard-link" tabindex="0" @keyup.enter="shortBuildToggle = false">
+                + {{ allToolchainBuilds.length - shortBuildLimit }} more
+              </a>
             </li>
           </ul>
         </div>
