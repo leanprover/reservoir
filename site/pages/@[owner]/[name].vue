@@ -6,13 +6,22 @@ import HomepageIcon from '~icons/mdi/home'
 import GitHubIcon from '~icons/mdi/github'
 
 const route = useRoute()
-const pkg = packages.find(p => p.owner === route.params.owner && p.name == route.params.name)
-if (!pkg) {
+const owner = route.params.owner as string
+const name = route.params.name as string
+const maybePkg = packages.find(p => {
+  return p.owner.toLowerCase() === owner.toLowerCase() &&
+    p.name.toLowerCase() == name.toLowerCase()
+})
+if (maybePkg === undefined) {
   throw createError({
     statusCode: 404,
-    message: `Package ${route.params.fullName} not found`,
+    statusMessage: `Package '${owner}/${name}' not found`,
     fatal: true
   })
+}
+const pkg: Package = maybePkg
+if (pkg.owner !== owner || pkg.name !== name) {
+  navigateTo(pkgLink(pkg), {replace: true})
 }
 
 useHead({
