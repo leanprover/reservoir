@@ -60,7 +60,7 @@ jobs:
       - name: Query Repositories
         run: scripts/index-query.py -v -D index -R -L -1
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.RESERVOIR_INDEX_TOKEN }}
       - name: Update Index Repository
         if: inputs.index-repo && inputs.update-index
         uses: EndBug/add-and-commit@v9
