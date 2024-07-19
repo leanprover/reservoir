@@ -16,36 +16,62 @@ onUnmounted(() => {
   window.removeEventListener('keyup', keyHandler)
 })
 
-type PackageResult = Package & {highlightedName : VNode}
+type PackageResult = Package &
+  {highlightedName: VNode, highlightedDescription: VNode | null}
+
+const highlightSpan = (text: string, start: number, end: number): VNode => {
+  return h('span', [
+    text.slice(0, start),
+    h('span', {class: 'highlight'}, text.slice(start, end)),
+    text.slice(end),
+  ])
+}
 
 const query = ref()
 const selectedPkg = ref<Package>()
 const filteredPkgs = ref<Package[]>(packages)
 const filter = (event: AutoCompleteCompleteEvent) => {
-  const q = event.query.toLocaleLowerCase()
+  const q = event.query.toLowerCase()
   const results = packages.reduce<PackageResult[]>((pkgs, pkg) => {
-    const idx = pkg.name.toLocaleLowerCase().indexOf(q)
+    const idx = pkg.name.toLowerCase().indexOf(q)
     if (idx > -1) {
       const result = Object.assign(pkg, {
-        highlightedName: h('span', [
-          pkg.name.slice(0, idx),
-          h('span', {class: 'highlight'}, pkg.name.slice(idx, idx+q.length)),
-          pkg.name.slice(idx+q.length),
-        ])
+        highlightedName: highlightSpan(pkg.name, idx, idx+q.length),
+        highlightedDescription: pkg.description ? h('span', pkg.description) : null
       })
       pkgs.push(result)
+      return pkgs
+    }
+    const fullIdx = pkg.fullName.toLowerCase().indexOf(q)
+    if (fullIdx > -1) {
+      const result = Object.assign(pkg, {
+        highlightedName: highlightSpan(pkg.fullName, fullIdx, fullIdx+q.length),
+        highlightedDescription:  pkg.description ? h('span', pkg.description) : null
+      })
+      pkgs.push(result)
+      return pkgs
+    }
+    if (pkg.description) {
+    const descrIdx = pkg.description.toLowerCase().indexOf(q)
+      if (descrIdx && descrIdx > -1) {
+        const result = Object.assign(pkg, {
+          highlightedName: h('span', pkg.name),
+          highlightedDescription: highlightSpan(pkg.description, descrIdx, descrIdx+q.length)
+        })
+        pkgs.push(result)
+        return pkgs
+      }
     }
     return pkgs
   }, [])
-  if (results.length === 0) ctrl.value.hide()
-  filteredPkgs.value = results;
+  filteredPkgs.value = results
 }
 const onChange = (event: AutoCompleteChangeEvent) => {
   if (typeof event.value == "string") {
     query.value = event.value
     selectedPkg.value = undefined
   } else {
-    query.value = event.value.name
+    query.value = event.value.fullName
     selectedPkg.value = event.value
   }
 }
@@ -55,7 +81,6 @@ const commit = (event: Event, clickedPkg?: Package) => {
   if (pkg) {
     query.value = ""
     selectedPkg.value = undefined
-    console.log(pkg)
     navigateTo(pkgLink(pkg))
   } else {
     const q = query.value
@@ -79,9 +104,13 @@ const commit = (event: Event, clickedPkg?: Package) => {
       :virtualScrollerOptions="{ itemSize: 50 }">
       <template #option="slotProps">
         <div @click="commit($event, slotProps.option)">
-          <h4 class="name"><component :is="slotProps.option.highlightedName"/></h4>
+          <h4 class="name">
+            <component :is="slotProps.option.highlightedName"/>
+          </h4>
           <div class="description">
-            <span v-if="slotProps.option.description">{{ slotProps.option.description }}</span>
+            <span v-if="slotProps.option.highlightedDescription">
+              <component :is="slotProps.option.highlightedDescription"/>
+            </span>
             <em v-else>No description provided.</em>
           </div>
         </div>
@@ -168,15 +197,14 @@ const commit = (event: Event, clickedPkg?: Package) => {
 
       &[data-p-focus="true"] {
         color: var(--light-text-color);
-        // background-color: var(--dark-color);
         background-color: var(--dark-accent-color);
 
-        .name .highlight {
+        .name .highlight, .description .highlight {
           color: inherit;
         }
       }
 
-      .name .highlight {
+      .name .highlight, .description .highlight {
         color: var(--dark-accent-color);
       }
 
