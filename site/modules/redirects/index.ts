@@ -1,5 +1,5 @@
 import { type Redirect, defineRedirectsModule } from './module'
-import { packages, packageAliases, rawPkgLink } from '../../utils/manifest'
+import { packages, packageAliases, rawPkgLink, pkgLink, findPkg } from '../../utils/manifest'
 
 function oldPkgLink(pkgName: string) {
   const id = pkgName.replace('-', '--').replace('/', '-')
@@ -21,14 +21,15 @@ for (const pkg of packages) {
 for (const [alias, target] of packageAliases.entries()) {
   const [aliasOwner, aliasName] = alias.split('/')
   const [targetOwner, targetName] = target.split('/')
+  const targetPkg = findPkg(targetOwner, targetName)!
   redirects.push({
     from: rawPkgLink(aliasOwner, aliasName),
-    to: rawPkgLink(targetOwner, targetName),
+    to: pkgLink(targetPkg),
     status: 301,
   })
   redirects.push({
     from: oldPkgLink(alias),
-    to: rawPkgLink(targetOwner, targetName),
+    to: pkgLink(targetPkg),
     status: 301,
   })
   redirects.push({
