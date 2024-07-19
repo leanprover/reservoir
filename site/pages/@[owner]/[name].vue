@@ -8,10 +8,7 @@ import GitHubIcon from '~icons/mdi/github'
 const route = useRoute()
 const owner = route.params.owner as string
 const name = route.params.name as string
-const maybePkg = packages.find(p => {
-  return p.owner.toLowerCase() === owner.toLowerCase() &&
-    p.name.toLowerCase() == name.toLowerCase()
-})
+const maybePkg = findPkg(owner, name)!
 if (maybePkg === undefined) {
   throw createError({
     statusCode: 404,

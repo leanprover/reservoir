@@ -60,6 +60,13 @@ export const latestStableToolchain = toolchains.find(t => !t.prerelease) ?? late
 export const oldestStableVerToolchain = toolchains.findLast(t => t.version == latestStableToolchain.version) ?? latestToolchain
 export const latestCutoff = new Date(oldestStableVerToolchain.date).getTime()
 
+export function findPkg(owner: string, name: string) {
+  return packages.find(p => {
+    return p.owner.toLowerCase() === owner.toLowerCase() &&
+      p.name.toLowerCase() == name.toLowerCase()
+  })
+}
+
 export function rawPkgLink(owner: string, name: string) {
   return `/@${encodeURIComponent(owner)}/${encodeURIComponent(name)}`
 }
