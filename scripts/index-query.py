@@ -78,6 +78,9 @@ GH_API_HEADERS = {
   "X-Github-Next-Global-ID": "1",
 }
 
+def format_timestamp(timestamp: int):
+  return datetime.fromtimestamp(timestamp).astimezone().strftime("%Y-%m-%d %I:%M:%S %p %z")
+
 def query_github_api(endpoint: str, fields: dict | None = None, method="GET") -> dict:
   url=f"https://api.github.com/{endpoint}"
   if method == "GET":
@@ -88,7 +91,7 @@ def query_github_api(endpoint: str, fields: dict | None = None, method="GET") ->
   usage = f"{resp.headers.get('x-ratelimit-used', '?')}/{resp.headers.get('x-ratelimit-limit', '?')}"
   reset = resp.headers.get('x-ratelimit-reset', '?')
   if reset != '?':
-    reset = datetime.fromtimestamp(int(reset)).astimezone().strftime("%Y-%m-%d %I:%M:%S %p %z")
+    reset = format_timestamp(int(reset))
   logging.debug(f"GitHub API usage: {usage} of {resource}, resets {reset}")
   content = resp.json()
   if resp.status_code != 200:
@@ -115,7 +118,11 @@ def query_repo_data(repo_ids: 'Iterable[str]') -> 'Iterable[Repo]':
   for page in paginate(repo_ids, 100):
     data = query_github_graphql(REPO_QUERY, {"repoIds": page})['data']
     logging.debug(f"GitHub GraphQL request cost: {data['rateLimit']['cost']}")
-    yield from data['nodes']
+    for (id, node) in zip(page, data['nodes']):
+      if node is None:
+        logging.error(f"repository id {id} not found on GitHub")
+      else:
+        yield node
 
 def query_lake_repos(limit: int) -> 'list[str]':
   # NOTE: For some reason, the GitHub rate limit is currently (07-08-24) off by one.
@@ -126,7 +133,8 @@ def query_lake_repos(limit: int) -> 'list[str]':
     limit = (rate_limit['limit']-1)*100
   gh_limit = (rate_limit['remaining']-1)*100
   if limit > gh_limit:
-    logging.warning(f"due to API rate limit, restricted results to a max of {gh_limit} instead of {limit}")
+    reset = format_timestamp(int(rate_limit['reset']))
+    logging.warning(f"due to API rate limit, restricted results to a max of {gh_limit} instead of {limit}; resets {reset}")
     limit = gh_limit
   logging.debug(f"querying at most {limit} repositories")
   query='filename:lake-manifest.json path:/'
