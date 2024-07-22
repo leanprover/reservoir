@@ -93,9 +93,12 @@ def query_github_api(endpoint: str, fields: dict | None = None, method="GET") ->
   if reset != '?':
     reset = format_timestamp(int(reset))
   logging.debug(f"GitHub API usage: {usage} of {resource}, resets {reset}")
-  content = resp.json()
+  try:
+    content = resp.json()
+  except requests.exceptions.JSONDecodeError:
+    raise RuntimeError(f"GitHub API request failed ({resp.status_code}); malformed response: {resp.text}")
   if resp.status_code != 200:
-    raise RuntimeError(f"GitHub API request failed ({resp.status_code}): {content['message']}")
+    raise RuntimeError(f"GitHub API request failed ({resp.status_code}): {content.get('message', resp.text)}")
   return content
 
 def query_github_graphql(query: str, variables: dict) -> dict:
