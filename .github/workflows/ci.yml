@@ -74,8 +74,8 @@ jobs:
         name: Compute Configuration
         run: |
           if ${{ github.event_name == 'pull_request' }}; then
-            echo reindex=${{ !contains(github.event.pull_request.labels.*.name, 'pr/skip-index') }} >> "$GITHUB_OUTPUT"
-            echo run-testbed=${{ !contains(github.event.pull_request.labels.*.name, 'pr/skip-testbed') }} >> "$GITHUB_OUTPUT"
+            echo reindex=${{ contains(github.event.pull_request.labels.*.name, 'A-index') }} >> "$GITHUB_OUTPUT"
+            echo run-testbed=${{ contains(github.event.pull_request.labels.*.name, 'A-testbed') }} >> "$GITHUB_OUTPUT"
           else
             if ${{ github.event_name == 'push' && github.ref_name == 'master' && contains(github.event.head_commit.message, 'UPDATE-INDEX') }}; then
               echo reindex=true >> "$GITHUB_OUTPUT"
