@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from utils import *
-from typing import TypedDict
+from typing import Container, TypedDict
+from contextlib import suppress
 import argparse
 import re
 import os
@@ -227,6 +228,107 @@ def pkg_of_repo(repo: Repo) -> Package:
       pass
   return pkg
 
+def index_relpath(owner: str, name: str) -> str:
+  return os.path.join(owner.lower(), name.lower())
+
+def package_relpath(pkg: Package) -> str:
+  return index_relpath(pkg['owner'], pkg['name'])
+
+def move_package(index_dir: str, old_relpath: str, new_relpath: str):
+  old_path = os.path.join(index_dir, old_relpath)
+  if os.path.isdir(old_path):
+    new_path = os.path.join(index_dir, new_relpath)
+    if os.path.isdir(new_path):
+      logging.info(f"Index merge: '{old_relpath}' -> '{new_relpath}'")
+      old_builds = load_builds(os.path.join(old_path, 'builds.json'))
+      new_builds = load_builds(os.path.join(new_path, 'builds.json'))
+      builds = insert_build_results(old_builds, new_builds)
+      with open(os.path.join(new_path, 'builds.json'), 'w') as f:
+        json.dump(builds, f, indent=2)
+      shutil.rmtree(old_path)
+    else:
+      logging.info(f"Index rename: '{old_relpath}' -> '{new_relpath}'")
+      if os.path.isfile(new_path):
+        os.remove(new_path)
+      os.renames(old_path, new_path)
+
+def refresh_index(index_dir: str) -> 'Tuple[dict[str, Package], dict[str, str]]':
+  pkgs: 'dict[str, Package]' = dict()
+  old_pkgs, aliases = load_index(args.index_dir)
+  logging.info(f"found {len(old_pkgs)} existing packages")
+  repo_ids = filter(None, map(github_repo_id, old_pkgs))
+  for (old_pkg, repo) in zip(old_pkgs, query_repo_data(repo_ids)):
+    if repo['id'] in pkgs:
+      new_pkg = pkgs[repo['id']]
+    else:
+      new_pkg = pkgs[repo['id']] = pkg_of_repo(repo)
+    old_relpath = package_relpath(old_pkg)
+    new_relpath = package_relpath(new_pkg)
+    if old_relpath != new_relpath:
+      move_package(index_dir, old_relpath, new_relpath)
+      with suppress(KeyError): del aliases[new_relpath]
+      aliases[old_relpath] = new_relpath
+    repo_relpath = index_relpath(*repo['nameWithOwner'].split('/'))
+    if repo_relpath not in aliases and repo_relpath != new_relpath:
+      repo_path = os.path.join(index_dir, repo_relpath)
+      if not os.path.exists(repo_path):
+        logging.info(f"Index alias: '{repo_relpath}' -> '{new_relpath}'")
+        aliases[repo_relpath] = new_relpath
+  return pkgs, aliases
+
+def write_packages(index_dir: str, pkgs: 'list[Package]'):
+  for pkg in pkgs:
+    pkg_dir = os.path.join(index_dir, pkg['owner'].lower(), pkg['name'].lower())
+    if os.path.isfile(pkg_dir):
+      os.remove(pkg_dir)
+      alias = f"{pkg['owner'].lower()}/{pkg['name'].lower()}"
+      del aliases[alias]
+    os.makedirs(pkg_dir, exist_ok=True)
+    with open(os.path.join(pkg_dir, "metadata.json"), 'w') as f:
+      json.dump(pkg, f, indent=2)
+      f.write("\n")
+
+def write_aliases(index_dir: str, aliases: 'dict[str, str]'):
+  flatten_aliases(aliases)
+  for alias, target in aliases.items():
+    alias_path = os.path.join(index_dir, index_relpath(*alias.split('/')))
+    if os.path.isdir(alias_path):
+      logging.warning(f"package located at '{alias}': could not write alias '{alias}' -> '{target}'")
+    else:
+      os.makedirs(os.path.dirname(alias_path), exist_ok=True)
+      with open(alias_path, 'w') as f:
+        f.write(target)
+        f.write("\n")
+
+def write_index(index_dir: str, pkgs: 'list[Package]', aliases: 'dict[str, str]'):
+  write_packages(index_dir, pkgs)
+  write_aliases(index_dir, aliases)
+
+def filter_indexed_repos(repos: 'Iterable[Repo]', ids: 'Iterable[str]') -> 'Iterable[Repo]':
+  """Skip index repositories in `repos`"""
+  repo_map = dict((repo['id'], repo) for repo in repos)
+  new_ids = set(repo_map.keys()).difference(ids)
+  return map(repo_map.__getitem__, new_ids)
+
+def pkgs_of_repos(repos: 'Iterable[Repo]', excluded_pkgs: 'Container[str]' = set()) -> 'Iterable[Package]':
+  licenses = query_licenses()
+  deprecated_ids: 'set[str]' = set()
+  def curate(repo: Repo):
+    if repo['nameWithOwner'] in excluded_pkgs or repo['stargazerCount'] <= 1:
+      return False
+    spdxId = filter_license(repo['licenseInfo'])
+    if spdxId is not None:
+      license = licenses[spdxId]
+      if license is None:
+        logging.error(f"GitHub is using unknown SPDX ID '{spdxId}'")
+        return False
+      if license.get('isDeprecatedLicenseId', False) and spdxId not in deprecated_ids:
+        logging.warning(f"GitHub is using deprecated SPDX ID '{spdxId}'")
+        deprecated_ids.add(spdxId)
+      return license.get('isOsiApproved', False)
+    return False
+  return  map(pkg_of_repo, filter(curate, repos))
+
 # ===
 # Main Processing
 # ===
@@ -258,122 +360,47 @@ if __name__ == "__main__":
     for line in f: exclusions.add(line.strip())
 
   # ---
+  # Compute Index
+  # ---
+
   # Refresh Index
-  # ---
-
-  pkg_map = dict()
   if args.index_dir is not None and args.refresh:
-    old_pkgs, aliases = load_index(args.index_dir)
-    logging.info(f"found {len(old_pkgs)} existing packages")
-    repo_ids = filter(None, map(github_repo_id, old_pkgs))
-    for (oldPkg, repo) in zip(old_pkgs, query_repo_data(repo_ids)):
-      if repo['id'] in pkg_map:
-        pkg = pkg_map[repo['id']]
-      else:
-        pkg = pkg_map[repo['id']] = pkg_of_repo(repo)
-      old_pathname = oldPkg['fullName'].lower()
-      new_pathname = pkg['fullName'].lower()
-      if old_pathname != new_pathname:
-        old_path = os.path.join(args.index_dir, oldPkg['owner'].lower(), oldPkg['name'].lower())
-        if os.path.isdir(old_path):
-          new_path = os.path.join(args.index_dir, pkg['owner'].lower(), pkg['name'].lower())
-          if os.path.isdir(new_path):
-            logging.info(f"merge: '{old_pathname}' -> '{new_pathname}'")
-            oldBuilds = load_builds(os.path.join(old_path, 'builds.json'))
-            newBuilds = load_builds(os.path.join(new_path, 'builds.json'))
-            builds = insert_build_results(oldBuilds, newBuilds)
-            with open(os.path.join(new_path, 'builds.json'), 'w') as f:
-              json.dump(builds, f, indent=2)
-            shutil.rmtree(old_path)
-          else:
-            logging.info(f"rename: '{old_pathname}' -> '{new_pathname}'")
-            if os.path.isfile(new_path):
-              os.remove(new_path)
-              del aliases[new_pathname]
-            os.renames(old_path, new_path)
-        aliases[old_pathname] = new_pathname
-      alias = repo['nameWithOwner'].lower()
-      if alias not in aliases and alias != new_pathname:
-        owner, name = repo['nameWithOwner'].split('/')
-        repo_path = os.path.join(args.index_dir, owner.lower(), name.lower())
-        if not os.path.exists(repo_path):
-          logging.info(f"alias: '{alias}' -> '{new_pathname}'")
-          aliases[alias] = new_pathname
+    indexed_pkgs, aliases = refresh_index(args.index_dir)
   else:
-    aliases = dict()
+    indexed_pkgs: 'dict[str, Package]' = dict()
+    aliases: 'dict[str, str]' = dict()
 
-  # ---
   # Query New Repos
-  # ---
-
-  deprecatedIds = set()
-  licenses = query_licenses()
-  def curate(repo: Repo):
-    if repo['nameWithOwner'] in exclusions or repo['stargazerCount'] <= 1:
-      return False
-    spdxId = filter_license(repo['licenseInfo'])
-    if spdxId is not None:
-      license = licenses[spdxId]
-      if license is None:
-        logging.error(f"unknown SPDX ID '{spdxId}'")
-        return False
-      if license.get('isDeprecatedLicenseId', False) and spdxId not in deprecatedIds:
-        logging.warning(f"GitHub is using deprecated SPDX ID '{spdxId}'")
-        deprecatedIds.add(spdxId)
-      return license.get('isOsiApproved', False)
-    return False
-
-  newPkgs: list[Package] = list()
+  new_pkgs: 'list[Package]' = list()
   limit = (0 if args.refresh else 100) if args.limit is None else args.limit
   if limit != 0:
+    indexed_ids = indexed_pkgs.keys()
     repo_ids = query_lake_repos(limit)
-    logging.info(f"found {len(repo_ids)} candidate repositories with root Lake manifests")
+    logging.info(f"Found {len(repo_ids)} candidate repositories with root Lake manifests")
     repos = query_repo_data(repo_ids)
-    if len(pkg_map) != 0:
-      repoMap = dict((repo['id'], repo) for repo in repos)
-      newIds = set(repoMap.keys()).difference(pkg_map.keys())
-      repos = list(map(repoMap.__getitem__, newIds))
+    if len(indexed_ids) != 0:
+      repos = list(filter_indexed_repos(repos, indexed_ids))
       logging.info(f"{len(repos)} candidate repositories not in index")
-    newPkgs = list(map(pkg_of_repo, filter(curate, repos)))
-    note = 'notable new' if len(pkg_map) != 0 else 'notable'
-    logging.info(f"found {len(newPkgs)} {note} OSI-licensed packages")
+    new_pkgs = list(pkgs_of_repos(repos, exclusions))
+  note = 'notable new' if len(indexed_pkgs) != 0 else 'notable'
+  logging.info(f"Found {len(new_pkgs)} {note} OSI-licensed packages")
+
+  # Finalize Index
+  pkgs = itertools.chain(indexed_pkgs.values(), new_pkgs)
+  pkgs = list(sorted(pkgs, key=lambda pkg: pkg['stars'], reverse=True))
+  if len(indexed_pkgs) != 0:
+    logging.info(f"Indexed {len(pkgs)} total packages")
 
   # ---
   # Output Results
   # ---
-
-  pkgs = itertools.chain(pkg_map.values(), newPkgs)
-  pkgs = list(sorted(pkgs, key=lambda pkg: pkg['stars'], reverse=True))
-  if len(pkg_map) != 0:
-    logging.info(f"indexed {len(pkgs)} total packages")
 
   if args.output_manifest is not None:
     with open(args.output_manifest, 'w') as f:
       json.dump(pkgs, f, indent=2)
 
   if args.index_dir is not None:
-    for pkg in pkgs:
-      pkg_dir = os.path.join(args.index_dir, pkg['owner'].lower(), pkg['name'].lower())
-      if os.path.isfile(pkg_dir):
-        os.remove(pkg_dir)
-        alias = f"{pkg['owner'].lower()}/{pkg['name'].lower()}"
-        del aliases[alias]
-      os.makedirs(pkg_dir, exist_ok=True)
-      with open(os.path.join(pkg_dir, "metadata.json"), 'w') as f:
-        json.dump(pkg, f, indent=2)
-        f.write("\n")
-    flatten_aliases(aliases)
-    for alias, target in aliases.items():
-      owner, name = alias.split('/')
-      owner_dir = os.path.join(args.index_dir, owner)
-      alias_path = os.path.join(owner_dir, name)
-      if os.path.isdir(alias_path):
-        logging.warning(f"package located at '{alias}': could not write alias '{alias}' -> '{target}'")
-      else:
-        os.makedirs(owner_dir, exist_ok=True)
-        with open(alias_path, 'w') as f:
-          f.write(target)
-          f.write("\n")
+    write_index(args.index_dir, pkgs, aliases)
 
   if args.output_manifest is not None:
     with open(args.output_manifest, 'w') as f:
