@@ -1,5 +1,6 @@
-from typing import overload, Iterator, Literal, Union, Iterable, Tuple, TypeVar, TypedDict
+from typing import Mapping, MutableMapping, overload, Iterator, Literal, Iterable, TypeVar, TypedDict
 from datetime import datetime, timezone
+from requests.structures import CaseInsensitiveDict
 import itertools
 import re
 import json
@@ -17,6 +18,40 @@ def configure_logging(verbosity):
   else:
     level = logging.DEBUG
   logging.basicConfig(level=level, format='%(levelname)s: %(message)s')
+
+# from https://antonz.org/page-iterator/
+def paginate(iterable: 'Iterable[T]', page_size: int) -> 'Iterator[list[T]]':
+  it = iter(iterable)
+  slicer = lambda: list(itertools.islice(it, page_size))
+  return iter(slicer, [])
+
+#---
+# Processes
+#---
+
+class CommandError(RuntimeError):
+  pass
+
+def run_cmd(*args: str, allow_failure=False):
+  logging.info(f'> {" ".join(args)}')
+  rc = subprocess.run(args).returncode
+  if not allow_failure and rc != 0:
+    raise CommandError(f'external command exited with code {rc}')
+  return rc
+
+def capture_cmd(*args: str) -> bytes:
+  logging.debug(f'> {" ".join(args)}')
+  child = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  if child.returncode != 0:
+    raise CommandError(child.stderr.decode().strip())
+  elif len(child.stderr) > 0:
+    logging.error(child.stderr.decode())
+  return child.stdout
+
+
+#---
+# Index
+#---
 
 class Source(TypedDict):
   type: str
@@ -65,6 +100,48 @@ class Package(PackageBase, total=False):
 class PackageWithBuilds(PackageBase):
   builds: list[Build]
 
+Alias = TypedDict('Alias', {'from': str, 'to': str})
+
+class AliasStub(TypedDict):
+  alias: Alias
+
+# assumes mapping is acyclic
+def flatten_mapping(mapping: 'MutableMapping[T, T]'):
+  def follow(parents: 'list[T]', target: T):
+    if target in mapping:
+      follow(parents, mapping[target])
+    else:
+      for parent in parents:
+        mapping[parent] = target
+  parents = list[T]()
+  for root, target in mapping.items():
+    parents.append(root)
+    follow(parents, target)
+    parents.clear()
+
+def resolve_aliases(pkgs: 'Iterable[Package]', aliases: 'Mapping[str, str]'):
+  resolved = CaseInsensitiveDict[Package]()
+  for alias, target in aliases.items():
+    pkg = next((pkg for pkg in pkgs if pkg['fullName'].lower() == target.lower()), None)
+    if pkg is not None:
+      resolved[alias] = pkg
+    else:
+      logging.warning(f"Failed to resolve alias '{alias}' -> '{target}'")
+  return resolved
+
+# Alias encoding for the `manifest.json``
+def encode_aliases(aliases: 'Mapping[str, Package]') -> 'dict[str, str]':
+  return dict([alias, pkg['fullName']] for alias, pkg in aliases.items())
+
+def index_relpath(owner: str, name: str) -> str:
+  return os.path.join(owner.lower(), name.lower())
+
+def alias_relpath(alias: str) -> str:
+  return index_relpath(*alias.split('/'))
+
+def package_relpath(pkg: Package) -> str:
+  return index_relpath(pkg['owner'], pkg['name'])
+
 def load_builds(path: str) -> 'list[Build]':
   if os.path.exists(path):
     with open(path, 'r') as f:
@@ -73,18 +150,18 @@ def load_builds(path: str) -> 'list[Build]':
     return list()
 
 @overload
-def load_index(path: str) -> 'Tuple[list[Package], dict[str,str]]': ...
+def load_index(path: str) -> 'tuple[list[Package], CaseInsensitiveDict[Package]]': ...
 
 @overload
-def load_index(path: str, include_builds: Literal[False]) -> 'Tuple[list[Package], dict[str,str]]': ...
+def load_index(path: str, include_builds: Literal[False]) -> 'tuple[list[Package], CaseInsensitiveDict[Package]]': ...
 
 @overload
-def load_index(path: str, include_builds: Literal[True]) -> 'Tuple[list[PackageWithBuilds], dict[str,str]]': ...
+def load_index(path: str, include_builds: Literal[True]) -> 'tuple[list[PackageWithBuilds], CaseInsensitiveDict[Package]]': ...
 
-def load_index(path: str, include_builds=False) -> 'Tuple[Union[list[Package], list[PackageWithBuilds]], dict[str,str]]':
-  aliases = dict()
+def load_index(path: str, include_builds=False):
+  aliases = CaseInsensitiveDict[str]()
   if os.path.isdir(path):
-    pkgs: 'list[Package]' = list()
+    pkgs = list[Package]()
     for owner_dir in os.listdir(path):
       if (owner_dir.startswith('.')): continue
       owner_path = os.path.join(path, owner_dir)
@@ -98,7 +175,14 @@ def load_index(path: str, include_builds=False) -> 'Tuple[Union[list[Package], l
           pkgs.append(pkg)
         else:
           with open(pkg_path, 'r') as f:
-            aliases[f"{owner_dir}/{pkg_dir}"] = f.read().strip()
+            content = f.read().strip()
+            try:
+              obj = json.loads(content)
+              alias: Alias = obj.get('alias', None)
+              if alias is not None:
+                aliases[alias['from']] = alias['to']
+            except json.JSONDecodeError:
+              aliases[f"{owner_dir}/{pkg_dir}"] = content
     pkgs = sorted(pkgs, key=lambda pkg: pkg['stars'], reverse=True)
   else:
     with open(path, 'r') as f:
@@ -106,26 +190,12 @@ def load_index(path: str, include_builds=False) -> 'Tuple[Union[list[Package], l
     if include_builds:
       for pkg in pkgs:
         pkg['builds'] = list()
+  flatten_mapping(aliases)
+  aliases = resolve_aliases(pkgs, aliases)
   return pkgs, aliases
 
-# assumes aliases are acyclic; mutates the input
-def flatten_aliases(aliases: 'dict[T, T]') -> 'dict[T, T]':
-  def follow(parents: 'list[T]', target: T):
-    if target in aliases:
-      parents.append(target)
-      follow(parents, aliases[target])
-    else:
-      for parent in parents:
-        aliases[parent] = target
-  parents = list()
-  for alias, target in aliases.items():
-    parents.append(alias)
-    follow(parents, target)
-    parents.clear()
-  return aliases
-
-def insert_build_results(builds: 'list[Build]', results: 'list[Build]') -> 'list[Build]':
-  new_builds = list()
+def insert_build_results(builds: 'Iterable[Build]', results: 'Iterable[Build]') -> 'list[Build]':
+  new_builds = list[Build]()
   new_results = dict((r['toolchain'], r) for r in results)
   for build in builds:
     toolchain = build['toolchain']
@@ -140,30 +210,36 @@ def insert_build_results(builds: 'list[Build]', results: 'list[Build]') -> 'list
     new_builds.append(result)
   return sorted(new_builds, key=lambda build: build['toolchain'], reverse=True)
 
-# from https://antonz.org/page-iterator/
-def paginate(iterable: 'Iterable[T]', page_size: int) -> 'Iterator[list[T]]':
-  it = iter(iterable)
-  slicer = lambda: list(itertools.islice(it, page_size))
-  return iter(slicer, [])
+def write_packages(index_dir: str, pkgs: 'Iterable[Package]'):
+  for pkg in pkgs:
+    pkg_dir = os.path.join(index_dir, package_relpath(pkg))
+    if os.path.isfile(pkg_dir):
+      os.remove(pkg_dir)
+    os.makedirs(pkg_dir, exist_ok=True)
+    with open(os.path.join(pkg_dir, "metadata.json"), 'w') as f:
+      json.dump(pkg, f, indent=2)
+      f.write("\n")
 
-class CommandError(RuntimeError):
-  pass
+def write_aliases(index_dir: str, aliases: 'Mapping[str, Package]'):
+  for alias, target_pkg in aliases.items():
+    target = target_pkg['fullName']
+    alias_path = os.path.join(index_dir, alias_relpath(alias))
+    if os.path.isdir(alias_path):
+      logging.warning(f"Package located at '{alias}': could not write alias '{alias}' -> '{target}'")
+    else:
+      os.makedirs(os.path.dirname(alias_path), exist_ok=True)
+      with open(alias_path, 'w') as f:
+        obj: AliasStub = {"alias": {"from": alias, "to": target}}
+        f.write(json.dumps(obj))
+        f.write("\n")
 
-def run_cmd(*args: str, allow_failure=False):
-  logging.info(f'> {" ".join(args)}')
-  rc = subprocess.run(args).returncode
-  if not allow_failure and rc != 0:
-    raise CommandError(f'external command exited with code {rc}')
-  return rc
+def write_index(index_dir: str, pkgs: 'Iterable[Package]', aliases: 'Mapping[str, Package]'):
+  write_packages(index_dir, pkgs)
+  write_aliases(index_dir, aliases)
 
-def capture_cmd(*args: str) -> bytes:
-  logging.debug(f'> {" ".join(args)}')
-  child = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-  if child.returncode != 0:
-    raise CommandError(child.stderr.decode().strip())
-  elif len(child.stderr) > 0:
-    logging.error(child.stderr.decode())
-  return child.stdout
+#---
+# Toolchains
+#---
 
 DEFAULT_ORIGIN = 'leanprover/lean4'
 
