@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from utils import *
 from typing import Container, TypedDict
-from contextlib import suppress
 import argparse
 import re
 import os
@@ -228,12 +227,6 @@ def pkg_of_repo(repo: Repo) -> Package:
       pass
   return pkg
 
-def index_relpath(owner: str, name: str) -> str:
-  return os.path.join(owner.lower(), name.lower())
-
-def package_relpath(pkg: Package) -> str:
-  return index_relpath(pkg['owner'], pkg['name'])
-
 def move_package(index_dir: str, old_relpath: str, new_relpath: str):
   old_path = os.path.join(index_dir, old_relpath)
   if os.path.isdir(old_path):
@@ -252,10 +245,10 @@ def move_package(index_dir: str, old_relpath: str, new_relpath: str):
         os.remove(new_path)
       os.renames(old_path, new_path)
 
-def refresh_index(index_dir: str) -> 'Tuple[dict[str, Package], dict[str, str]]':
-  pkgs: 'dict[str, Package]' = dict()
-  old_pkgs, aliases = load_index(args.index_dir)
-  logging.info(f"found {len(old_pkgs)} existing packages")
+def refresh_index(index_dir: str):
+  pkgs = dict[str, Package]()
+  old_pkgs, aliases = load_index(index_dir)
+  logging.info(f"Found {len(old_pkgs)} existing packages")
   repo_ids = filter(None, map(github_repo_id, old_pkgs))
   for (old_pkg, repo) in zip(old_pkgs, query_repo_data(repo_ids)):
     if repo['id'] in pkgs:
@@ -266,43 +259,14 @@ def refresh_index(index_dir: str) -> 'Tuple[dict[str, Package], dict[str, str]]'
     new_relpath = package_relpath(new_pkg)
     if old_relpath != new_relpath:
       move_package(index_dir, old_relpath, new_relpath)
-      with suppress(KeyError): del aliases[new_relpath]
-      aliases[old_relpath] = new_relpath
-    repo_relpath = index_relpath(*repo['nameWithOwner'].split('/'))
-    if repo_relpath not in aliases and repo_relpath != new_relpath:
-      repo_path = os.path.join(index_dir, repo_relpath)
-      if not os.path.exists(repo_path):
-        logging.info(f"Index alias: '{repo_relpath}' -> '{new_relpath}'")
-        aliases[repo_relpath] = new_relpath
+      logging.info(f"Index alias: '{old_pkg['fullName']}' -> '{new_pkg['fullName']}'")
+      aliases[old_pkg['fullName']] = new_pkg
+    repo_alias = repo['nameWithOwner']
+    if alias_relpath(repo_alias) != new_relpath:
+      if repo_alias not in aliases:
+        logging.info(f"Index alias: '{repo_alias}' -> '{new_pkg['fullName']}'")
+      aliases[repo_alias] = new_pkg  # always set to ensure canonical casing
   return pkgs, aliases
-
-def write_packages(index_dir: str, pkgs: 'list[Package]'):
-  for pkg in pkgs:
-    pkg_dir = os.path.join(index_dir, pkg['owner'].lower(), pkg['name'].lower())
-    if os.path.isfile(pkg_dir):
-      os.remove(pkg_dir)
-      alias = f"{pkg['owner'].lower()}/{pkg['name'].lower()}"
-      del aliases[alias]
-    os.makedirs(pkg_dir, exist_ok=True)
-    with open(os.path.join(pkg_dir, "metadata.json"), 'w') as f:
-      json.dump(pkg, f, indent=2)
-      f.write("\n")
-
-def write_aliases(index_dir: str, aliases: 'dict[str, str]'):
-  flatten_aliases(aliases)
-  for alias, target in aliases.items():
-    alias_path = os.path.join(index_dir, index_relpath(*alias.split('/')))
-    if os.path.isdir(alias_path):
-      logging.warning(f"package located at '{alias}': could not write alias '{alias}' -> '{target}'")
-    else:
-      os.makedirs(os.path.dirname(alias_path), exist_ok=True)
-      with open(alias_path, 'w') as f:
-        f.write(target)
-        f.write("\n")
-
-def write_index(index_dir: str, pkgs: 'list[Package]', aliases: 'dict[str, str]'):
-  write_packages(index_dir, pkgs)
-  write_aliases(index_dir, aliases)
 
 def filter_indexed_repos(repos: 'Iterable[Repo]', ids: 'Iterable[str]') -> 'Iterable[Repo]':
   """Skip index repositories in `repos`"""
@@ -312,7 +276,7 @@ def filter_indexed_repos(repos: 'Iterable[Repo]', ids: 'Iterable[str]') -> 'Iter
 
 def pkgs_of_repos(repos: 'Iterable[Repo]', excluded_pkgs: 'Container[str]' = set()) -> 'Iterable[Package]':
   licenses = query_licenses()
-  deprecated_ids: 'set[str]' = set()
+  deprecated_ids = set[str]()
   def curate(repo: Repo):
     if repo['nameWithOwner'] in excluded_pkgs or repo['stargazerCount'] <= 1:
       return False
@@ -327,7 +291,7 @@ def pkgs_of_repos(repos: 'Iterable[Repo]', excluded_pkgs: 'Container[str]' = set
         deprecated_ids.add(spdxId)
       return license.get('isOsiApproved', False)
     return False
-  return  map(pkg_of_repo, filter(curate, repos))
+  return map(pkg_of_repo, filter(curate, repos))
 
 # ===
 # Main Processing
@@ -367,11 +331,11 @@ if __name__ == "__main__":
   if args.index_dir is not None and args.refresh:
     indexed_pkgs, aliases = refresh_index(args.index_dir)
   else:
-    indexed_pkgs: 'dict[str, Package]' = dict()
-    aliases: 'dict[str, str]' = dict()
+    indexed_pkgs = dict[str, Package]()
+    aliases = CaseInsensitiveDict[Package]()
 
   # Query New Repos
-  new_pkgs: 'list[Package]' = list()
+  new_pkgs = list[Package]()
   limit = (0 if args.refresh else 100) if args.limit is None else args.limit
   if limit != 0:
     indexed_ids = indexed_pkgs.keys()

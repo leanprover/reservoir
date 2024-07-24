@@ -7,14 +7,14 @@ function oldPkgLink(pkgName: string) {
 }
 
 function indexLink(owner: string, name: string, splat: string) {
-  return `/index/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/${splat}`
+  return `/index/${encodeURIComponent(owner.toLowerCase())}/${encodeURIComponent(name.toLowerCase())}/${splat}`
 }
 
 let redirects: Redirect[] = []
 for (const pkg of packages) {
   redirects.push({
     from: oldPkgLink(pkg.fullName),
-    to: rawPkgLink(pkg.owner, pkg.name),
+    to: pkgLink(pkg),
     status: 301,
   })
 }

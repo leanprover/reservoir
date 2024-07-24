@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 from utils import *
-from datetime import datetime, timezone
 import argparse
 import json
 
@@ -40,7 +39,7 @@ if __name__ == "__main__":
     'bundledAt': utc_iso_now(),
     'toolchains': toolchains,
     'packages': list(pkgMap.values()),
-    'packageAliases': flatten_aliases(aliases),
+    'packageAliases': encode_aliases(aliases),
   }
   if args.output is None:
     print(json.dumps(data, indent=2))
