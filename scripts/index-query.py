@@ -78,9 +78,6 @@ GH_API_HEADERS = {
   "X-Github-Next-Global-ID": "1",
 }
 
-def format_timestamp(timestamp: int):
-  return datetime.fromtimestamp(timestamp).astimezone().strftime("%Y-%m-%d %I:%M:%S %p %z")
-
 def query_github_api(endpoint: str, fields: dict | None = None, method="GET") -> dict:
   url=f"https://api.github.com/{endpoint}"
   if method == "GET":
@@ -91,7 +88,7 @@ def query_github_api(endpoint: str, fields: dict | None = None, method="GET") ->
   usage = f"{resp.headers.get('x-ratelimit-used', '?')}/{resp.headers.get('x-ratelimit-limit', '?')}"
   reset = resp.headers.get('x-ratelimit-reset', '?')
   if reset != '?':
-    reset = format_timestamp(int(reset))
+    reset = fmt_timestamp(int(reset))
   logging.debug(f"GitHub API usage: {usage} of {resource}, resets {reset}")
   try:
     content = resp.json()
@@ -132,7 +129,7 @@ def query_lake_repos(limit: int) -> 'list[str]':
     limit = (rate_limit['limit']-1)*100
   gh_limit = (rate_limit['remaining']-1)*100
   if limit > gh_limit:
-    reset = format_timestamp(int(rate_limit['reset']))
+    reset = fmt_timestamp(int(rate_limit['reset']))
     logging.warning(f"due to API rate limit, restricted results to a max of {gh_limit} instead of {limit}; resets {reset}")
     limit = gh_limit
   logging.debug(f"querying at most {limit} repositories")
