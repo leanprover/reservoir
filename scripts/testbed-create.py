@@ -23,17 +23,18 @@ if __name__ == "__main__":
     help='file to output the bundle manifest')
   args = parser.parse_args()
 
-  exclusions = set()
+  exclusions = set[str]()
   for file in args.exclusions:
     with open(file, 'r') as f:
       for line in f: exclusions.add(line.strip().lower())
 
   toolchains = resolve_toolchains(args.toolchain)
-  def create_entries(pkgs: 'Iterable[Package]'):
+  if len(toolchains) == 0: toolchains.add(None)
+  def create_entries(pkgs: Iterable[Package]) -> Iterable[TestbedEntry]:
     for pkg in pkgs:
       src = next(filter(lambda src: 'gitUrl' in src, pkg['sources']))
       for toolchain in toolchains:
-        if len(toolchains) == 0 or toolchain is None:
+        if toolchain is None:
           build_name = pkg['fullName']
         else:
           build_name = f"{pkg['fullName']} on {toolchain}"
@@ -44,7 +45,7 @@ if __name__ == "__main__":
           'gitUrl': src['gitUrl'],
           'buildName': build_name,
           'fullName': pkg['fullName'],
-          'toolchain': toolchain
+          'toolchain': toolchain or 'package'
         }
 
   pkgs, _ = load_index(args.index)

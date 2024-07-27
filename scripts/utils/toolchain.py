@@ -1,6 +1,6 @@
 import re
 import json
-from typing import TypedDict, Iterator
+from typing import TypedDict
 from utils.core import *
 
 class Release(TypedDict):
@@ -11,7 +11,7 @@ class Release(TypedDict):
 
 DEFAULT_ORIGIN = 'leanprover/lean4'
 
-def query_releases(repo=DEFAULT_ORIGIN, paginate=True) -> 'Iterator[Release]':
+def query_releases(repo: str = DEFAULT_ORIGIN, paginate: bool = True) -> 'Iterator[Release]':
   out = capture_cmd(
     'gh', 'api',
     '--cache', '1h',
@@ -35,7 +35,7 @@ def toolchain_sort_key(t: Toolchain):
 MIN_TOOLCHAIN_SORT_KEY = (0, datetime.min.replace(tzinfo=timezone.utc))
 
 TOOLCHAIN_VER_PATTERN = re.compile("v4\\.(\\d+)\\..*")
-def query_toolchains(repo=DEFAULT_ORIGIN) -> 'list[Toolchain]':
+def query_toolchains(repo: str = DEFAULT_ORIGIN) -> 'list[Toolchain]':
   def toolchain_of_release(rel: Release) -> Toolchain:
     match = TOOLCHAIN_VER_PATTERN.search(rel['tag_name'])
     version = int(match.group(1)) if match is not None else None
@@ -50,7 +50,7 @@ def query_toolchains(repo=DEFAULT_ORIGIN) -> 'list[Toolchain]':
   toolchains = map(toolchain_of_release, query_releases(repo))
   return sorted(toolchains, key=toolchain_sort_key, reverse=True)
 
-def normalize_toolchain(toolchain: str):
+def normalize_toolchain(toolchain: str) -> str:
   parts = toolchain.split(':')
   if len(parts) < 2:
     origin = DEFAULT_ORIGIN
@@ -65,8 +65,7 @@ def normalize_toolchain(toolchain: str):
 NIGHTLY_REPO='leanprover/lean4-nightly'
 
 def resolve_toolchain(toolchain: str):
-  toolchain = toolchain.strip()
-  if len(toolchain) == 0 or toolchain == 'package':
+  if toolchain == 'package':
     return None
   elif toolchain == 'stable':
     releases = filter(lambda r: not r['prerelease'], query_releases())
@@ -80,8 +79,12 @@ def resolve_toolchain(toolchain: str):
   else:
     return normalize_toolchain(toolchain)
 
-def resolve_toolchains(toolchains: 'list[str]') -> 'set[str | None]':
-  if len(toolchains) == 0:
-    return set([None])
-  else:
-    return set(resolve_toolchain(t) for ts in toolchains for t in ts.split(','))
+def split_toolchains(toolchains: 'Iterable[str]') -> 'Iterable[str]':
+  for ts in toolchains:
+    for t in ts.split(','):
+      t = t.strip()
+      if len(t) > 0 and t != 'none':
+        yield t
+
+def resolve_toolchains(toolchains: 'Iterable[str]') -> 'set[str | None]':
+   return set(map(resolve_toolchain, split_toolchains(toolchains)))

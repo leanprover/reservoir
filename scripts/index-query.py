@@ -190,10 +190,6 @@ def src_of_repo(repo: Repo) -> Source:
     'defaultBranch': repo['defaultBranchRef']['name'],
   }
 
-class Manifest(TypedDict, total=False):
-  name: str
-
-FRENCH_QUOTE_PATTERN = re.compile('[«»]')
 def pkg_of_repo(repo: Repo) -> Package:
   owner, name = repo['nameWithOwner'].split('/')
   pkg: Package = {
@@ -213,8 +209,7 @@ def pkg_of_repo(repo: Repo) -> Package:
       manifest: Manifest = json.loads(repo['lakeManifest']['text'])
       name = manifest.get('name', None)
       if name is not None:
-        name = FRENCH_QUOTE_PATTERN.sub('', name)
-        pkg['name'] = name
+        pkg['name'] = unescape_name(name)
         pkg['fullName'] = f"{pkg['owner']}/{name}"
     except json.JSONDecodeError:
       pass

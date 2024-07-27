@@ -1,9 +1,34 @@
 import os
+import re
 import json
 import logging
-from typing import Mapping, MutableMapping, overload, Literal, Iterable, TypedDict, TypeVar
+from typing import Mapping, MutableMapping, overload, Literal, Iterable, TypedDict, Union
 from requests.structures import CaseInsensitiveDict
 from utils.core import *
+
+
+class DepBase(TypedDict, total=False):
+  name: str
+  scope: str
+
+class PathDep(DepBase, total=False):
+  type: Literal['path']
+  dir: str
+
+class GitDep(DepBase, total=False):
+  type: Literal['git']
+  url: str
+
+Dependency = Union[PathDep, GitDep]
+
+class Manifest(TypedDict, total=False):
+  name: str
+  packages: list[Dependency]
+
+# assumes escaped names are simple (which is fine for now)
+FRENCH_QUOTE_PATTERN = re.compile('[«»]')
+def unescape_name(name: str) -> str:
+  return FRENCH_QUOTE_PATTERN.sub('', name)
 
 class Source(TypedDict):
   type: str
@@ -27,12 +52,37 @@ class Build(BuildBase, total=False):
   requiredUpdate: bool
   archiveSize: int | None
 
-class PartialBuild(TypedDict, total=False):
-  revision: str
+class BuildResult(TypedDict):
+  built: bool | None
+  tested: bool | None
   toolchain: str
   requiredUpdate: bool
-  outcome: str
   archiveSize: int | None
+
+class PackageVersion(TypedDict):
+  version: str
+  revision: str
+  date: str
+  tag: str | None
+  toolchain: str | None
+  dependencies: list[Dependency] | None
+  builds: list[BuildResult]
+
+class PackageResult(TypedDict):
+  index: bool
+  name: str | None
+  homepage: str | None
+  description: str | None
+  keywords: list[str] | None
+  headVersion: PackageVersion
+  versions: list[PackageVersion]
+
+class TestbedEntry(TypedDict):
+  artifact: str
+  gitUrl: str
+  buildName: str
+  fullName: str
+  toolchain: str
 
 class PackageBase(TypedDict):
   name: str

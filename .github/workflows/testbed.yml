@@ -54,7 +54,7 @@ on:
       toolchain:
         description: "Lean toolchain(s) to test against"
         type: string
-        required: true
+        required: false
         default: package
       max-size:
         description: "Max number of testbed entries"
@@ -126,7 +126,7 @@ jobs:
         shell: bash -euo pipefail {0}
         run: |
           curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
-            | sh -s -- -y --default-toolchain ${{ matrix.toolchain || 'none' }}
+            | sh -s -- -y --default-toolchain none
           echo "$HOME/.elan/bin" >> $GITHUB_PATH
       - name: Checkout
         uses: actions/checkout@v4
@@ -138,7 +138,7 @@ jobs:
         # We run arbitrary untrusted code here
         run: |
           scripts/testbed-build.py -o result.json -v \
-            ${{ matrix.gitUrl }} testbed ${{ matrix.toolchain }}
+            ${{ matrix.gitUrl }} testbed -t ${{ matrix.toolchain }}
       - name: Check Build
         run: test "`jq -r '.outcome' result.json`" = success
         continue-on-error: true # build failures
