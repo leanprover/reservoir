@@ -136,9 +136,7 @@ jobs:
         name: Build
         continue-on-error: true # e.g., clone failures
         # We run arbitrary untrusted code here
-        run: |
-          scripts/testbed-build.py -o result.json -v \
-            ${{ matrix.gitUrl }} testbed -t ${{ matrix.toolchain }}
+        run: scripts/testbed-build.py -v -o result.json -m ${{ toJson(matrix) }}
       - name: Check Build
         run: test "`jq -r '.outcome' result.json`" = success
         continue-on-error: true # build failures

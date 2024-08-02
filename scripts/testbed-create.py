@@ -28,25 +28,23 @@ if __name__ == "__main__":
     with open(file, 'r') as f:
       for line in f: exclusions.add(line.strip().lower())
 
-  toolchains = resolve_toolchains(args.toolchain)
-  if len(toolchains) == 0: toolchains.add(None)
+  toolchains = resolve_toolchains(args.toolchain, "package")
   def create_entries(pkgs: Iterable[Package]) -> Iterable[TestbedEntry]:
     for pkg in pkgs:
       src = next(filter(lambda src: 'gitUrl' in src, pkg['sources']))
-      for toolchain in toolchains:
-        if toolchain is None:
-          build_name = pkg['fullName']
-        else:
-          build_name = f"{pkg['fullName']} on {toolchain}"
-        digest = hashlib.sha256(build_name.encode()).digest()
-        artifact = base64.urlsafe_b64encode(digest).decode().rstrip('=')
-        yield {
-          'artifact': artifact,
-          'gitUrl': src['gitUrl'],
-          'buildName': build_name,
-          'fullName': pkg['fullName'],
-          'toolchain': toolchain or 'package'
-        }
+      if src is None:
+        logging.error(f"Package {pkg['fullName']} lacks a Git source")
+        continue
+      build_name = pkg['fullName']
+      digest = hashlib.sha256(build_name.encode()).digest()
+      artifact = base64.urlsafe_b64encode(digest).decode().rstrip('=')
+      yield {
+        'artifact': artifact,
+        'gitUrl': src['gitUrl'],
+        'buildName': build_name,
+        'fullName': pkg['fullName'],
+        'toolchains': list(toolchains)
+      }
 
   pkgs, _ = load_index(args.index)
   pkgs = filter(lambda pkg: pkg['fullName'].lower() not in exclusions, pkgs)

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-from utils import *
 import os
 import argparse
 import shutil
 import logging
 import json
 import tempfile
+from utils import *
 
 MANIFEST_FILE = 'lake-manifest.json'
 TOOLCHAIN_FILE ='lean-toolchain'
@@ -217,13 +217,15 @@ def cwd_analyze(target_toolchains: Iterable[str | None] = [], tag_regex: re.Patt
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
-  parser.add_argument('url',
+  parser.add_argument('-u', '--url', type=str, default=None,
     help="Git URL of the repository to clone")
-  parser.add_argument('test_dir',
+  parser.add_argument('-m', '--matrix', type=str, default=None,
+    help='JSON testbed matrix entry with build configuration')
+  parser.add_argument('-d', '--testbed', type=str, default=None,
     help="directory to clone the package into")
-  parser.add_argument('-t', '--toolchain', nargs='*', action='extend', default=[],
+  parser.add_argument('-t', '--toolchain', type=str, nargs='*', action='extend', default=[],
     help="Lean toolchain(s) on build the package on")
-  parser.add_argument('-o', '--output',
+  parser.add_argument('-o', '--output', type=str, default=None,
     help='file to output the build results')
   parser.add_argument('-e', '--tag-regex', type=str, default=None,
     help='build tags by regular expression')
@@ -231,37 +233,55 @@ if __name__ == "__main__":
     help='print no logging information')
   parser.add_argument('-v', '--verbose', dest="verbosity", action='store_const', const=2,
     help='print verbose logging information')
-  parser.add_argument('-R', '--reuse-clone', action='store_true',
+  parser.add_argument('-R', '--reuse-clone', action='store_true', default=False,
     help='reuse cloned repository if it already exists')
   parser.add_argument('-H', '--head', type=str, default=None,
     help='the initial revision of the repository to checkout')
   args = parser.parse_args()
 
   configure_logging(args.verbosity)
-  target_toolchains = resolve_toolchains(args.toolchain)
 
-  tag_regex = None
+  if args.matrix is not None:
+    entry: TestbedEntry = json.loads(args.matrix)
+    url = entry['gitUrl']
+    target_toolchains = resolve_toolchains(entry['toolchains'])
+  else:
+    if args.url is None:
+      raise RuntimeError("a Git URL is required (either through `-u` or `-m`)")
+    url: str = args.url
+    target_toolchains = set[str | None]()
+
+  # Compile tag regex (if provided)
+  tag_regex: re.Pattern[str] | None = None
   if args.tag_regex is not None:
     tag_regex = re.compile(args.tag_regex)
 
-  # Clone package
-  if not (args.reuse_clone and os.path.exists(args.test_dir)):
-    os.makedirs(args.test_dir, exist_ok=True)
-    shutil.rmtree(args.test_dir)
-    run_cmd('git', 'clone', args.url, args.test_dir)
+  # Make testbed
+  if args.testbed is None:
+    testbed = tempfile.mkdtemp()
+  else:
+    testbed = args.testbed
+    if not (args.reuse_clone and os.path.exists(testbed)):
+      os.makedirs(testbed, exist_ok=True)
+      shutil.rmtree(testbed)
+
+  # Clone, analyze, and build package
   iwd = os.getcwd()
-  os.chdir(args.test_dir)
+  os.chdir(testbed)
+  run_cmd('git', 'clone', args.url, '.')
   if args.head:
     cwd_checkout(args.head)
   run_cmd('git', 'fetch', '--tags', '--force')
-
-  # Analyze and build package
   result = cwd_analyze(target_toolchains, tag_regex)
+  os.chdir(iwd)
 
   # Output result
-  os.chdir(iwd)
   if args.output is None:
     print(json.dumps(result, indent=2))
   else:
     with open(args.output, 'w') as f:
       f.write(json.dumps(result, indent=2))
+
+  # Cleanup
+  if args.testbed is None: # temp testbed
+    shutil.rmtree(testbed)

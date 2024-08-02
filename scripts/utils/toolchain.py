@@ -64,9 +64,9 @@ def normalize_toolchain(toolchain: str) -> str:
 
 NIGHTLY_REPO='leanprover/lean4-nightly'
 
-def resolve_toolchain(toolchain: str):
+def resolve_toolchain(toolchain: str, package_toolchain: T) -> str | T:
   if toolchain == 'package':
-    return None
+    return package_toolchain
   elif toolchain == 'stable':
     releases = filter(lambda r: not r['prerelease'], query_releases())
     return f"{DEFAULT_ORIGIN}:{next(releases)['tag_name']}"
@@ -79,12 +79,12 @@ def resolve_toolchain(toolchain: str):
   else:
     return normalize_toolchain(toolchain)
 
-def split_toolchains(toolchains: 'Iterable[str]') -> 'Iterable[str]':
+def split_toolchains(toolchains: Iterable[str]) -> Iterable[str]:
   for ts in toolchains:
     for t in ts.split(','):
       t = t.strip()
       if len(t) > 0 and t != 'none':
         yield t
 
-def resolve_toolchains(toolchains: 'Iterable[str]') -> 'set[str | None]':
-   return set(map(resolve_toolchain, split_toolchains(toolchains)))
+def resolve_toolchains(toolchains: Iterable[str], package_toolchain: T = None) -> set[str | T]:
+   return set(resolve_toolchain(t, package_toolchain) for t in split_toolchains(toolchains))
