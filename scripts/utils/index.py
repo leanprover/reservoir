@@ -1,106 +1,11 @@
 import os
-import re
 import json
+import shutil
 import logging
-from typing import Mapping, MutableMapping, overload, Literal, Iterable, TypedDict, Union
+from typing import Mapping, MutableMapping, overload, Literal, Iterable, TypedDict
 from requests.structures import CaseInsensitiveDict
 from utils.core import *
-
-
-class DepBase(TypedDict, total=False):
-  name: str
-  scope: str
-
-class PathDep(DepBase, total=False):
-  type: Literal['path']
-  dir: str
-
-class GitDep(DepBase, total=False):
-  type: Literal['git']
-  url: str
-
-Dependency = Union[PathDep, GitDep]
-
-class Manifest(TypedDict, total=False):
-  name: str
-  packages: list[Dependency]
-
-# assumes escaped names are simple (which is fine for now)
-FRENCH_QUOTE_PATTERN = re.compile('[«»]')
-def unescape_name(name: str) -> str:
-  return FRENCH_QUOTE_PATTERN.sub('', name)
-
-class Source(TypedDict):
-  type: str
-  host: str
-  id: str
-  fullName: str
-  repoUrl: str
-  gitUrl: str
-  defaultBranch: str
-
-class RunHeader(TypedDict):
-  url: str
-  builtAt: str
-
-class BuildBase(RunHeader):
-  revision: str
-  toolchain: str
-  outcome: str
-
-class Build(BuildBase, total=False):
-  requiredUpdate: bool
-  archiveSize: int | None
-
-class BuildResult(TypedDict):
-  built: bool | None
-  tested: bool | None
-  toolchain: str
-  requiredUpdate: bool
-  archiveSize: int | None
-
-class PackageVersion(TypedDict):
-  version: str
-  revision: str
-  date: str
-  tag: str | None
-  toolchain: str | None
-  dependencies: list[Dependency] | None
-  builds: list[BuildResult]
-
-class PackageResult(TypedDict):
-  index: bool
-  name: str | None
-  homepage: str | None
-  description: str | None
-  keywords: list[str] | None
-  headVersion: PackageVersion
-  versions: list[PackageVersion]
-
-class TestbedEntry(TypedDict):
-  artifact: str
-  gitUrl: str
-  buildName: str
-  fullName: str
-  toolchain: str
-
-class PackageBase(TypedDict):
-  name: str
-  owner: str
-  fullName: str
-  description: str | None
-  homepage: str | None
-  license: str | None
-  createdAt: str
-  updatedAt: str
-  stars: int
-  sources: list[Source]
-
-class Package(PackageBase, total=False):
-  builds: list[Build]
-
-class PackageWithBuilds(PackageBase):
-  builds: list[Build]
+from utils.package import *
 
 Alias = TypedDict('Alias', {'from': str, 'to': str})
 
@@ -108,8 +13,8 @@ class AliasStub(TypedDict):
   alias: Alias
 
 # assumes mapping is acyclic
-def flatten_mapping(mapping: 'MutableMapping[T, T]'):
-  def follow(parents: 'list[T]', target: T):
+def flatten_mapping(mapping: MutableMapping[T, T]):
+  def follow(parents: list[T], target: T):
     if target in mapping:
       follow(parents, mapping[target])
     else:
@@ -121,7 +26,7 @@ def flatten_mapping(mapping: 'MutableMapping[T, T]'):
     follow(parents, target)
     parents.clear()
 
-def resolve_aliases(pkgs: 'Iterable[Package]', aliases: 'Mapping[str, str]'):
+def resolve_aliases(pkgs: Iterable[Package], aliases: Mapping[str, str]):
   resolved = CaseInsensitiveDict[Package]()
   for alias, target in aliases.items():
     pkg = next((pkg for pkg in pkgs if pkg['fullName'].lower() == target.lower()), None)
@@ -131,8 +36,8 @@ def resolve_aliases(pkgs: 'Iterable[Package]', aliases: 'Mapping[str, str]'):
       logging.warning(f"Failed to resolve alias '{alias}' -> '{target}'")
   return resolved
 
-# Alias encoding for the `manifest.json``
-def encode_aliases(aliases: 'Mapping[str, Package]') -> 'dict[str, str]':
+# Alias encoding for the Reservoir `manifest.json`
+def serialize_aliases(aliases: Mapping[str, Package]) -> dict[str, str]:
   return dict([alias, pkg['fullName']] for alias, pkg in aliases.items())
 
 def index_relpath(owner: str, name: str) -> str:
@@ -144,60 +49,58 @@ def alias_relpath(alias: str) -> str:
 def package_relpath(pkg: Package) -> str:
   return index_relpath(pkg['owner'], pkg['name'])
 
-def load_builds(path: str) -> 'list[Build]':
+def walk_index(path: str):
+  for owner_dir in os.listdir(path):
+    if (owner_dir.startswith('.')):
+      continue
+    owner_path = os.path.join(path, owner_dir)
+    for pkg_dir in os.listdir(owner_path):
+      yield os.path.join(owner_dir, pkg_dir)
+
+def load_index(path: str, include_builds=False) -> tuple[list[Package], CaseInsensitiveDict[Package]]:
+  if os.path.isdir(path):
+    pkgs = list[Package]()
+    aliases = CaseInsensitiveDict[str]()
+    for relpath in walk_index(path):
+      pkg_path = os.path.join(path, relpath)
+      if os.path.isdir(pkg_path):
+        with open(os.path.join(pkg_path, 'metadata.json'), 'r') as f:
+          data = json.load(f)
+        if 'keywords' not in data:
+          data['keywords'] = []
+        pkg = package_of_metadata(data)
+        pkg['path'] = relpath
+        if include_builds:
+          pkg['builds'] = load_builds(os.path.join(pkg_path, 'builds.json'))
+        pkgs.append(pkg)
+      else:
+        with open(pkg_path, 'r') as f:
+          content = f.read().strip()
+        try:
+          obj = json.loads(content)
+          alias: Alias = obj.get('alias', None)
+          if alias is not None:
+            aliases[alias['from']] = alias['to']
+        except json.JSONDecodeError:
+          logging.error(f"{relpath}: Package stub has invalid JSON")
+    pkgs = sorted(pkgs, key=lambda pkg: pkg['stars'], reverse=True)
+    flatten_mapping(aliases)
+    aliases = resolve_aliases(pkgs, aliases)
+    return pkgs, aliases
+  else:
+    with open(path, 'r') as f:
+      pkgs: list[Package] = json.load(f)
+    return pkgs, CaseInsensitiveDict[Package]()
+
+def load_builds(path: str) -> list[OldBuild]:
   if os.path.exists(path):
     with open(path, 'r') as f:
       return json.load(f)
   else:
     return list()
 
-@overload
-def load_index(path: str) -> 'tuple[list[Package], CaseInsensitiveDict[Package]]': ...
-
-@overload
-def load_index(path: str, include_builds: Literal[False]) -> 'tuple[list[Package], CaseInsensitiveDict[Package]]': ...
-
-@overload
-def load_index(path: str, include_builds: Literal[True]) -> 'tuple[list[PackageWithBuilds], CaseInsensitiveDict[Package]]': ...
-
-def load_index(path: str, include_builds=False):
-  aliases = CaseInsensitiveDict[str]()
-  if os.path.isdir(path):
-    pkgs = list[Package]()
-    for owner_dir in os.listdir(path):
-      if (owner_dir.startswith('.')): continue
-      owner_path = os.path.join(path, owner_dir)
-      for pkg_dir in os.listdir(owner_path):
-        pkg_path = os.path.join(owner_path, pkg_dir)
-        if os.path.isdir(pkg_path):
-          with open(os.path.join(pkg_path, 'metadata.json'), 'r') as f:
-            pkg: Package = json.load(f)
-          if include_builds:
-            pkg['builds'] = load_builds(os.path.join(pkg_path, 'builds.json'))
-          pkgs.append(pkg)
-        else:
-          with open(pkg_path, 'r') as f:
-            content = f.read().strip()
-            try:
-              obj = json.loads(content)
-              alias: Alias = obj.get('alias', None)
-              if alias is not None:
-                aliases[alias['from']] = alias['to']
-            except json.JSONDecodeError:
-              aliases[f"{owner_dir}/{pkg_dir}"] = content
-    pkgs = sorted(pkgs, key=lambda pkg: pkg['stars'], reverse=True)
-  else:
-    with open(path, 'r') as f:
-      pkgs = json.load(f)
-    if include_builds:
-      for pkg in pkgs:
-        pkg['builds'] = list()
-  flatten_mapping(aliases)
-  aliases = resolve_aliases(pkgs, aliases)
-  return pkgs, aliases
-
-def insert_build_results(builds: 'Iterable[Build]', results: 'Iterable[Build]') -> 'list[Build]':
-  new_builds = list[Build]()
+def insert_build_results(builds: Iterable[OldBuild], results: Iterable[OldBuild]) -> list[OldBuild]:
+  new_builds = list[OldBuild]()
   new_results = dict((r['toolchain'], r) for r in results)
   for build in builds:
     toolchain = build['toolchain']
@@ -212,17 +115,71 @@ def insert_build_results(builds: 'Iterable[Build]', results: 'Iterable[Build]') 
     new_builds.append(result)
   return sorted(new_builds, key=lambda build: build['toolchain'], reverse=True)
 
-def write_packages(index_dir: str, pkgs: 'Iterable[Package]'):
+def move_package(index_dir: str, old_relpath: str, new_relpath: str):
+  old_path = os.path.join(index_dir, old_relpath)
+  if os.path.isdir(old_path):
+    new_path = os.path.join(index_dir, new_relpath)
+    if os.path.isdir(new_path):
+      logging.info(f"Index merge: '{old_relpath}' -> '{new_relpath}'")
+      old_builds = load_builds(os.path.join(old_path, 'builds.json'))
+      new_builds = load_builds(os.path.join(new_path, 'builds.json'))
+      builds = insert_build_results(old_builds, new_builds)
+      with open(os.path.join(new_path, 'builds.json'), 'w') as f:
+        json.dump(builds, f, indent=2)
+      shutil.rmtree(old_path)
+    else:
+      logging.info(f"Index rename: '{old_relpath}' -> '{new_relpath}'")
+      if os.path.isfile(new_path):
+        logging.info(f"Removed stub at '{new_relpath}'")
+        os.remove(new_path)
+      os.renames(old_path, new_path)
+
+def walk_renames(pkg: Package) -> Iterable[Package]:
+  for pkg in pkg['renames']:
+    walk_renames(pkg)
+    yield pkg
+
+def write_index(index_dir: str, pkgs: Iterable[Package], aliases: MutableMapping[str, Package]):
+  # Write packages
   for pkg in pkgs:
-    pkg_dir = os.path.join(index_dir, package_relpath(pkg))
+    # Make package directory
+    relpath = package_relpath(pkg)
+    pkg_dir = os.path.join(index_dir, relpath)
     if os.path.isfile(pkg_dir):
+      logging.info(f"Removed stub at '{relpath}'")
       os.remove(pkg_dir)
     os.makedirs(pkg_dir, exist_ok=True)
+    # Write package metadata
     with open(os.path.join(pkg_dir, "metadata.json"), 'w') as f:
-      json.dump(pkg, f, indent=2)
+      json.dump(package_metadata(pkg), f, indent=2)
       f.write("\n")
-
-def write_aliases(index_dir: str, aliases: 'Mapping[str, Package]'):
+    # Perform renames
+    for old_pkg in walk_renames(pkg):
+      old_relpath = package_relpath(old_pkg)
+      if old_relpath is not None and old_relpath != relpath:
+        move_package(index_dir, old_relpath, relpath)
+        logging.info(f"Index alias: '{old_pkg['fullName']}' -> '{pkg['fullName']}'")
+        aliases[old_pkg['fullName']] = pkg
+    # Compute source-based aliases
+    for src in pkg['sources']:
+      alias = src.get('fullName', None)
+      if alias is not None and alias_relpath(alias) != relpath:
+        if alias not in aliases:
+          logging.info(f"Index alias: '{alias}' -> '{pkg['fullName']}'")
+        aliases[alias] = pkg  # always set to ensure canonical casing
+        builds_file = os.path.join(pkg_dir, 'builds.json')
+    # Write builds
+    builds_file = os.path.join(pkg_dir, 'builds.json')
+    if os.path.exists(builds_file):
+      with open(os.path.join(pkg_dir, 'builds.json'), 'r') as f:
+        builds: list[OldBuild] = json.load(f)
+      builds = insert_build_results(builds, pkg['builds'])
+    else:
+      builds = pkg['builds']
+    with open(builds_file, 'w') as f:
+      f.write(json.dumps(builds, indent=2))
+      f.write('\n')
+  # Write aliases
   for alias, target_pkg in aliases.items():
     target = target_pkg['fullName']
     alias_path = os.path.join(index_dir, alias_relpath(alias))
@@ -234,7 +191,3 @@ def write_aliases(index_dir: str, aliases: 'Mapping[str, Package]'):
         obj: AliasStub = {"alias": {"from": alias, "to": target}}
         f.write(json.dumps(obj))
         f.write("\n")
-
-def write_index(index_dir: str, pkgs: 'Iterable[Package]', aliases: 'Mapping[str, Package]'):
-  write_packages(index_dir, pkgs)
-  write_aliases(index_dir, aliases)

@@ -16,10 +16,6 @@ on:
         type: boolean
         required: false
         default: false
-      testbed-artifact:
-        description: "Augment index with local testbed results"
-        type: boolean
-        required: false
       production-deploy:
         description: "Deploy website to production"
         type: boolean
@@ -56,11 +52,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Download Testbed Artifact
-        if: inputs.testbed-artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: results
       - name: Download Index Artifact
         if: inputs.index-artifact
         uses:  actions/download-artifact@v4
@@ -76,9 +67,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.RESERVOIR_INDEX_TOKEN }}
       - name: Create Manifest
-        run: |
-          scripts/bundle.py -o manifest.json index \
-            ${{ inputs.testbed-artifact && 'results.json' || '' }}
+        run: scripts/bundle.py -o manifest.json index
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Upload Manifest

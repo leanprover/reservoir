@@ -14,9 +14,9 @@ if __name__ == "__main__":
   parser.add_argument('-t', '--toolchain', nargs='*', action='extend', default=[],
     help="Lean toolchain on build the packages on")
   parser.add_argument('-e', '--regex', default=None,
-    help="search packages by a regular expression")
+    help="select package to build by a regular expression")
   parser.add_argument('-n', '--num', type=int, default=0,
-    help="max number of testbed entries (<= 0 for no limit)")
+    help="max number of testbed entries (< 0 for no limit)")
   parser.add_argument('-X', '--exclusions', nargs="*", action='extend', default=[],
     help='file containing repos to exclude')
   parser.add_argument('-o', '--output',
@@ -31,9 +31,9 @@ if __name__ == "__main__":
   toolchains = resolve_toolchains(args.toolchain, "package")
   def create_entries(pkgs: Iterable[Package]) -> Iterable[TestbedEntry]:
     for pkg in pkgs:
-      src = next(filter(lambda src: 'gitUrl' in src, pkg['sources']))
+      src = github_src(pkg)
       if src is None:
-        logging.error(f"Package {pkg['fullName']} lacks a Git source")
+        logging.error(f"{pkg['fullName']}: Package lacks a GitHub source")
         continue
       build_name = pkg['fullName']
       digest = hashlib.sha256(build_name.encode()).digest()
@@ -42,8 +42,8 @@ if __name__ == "__main__":
         'artifact': artifact,
         'gitUrl': src['gitUrl'],
         'buildName': build_name,
-        'fullName': pkg['fullName'],
-        'toolchains': list(toolchains)
+        'toolchains': ','.join(toolchains),
+        "repoId": src['id'],
       }
 
   pkgs, _ = load_index(args.index)

@@ -29,6 +29,9 @@ def fmt_bytes(num: float):
     num /= 1000.0
   return f"{num:.1f} YB"
 
+def ifnone(value: T | None, default: T) -> T:
+  return default if value is None else value
+
 #---
 # Time
 #---

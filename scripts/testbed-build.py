@@ -52,6 +52,8 @@ def try_build(ver: PackageVersion, target_toolchain: str | None) -> BuildResult 
     'toolchain': target_toolchain,
     'requiredUpdate': False,
     'archiveSize': None,
+    'date': utc_iso_now(),
+    'url': None,
   }
   # Try build
   required_update = False
@@ -132,7 +134,10 @@ def cwd_manifest() -> Manifest:
 def decode_deps(manifest: Manifest) -> list[Dependency] | None:
   return manifest.get('packages', None)
 
-def cwd_reservoir_config() -> ReservoirConfig | None:
+def cwd_reservoir_config(toolchain: str | None = None) -> ReservoirConfig | None:
+  lake_ver = None if toolchain is None else toolchain_version_number(toolchain)
+  if lake_ver is not None and lake_ver < 12:
+    return None # short-circuit downloading old toolchains
   try:
     return json.loads(capture_cmd('lake', 'reservoir-config', '1.0.0'))
   except (CommandError, json.JSONDecodeError) as e:
@@ -154,6 +159,7 @@ def cwd_analyze(target_toolchains: Iterable[str | None] = [], tag_regex: re.Patt
   # Extract Reservoir configuration from Lake
   logging.info(f"Analyzing package HEAD")
   manifest = cwd_manifest()
+  toolchain = cwd_toolchain()
   result: PackageResult = {
     'name': None,
     'index': True,
@@ -165,13 +171,13 @@ def cwd_analyze(target_toolchains: Iterable[str | None] = [], tag_regex: re.Patt
       'revision': cwd_head_revision(),
       'tag': cwd_head_tag(),
       'version': '0.0.0',
-      'toolchain': cwd_toolchain(),
+      'toolchain': toolchain,
       'dependencies': decode_deps(manifest),
       'builds': [],
     },
     'versions': list(),
   }
-  cfg = cwd_reservoir_config()
+  cfg = cwd_reservoir_config(toolchain)
   if cfg is not None:
     result['name'] = cfg.get('name', None)
     result['index'] = cfg.get('index', True)
@@ -200,13 +206,14 @@ def cwd_analyze(target_toolchains: Iterable[str | None] = [], tag_regex: re.Patt
       for tag in version_tags:
         logging.info(f'Analyzing version tag {tag}')
         cwd_checkout(tag)
-        cfg = cwd_reservoir_config()
+        toolchain = cwd_toolchain()
+        cfg = cwd_reservoir_config(toolchain)
         ver: PackageVersion = {
           'date': cwd_commit_date(),
           'revision': cwd_head_revision(),
           'tag': tag,
           'version': cfg.get('version', '0.0.0') if cfg is not None else '0.0.0',
-          'toolchain': cwd_toolchain(),
+          'toolchain': toolchain,
           'dependencies': decode_deps(cwd_manifest()),
           'builds': [],
         }
@@ -217,7 +224,7 @@ def cwd_analyze(target_toolchains: Iterable[str | None] = [], tag_regex: re.Patt
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
-  parser.add_argument('-u', '--url', type=str, default=None,
+  parser.add_argument('url', nargs='?', type=str, default=None,
     help="Git URL of the repository to clone")
   parser.add_argument('-m', '--matrix', type=str, default=None,
     help='JSON testbed matrix entry with build configuration')
@@ -241,47 +248,53 @@ if __name__ == "__main__":
 
   configure_logging(args.verbosity)
 
-  if args.matrix is not None:
-    entry: TestbedEntry = json.loads(args.matrix)
-    url = entry['gitUrl']
-    target_toolchains = resolve_toolchains(entry['toolchains'])
-  else:
-    if args.url is None:
-      raise RuntimeError("a Git URL is required (either through `-u` or `-m`)")
-    url: str = args.url
-    target_toolchains = set[str | None]()
-
-  # Compile tag regex (if provided)
-  tag_regex: re.Pattern[str] | None = None
-  if args.tag_regex is not None:
-    tag_regex = re.compile(args.tag_regex)
-
   # Make testbed
   if args.testbed is None:
     testbed = tempfile.mkdtemp()
+    reuse_clone = False
   else:
     testbed = args.testbed
-    if not (args.reuse_clone and os.path.exists(testbed)):
+    reuse_clone = bool(args.reuse_clone) and os.path.exists(testbed)
+    if not reuse_clone:
       os.makedirs(testbed, exist_ok=True)
       shutil.rmtree(testbed)
 
-  # Clone, analyze, and build package
-  iwd = os.getcwd()
-  os.chdir(testbed)
-  run_cmd('git', 'clone', args.url, '.')
-  if args.head:
-    cwd_checkout(args.head)
-  run_cmd('git', 'fetch', '--tags', '--force')
-  result = cwd_analyze(target_toolchains, tag_regex)
-  os.chdir(iwd)
+  try:
+    # Extract matrix configuration
+    if args.matrix is not None:
+      entry: TestbedEntry = json.loads(args.matrix)
+      url = entry['gitUrl']
+      target_toolchains = resolve_toolchains(entry['toolchains'])
+    else:
+      if args.url is None and not reuse_clone:
+        raise RuntimeError("a Git URL is required (either by argument or through `--matrix`)")
+      url: str | None = args.url
+      target_toolchains = resolve_toolchains(args.toolchain)
 
-  # Output result
-  if args.output is None:
-    print(json.dumps(result, indent=2))
-  else:
-    with open(args.output, 'w') as f:
-      f.write(json.dumps(result, indent=2))
+    # Compile tag regex (if provided)
+    tag_regex: re.Pattern[str] | None = None
+    if args.tag_regex is not None:
+      tag_regex = re.compile(args.tag_regex)
 
-  # Cleanup
-  if args.testbed is None: # temp testbed
-    shutil.rmtree(testbed)
+    # Clone, analyze, and build package
+    iwd = os.getcwd()
+    os.chdir(testbed)
+    if url is not None:
+      run_cmd('git', 'clone', url, '.')
+    if args.head:
+      cwd_checkout(args.head)
+    run_cmd('git', 'fetch', '--tags', '--force')
+    result = cwd_analyze(target_toolchains, tag_regex)
+    os.chdir(iwd)
+
+    # Output result
+    if args.output is None:
+      print(json.dumps(result, indent=2))
+    else:
+      with open(args.output, 'w') as f:
+        f.write(json.dumps(result, indent=2))
+
+  finally:
+    # Cleanup
+    if args.testbed is None: # temp testbed
+      shutil.rmtree(testbed)
