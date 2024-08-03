@@ -117,15 +117,11 @@ def query_github_results(limit: int, endpoint: str, params: dict) -> Iterable[di
     res = query_github_api(endpoint, params)
     yield from res['items']
 
-def query_repo_data(repo_ids: 'Iterable[str]') -> 'Iterable[Repo]':
+def query_repo_data(repo_ids: 'Iterable[str]') -> 'Iterable[Repo | None]':
   for page in paginate(repo_ids, 100):
     data = query_github_graphql(REPO_QUERY, {"repoIds": page})['data']
     logging.debug(f"GitHub GraphQL request cost: {data['rateLimit']['cost']}")
-    for (id, node) in zip(page, data['nodes']):
-      if node is None:
-        logging.error(f"repository id {id} not found on GitHub")
-      else:
-        yield node
+    yield from data['nodes']
 
 def query_lake_repos(limit: int) -> 'list[str]':
   # NOTE: For some reason, the GitHub rate limit is currently (07-08-24) off by one.
@@ -245,12 +241,24 @@ def move_package(index_dir: str, old_relpath: str, new_relpath: str):
         os.remove(new_path)
       os.renames(old_path, new_path)
 
+def packages_with_repos(pkgs: Iterable[Package]):
+  ids = list[str]()
+  pkgs = list[Package]()
+  for pkg in pkgs:
+    id = github_repo_id(pkg)
+    if id is not None:
+      ids.append(id)
+      pkgs.append(pkg)
+  return zip(pkgs, query_repo_data(ids))
+
 def refresh_index(index_dir: str):
   pkgs = dict[str, Package]()
   old_pkgs, aliases = load_index(index_dir)
   logging.info(f"Found {len(old_pkgs)} existing packages")
-  repo_ids = filter(None, map(github_repo_id, old_pkgs))
-  for (old_pkg, repo) in zip(old_pkgs, query_repo_data(repo_ids)):
+  for (old_pkg, repo) in packages_with_repos(old_pkgs):
+    if repo is None:
+      logging.error(f"{old_pkg['fullName']}: repository ID not found on GitHub: {id}")
+      continue
     if repo['id'] in pkgs:
       new_pkg = pkgs[repo['id']]
     else:
@@ -341,7 +349,7 @@ if __name__ == "__main__":
     indexed_ids = indexed_pkgs.keys()
     repo_ids = query_lake_repos(limit)
     logging.info(f"Found {len(repo_ids)} candidate repositories with root Lake manifests")
-    repos = query_repo_data(repo_ids)
+    repos = filter(None, query_repo_data(repo_ids))
     if len(indexed_ids) != 0:
       repos = list(filter_indexed_repos(repos, indexed_ids))
       logging.info(f"{len(repos)} candidate repositories not in index")
