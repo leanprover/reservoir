@@ -136,10 +136,9 @@ jobs:
         name: Build
         continue-on-error: true # e.g., clone failures
         # We run arbitrary untrusted code here
-        run: scripts/testbed-build.py -v -o result.json -m ${{ toJson(matrix) }}
-      - name: Check Build
-        run: test "`jq -r '.outcome' result.json`" = success
-        continue-on-error: true # build failures
+        run: |
+          scripts/testbed-build.py -v -o result.json \
+            ${{ matrix.gitUrl }} -t ${{ matrix.toolchains }}
       - name: Upload Result
         uses: actions/upload-artifact@v4
         with:
@@ -172,15 +171,21 @@ jobs:
   save:
     needs: collect
     name: Save Results
-    if: inputs.update-index
     runs-on: ubuntu-latest
     # Permit only 1 concurrent update of the same index repository.
     concurrency:
-      group: update-index/${{ inputs.index-repo }}
+      group: ${{ inputs.update-index && format('update-index/{0}', inputs.index-repo) || format('index/{0}', github.run_id) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Download Index Artifact
+        if: inputs.index-artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: index
+          path: index
       - name: Checkout External Index
+        if: (!inputs.index-artifact)
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.RESERVOIR_INDEX_TOKEN }}
@@ -192,7 +197,10 @@ jobs:
           name: results
       - name: Write Results to Index
         run: scripts/testbed-save.py -v results.json index
+        env:
+          GH_TOKEN: ${{ secrets.RESERVOIR_INDEX_TOKEN }}
       - name: Update External Index
+        if: inputs.update-index
         uses: EndBug/add-and-commit@v9
         with:
           cwd: index
@@ -202,3 +210,11 @@ jobs:
 
             ${{github.server_url}}/${{github.repository}}/actions/runs/${{github.run_id}}/attempts/${{github.run_attempt}}
           default_author: github_actions
+      - name: Upload Index Artifact
+        if: (!inputs.update-index)
+        uses: actions/upload-artifact@v4
+        with:
+          name: index
+          path: index
+          if-no-files-found: error
+          overwrite: true

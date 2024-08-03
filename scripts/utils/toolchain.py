@@ -34,14 +34,21 @@ def toolchain_sort_key(t: Toolchain):
 
 MIN_TOOLCHAIN_SORT_KEY = (0, datetime.min.replace(tzinfo=timezone.utc))
 
-TOOLCHAIN_VER_PATTERN = re.compile("v4\\.(\\d+)\\..*")
+TOOLCHAIN_VER_PATTERN = re.compile(r"[^:]*:v4\.(\d+)\..*")
+def toolchain_version_number(toolchain: str):
+  match = LEAN_VER_PATTERN.search(toolchain)
+  return int(match.group(1)) if match is not None else None
+
+LEAN_VER_PATTERN = re.compile(r"v4\.(\d+)\..*")
+def lean_version_number(tag: str):
+  match = LEAN_VER_PATTERN.search(tag)
+  return int(match.group(1)) if match is not None else None
+
 def query_toolchains(repo: str = DEFAULT_ORIGIN) -> 'list[Toolchain]':
   def toolchain_of_release(rel: Release) -> Toolchain:
-    match = TOOLCHAIN_VER_PATTERN.search(rel['tag_name'])
-    version = int(match.group(1)) if match is not None else None
     return {
       "name": f"{repo}:{rel['tag_name']}",
-      "version": version,
+      "version":  lean_version_number(rel['tag_name']),
       "tag": rel['tag_name'],
       "date": rel['published_at'],
       "releaseUrl": rel['html_url'],

@@ -24,19 +24,6 @@ def is_build_job(job: Job, name: str):
   match = BUILD_JOB_PATTERN.search(job['name'])
   return match is not None and match.group(1) == name
 
-def mk_build_results(builtAt: str, url: str, result: PackageResult) -> Iterable[Build]:
-  head_ver = result['headVersion']
-  for build in head_ver['builds']:
-    yield {
-      'url': url,
-      'builtAt': builtAt,
-      'outcome': 'success' if build['built'] else 'failure',
-      'revision': head_ver['revision'],
-      'toolchain': build['toolchain'],
-      'requiredUpdate': build['requiredUpdate'],
-      'archiveSize': build['archiveSize'],
-    }
-
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument('results',
@@ -68,38 +55,40 @@ if __name__ == "__main__":
   def find_build_job(name: str) -> Job:
     return next(job for job in jobs if is_build_job(job, name))
 
-  logging.info(f"{len(matrix)} total testbed entries")
+  logging.info(f"Testbed entries: {len(matrix)}")
 
   num_results = 0
+  num_opt_outs = 0
   num_build_results = 0
-  results = dict[str, list[Build]]()
+  results = dict[str, PackageResult]()
   archiveSizes = list[int]()
-  now = utc_iso_now()
   for entry in matrix:
+    jobId = find_build_job(entry['buildName'])['id']
+    url = f"https://github.com/{TESTBED_REPO}/actions/runs/{args.run_id}/job/{jobId}#step:4:1"
     result_file = os.path.join(args.results, entry['artifact'], 'result.json')
     try:
       with open(result_file, 'r') as f:
         result: PackageResult = json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
       continue
+    id = entry['repoId']
+    if not result['index']:
+      logging.info(f"Skipping repository '{id}''s result as it opted-out of Reservoir")
+      num_opt_outs +=1
     num_results += 1
-    jobId = find_build_job(entry['buildName'])['id']
-    url = f"https://github.com/{TESTBED_REPO}/actions/runs/{args.run_id}/job/{jobId}#step:4:1"
-    if entry['fullName'] not in results:
-      build_results = results[entry['fullName']] = list()
-    else:
-      build_results =  results[entry['fullName']]
-    for build in mk_build_results(now, url, result):
+    if id in results:
+      logging.error(f"Duplicate testbed result for repository ID '{id}'")
+    results[id] = result
+    for build in walk_builds(result):
+      build['url'] = url
       num_build_results += 1
-      build_results.append(build)
       archiveSize = build.get('archiveSize', None)
       if archiveSize is not None:
         archiveSizes.append(archiveSize)
 
-  logging.info(f"{len(results)} testbed entries with results")
-
+  logging.info(f"Package results: {num_results} (+ {num_opt_outs} opt-outs)")
   num_archives = len(archiveSizes)
-  logging.info(f"{num_archives} testbed entries with archives")
+  logging.info(f"Build results: {num_build_results} ({num_archives} with archives)")
   avg = 0 if num_archives == 0 else round(sum(archiveSizes)/num_archives)
   logging.info(f'Average build archive size: {fmt_bytes(avg)} ({avg} bytes)')
 
