@@ -127,5 +127,4 @@ jobs:
     with:
       index-repo: ${{ needs.config.outputs.index-repo }}
       index-artifact: ${{ needs.config.outputs.reindex == 'true' && needs.config.outputs.update-index != 'true' }}
-      testbed-artifact: ${{ needs.config.outputs.run-testbed == 'true' && !inputs.save-testbed }}
       production-deploy: ${{ needs.config.outputs.production-deploy == 'true' }}

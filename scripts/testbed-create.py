@@ -14,38 +14,37 @@ if __name__ == "__main__":
   parser.add_argument('-t', '--toolchain', nargs='*', action='extend', default=[],
     help="Lean toolchain on build the packages on")
   parser.add_argument('-e', '--regex', default=None,
-    help="search packages by a regular expression")
+    help="select package to build by a regular expression")
   parser.add_argument('-n', '--num', type=int, default=0,
-    help="max number of testbed entries (<= 0 for no limit)")
+    help="max number of testbed entries (< 0 for no limit)")
   parser.add_argument('-X', '--exclusions', nargs="*", action='extend', default=[],
     help='file containing repos to exclude')
   parser.add_argument('-o', '--output',
     help='file to output the bundle manifest')
   args = parser.parse_args()
 
-  exclusions = set()
+  exclusions = set[str]()
   for file in args.exclusions:
     with open(file, 'r') as f:
       for line in f: exclusions.add(line.strip().lower())
 
-  toolchains = resolve_toolchains(args.toolchain)
-  def create_entries(pkgs: 'Iterable[Package]'):
+  toolchains = resolve_toolchains(args.toolchain, "package")
+  def create_entries(pkgs: Iterable[Package]) -> Iterable[TestbedEntry]:
     for pkg in pkgs:
-      src = next(filter(lambda src: 'gitUrl' in src, pkg['sources']))
-      for toolchain in toolchains:
-        if len(toolchains) == 0 or toolchain is None:
-          build_name = pkg['fullName']
-        else:
-          build_name = f"{pkg['fullName']} on {toolchain}"
-        digest = hashlib.sha256(build_name.encode()).digest()
-        artifact = base64.urlsafe_b64encode(digest).decode().rstrip('=')
-        yield {
-          'artifact': artifact,
-          'gitUrl': src['gitUrl'],
-          'buildName': build_name,
-          'fullName': pkg['fullName'],
-          'toolchain': toolchain
-        }
+      src = github_src(pkg)
+      if src is None:
+        logging.error(f"{pkg['fullName']}: Package lacks a GitHub source")
+        continue
+      build_name = pkg['fullName']
+      digest = hashlib.sha256(build_name.encode()).digest()
+      artifact = base64.urlsafe_b64encode(digest).decode().rstrip('=')
+      yield {
+        'artifact': artifact,
+        'gitUrl': src['gitUrl'],
+        'buildName': build_name,
+        'toolchains': ','.join(toolchains),
+        "repoId": src['id'],
+      }
 
   pkgs, _ = load_index(args.index)
   pkgs = filter(lambda pkg: pkg['fullName'].lower() not in exclusions, pkgs)
