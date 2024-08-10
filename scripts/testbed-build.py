@@ -26,7 +26,7 @@ def has_mathlib(deps: list[Dependency] | None):
   else:
     return any(dep.get('name', None) == 'mathlib' for dep in deps)
 
-def try_build(ver: PackageVersion, target_toolchain: str | None) -> tuple[BuildResult | None, bool]:
+def try_build(ver: PackageVersion, target_toolchain: str | None, is_mathlib=False) -> tuple[BuildResult | None, bool]:
   # Reset directory
   run_cmd('git', 'reset', '--hard')
   run_cmd('git', 'clean', '-ffdx')
@@ -62,11 +62,11 @@ def try_build(ver: PackageVersion, target_toolchain: str | None) -> tuple[BuildR
   }
   # Try build
   require_update = False
-  uses_mathlib = has_mathlib(ver['dependencies'])
+  uses_mathlib = is_mathlib or has_mathlib(ver['dependencies'])
   logging.info(f'Building package revision {ver["revision"]} on {toolchain}')
   try:
     if uses_mathlib:
-      logging.info(f'Mathlib dependency detected')
+      logging.info(f'Mathlib detected; will use build cache')
       require_update = cross_toolchain
     if not require_update:
       if uses_mathlib:
@@ -107,17 +107,17 @@ def try_build(ver: PackageVersion, target_toolchain: str | None) -> tuple[BuildR
     logging.warning(f"No package test driver found; skipped testing")
   return result, False
 
-def try_add_build(ver: PackageVersion, target_toolchain: str | None):
-  result, failure = try_build(ver, target_toolchain)
+def try_add_build(ver: PackageVersion, target_toolchain: str | None, is_mathlib=False):
+  result, failure = try_build(ver, target_toolchain, is_mathlib)
   if result is not None: ver['builds'].append(result)
   return failure
 
-def try_add_builds(ver: PackageVersion, target_toolchains: Collection[str | None]):
+def try_add_builds(ver: PackageVersion, target_toolchains: Collection[str | None], is_mathlib=False):
   failure = False
   if len(target_toolchains) == 0:
     logging.info("No target toolchains specified; skipping build")
   for toolchain in target_toolchains:
-    failure = try_add_build(ver, toolchain) or failure
+    failure = try_add_build(ver, toolchain, is_mathlib) or failure
   return failure
 
 def cwd_toolchain():
@@ -211,9 +211,10 @@ def cwd_analyze(target_toolchains: Collection[str | None] = [], tag_regex: re.Pa
       logging.error(f'Failed to fetch repository tags: {e}')
       version_tags = None
   # Index and build versions
+  is_mathlib = result['name'] == 'mathlib'
   if result['index']:
     if tag_regex is None:
-      failure = try_add_builds(result['headVersion'], target_toolchains) or failure
+      failure = try_add_builds(result['headVersion'], target_toolchains, is_mathlib) or failure
     if version_tags is not None:
       logging.info(f'Detected version tags: {version_tags}')
       for tag in version_tags:
@@ -232,7 +233,7 @@ def cwd_analyze(target_toolchains: Collection[str | None] = [], tag_regex: re.Pa
         }
         result['versions'].append(ver)
         if tag_regex is not None and tag_regex.search(tag) is not None:
-          failure = try_add_builds(ver, target_toolchains) or failure
+          failure = try_add_builds(ver, target_toolchains, is_mathlib) or failure
   return result, failure
 
 if __name__ == "__main__":
