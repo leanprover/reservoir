@@ -42,7 +42,7 @@ if __name__ == "__main__":
         'artifact': artifact,
         'gitUrl': src['gitUrl'],
         'buildName': build_name,
-        'toolchains': ','.join(toolchains),
+        'toolchains': 'none' if len(toolchains) == 0 else ','.join(toolchains),
         "repoId": src['id'],
       }
 
