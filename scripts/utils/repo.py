@@ -193,18 +193,21 @@ def src_of_repo(repo: Repo) -> GitHubSrc:
 
 def metadata_of_repo(repo: Repo) -> PackageMetadata:
   owner, name = repo['nameWithOwner'].split('/')
+  keywords = (node['topic']['name'] for node in repo['repositoryTopics']['nodes'])
+  keywords = [k for k in keywords if k not in ['lean', 'lean4']]
   return {
     'name': name,
     'owner': owner,
     'fullName': repo['nameWithOwner'],
     'description': filter_ws(repo['description']),
-    "keywords": [node['topic']['name'] for node in repo['repositoryTopics']['nodes']],
+    "keywords": keywords,
     'homepage': filter_ws(repo['homepageUrl']),
     'license': license_id(repo['licenseInfo']),
     'createdAt': repo['createdAt'],
     'updatedAt': max(repo['updatedAt'], repo['pushedAt']),
     'stars': repo['stargazerCount'],
     'sources': [cast(PackageSrc, src_of_repo(repo))],
+    'versions': [],
   }
 
 def pkg_of_repo(repo: Repo) -> Package:

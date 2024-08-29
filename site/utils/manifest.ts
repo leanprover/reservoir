@@ -29,17 +29,36 @@ export interface Build {
   outcome: string
 }
 
+export interface PackageDep {
+  type: string
+  name: string
+  scope: string
+  version: string
+  rev: string | null
+}
+
+export interface PackageVer {
+  version: string | null
+  revision: string
+  date: string
+  tag: string | null
+  toolchain: string | null
+  dependencies: PackageDep[] | null
+}
+
 export interface Package {
   name: string
   owner: string
   fullName: string
   description: string | null
+  keywords: string[]
   homepage: string | null
   license: string | null
   createdAt: string
   updatedAt: string
   stars: number
   sources: Source[]
+  versions: PackageVer[]
   builds: Build[]
 }
 

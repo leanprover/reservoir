@@ -97,6 +97,11 @@ const {data: readme} = await useFetch<string>(readmeUrl)
     <div class="page-header">
       <h2>{{ pkg.name }}</h2>
       <div class="description" v-if="pkg.description">{{ pkg.description }}</div>
+      <div class="keywords" v-if="pkg.keywords.length > 0">
+        <NuxtLink class="keyword hard-link" v-for="keyword in pkg.keywords" :to="{path: '/packages', query: {keyword}}">
+          #{{ keyword }}
+        </NuxtLink>
+      </div>
     </div>
     <nav>
       <ul>
@@ -176,6 +181,21 @@ const {data: readme} = await useFetch<string>(readmeUrl)
 
     .description {
       margin-top: 0.5em;
+    }
+
+    .keywords {
+      margin-top: 0.75em;
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+
+      .keyword {
+        white-space: nowrap;
+
+        &:not(:last-child) {
+          margin-right: 1rem;
+        }
+      }
     }
   }
 

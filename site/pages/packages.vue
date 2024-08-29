@@ -2,7 +2,7 @@
 import Paginator from 'primevue/paginator'
 import Dropdown from 'primevue/dropdown'
 
-const toArray = <T,>(a: T | T[]) => Array.isArray(a) ? a: [a]
+const toArray = <T>(a: T | T[]) => Array.isArray(a) ? a : [a]
 
 const sortOptions = [
   {name: "Stars", value: "stars"},
@@ -15,6 +15,7 @@ const sortKeys: SortKey[] = sortOptions.map(opt => opt.value)
 const isSortKey = (x: any): x is SortKey => sortKeys.includes(x)
 
 const route = useRoute()
+const keywords = computed(() => toArray(route.query.keyword).filter((x): x is string => !!x))
 const query = computed(() => toArray(route.query.q).at(-1) || '')
 const querySortKey = toArray(route.query.sort).filter(isSortKey).at(-1)
 const sortKey = ref<SortKey>(querySortKey ?? "stars")
@@ -33,10 +34,15 @@ const sort = (pkgs: Package[], key: SortKey | "") => {
   }
 }
 const results = computed(() => {
-  const q = query.value.toLocaleLowerCase()
   let pkgs = [...packages]
-  if (q) {
-    pkgs = pkgs.filter(e => e.name.toLocaleLowerCase().indexOf(q) > -1)
+  const q = query.value.toLocaleLowerCase()
+  const kws = keywords.value
+  if (q || kws.length > 0) {
+    pkgs = pkgs.filter(e => {
+      if (q && e.name.toLocaleLowerCase().indexOf(q) == -1) return false
+      if (kws.some(k => !e.keywords.includes(k))) return false
+      return true
+    })
   }
   return sort(pkgs, sortKey.value)
 })
@@ -54,7 +60,18 @@ const resultPage = computed(() => {
 <template>
   <div class="search-page">
     <div class="page-header">
-      <h2 v-if="query">Search Results <span class="query">for '{{ query }}'</span></h2>
+      <h2 v-if="query || keywords.length > 0">
+        Search Results
+        <span class="search">
+          for
+          <span class="query" v-if="query">'{{ query }}'</span>
+          <span v-if="query && keywords.length > 0"> and </span>
+          <span class="keywords" v-if="keywords.length > 0">
+           {{ keywords.length > 1 ? 'keywords' : 'keyword' }}
+           {{ keywords.map(k => `'${k}'`).join(' & ') }}
+          </span>
+        </span>
+      </h2>
       <h2 v-else>All Packages</h2>
     </div>
     <div class="no-results" v-if="numResults === 0">
@@ -106,8 +123,9 @@ const resultPage = computed(() => {
 .search-page {
   max-width: 100vw;
 
-  .page-header .query {
+  .page-header .search {
     color: var(--dark-color);
+    font-size: 0.9em;
   }
 
   .no-results {
