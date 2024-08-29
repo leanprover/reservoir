@@ -109,12 +109,11 @@ def package_of_metadata(data: PackageMetadata) -> Package:
   pkg = cast(Package, data)
   pkg['path'] = None
   pkg['builds'] = []
-  pkg['versions'] = []
   pkg['renames'] = []
   return pkg
 
-def version_metadata(pkg: PackageVersion) -> PackageVersionMetadata:
-  return cast(PackageVersionMetadata, {k: pkg[k] for k in PackageVersionMetadata.__annotations__.keys()})
+def version_metadata(ver: PackageVersion) -> PackageVersionMetadata:
+  return cast(PackageVersionMetadata, {k: ver[k] for k in PackageVersionMetadata.__annotations__.keys()})
 
 def walk_versions(result: PackageResult) -> Iterable[PackageVersion]:
   yield result['headVersion']

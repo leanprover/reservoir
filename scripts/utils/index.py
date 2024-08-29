@@ -68,6 +68,8 @@ def load_index(path: str, include_builds=False) -> tuple[list[Package], CaseInse
           data = json.load(f)
         if 'keywords' not in data:
           data['keywords'] = []
+        if 'versions' not in data:
+          data['versions'] = []
         pkg = package_of_metadata(data)
         pkg['path'] = relpath
         if include_builds:
