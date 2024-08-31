@@ -103,7 +103,7 @@ const resultPage = computed(() => {
           <Dropdown class="dropdown" panelClass="sort-panel" :autoOptionFocus="false" @change="first = 0"
             v-model="sortKey" :options="(sortOptions as any)" optionLabel="name" optionValue="value">
             <template #option="slotProps">
-              <NuxtLink :to="{path: '/packages', query: {q: query, sort: slotProps.option.value}}">
+              <NuxtLink :to="{path: '/packages', query: {q: query, keyword: keywords, sort: slotProps.option.value}}">
                 {{ slotProps.option.name }}
               </NuxtLink>
             </template>
