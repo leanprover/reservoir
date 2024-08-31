@@ -102,7 +102,10 @@ const {data: readme} = await useFetch<string>(readmeUrl)
 <template>
   <div class="package-page">
     <div class="page-header">
-      <h2>{{ pkg.name }}</h2>
+      <h2>
+        <span>{{ pkg.name }}</span>
+        <span class='version' v-if="pkgVer && pkgVer.version != '0.0.0'">v{{pkgVer.version}}</span>
+      </h2>
       <div class="description" v-if="pkg.description">{{ pkg.description }}</div>
       <div class="keywords" v-if="pkg.keywords.length > 0">
         <NuxtLink class="keyword hard-link" v-for="keyword in pkg.keywords" :to="{path: '/packages', query: {keyword}}">
@@ -210,6 +213,12 @@ const {data: readme} = await useFetch<string>(readmeUrl)
       overflow: hidden;
       text-overflow: ellipsis;
       text-wrap: nowrap;
+    }
+
+    .version {
+      margin-left: 0.5em;
+      color: var(--dark-color);
+      font-size: 0.9em;
     }
 
     .description {
