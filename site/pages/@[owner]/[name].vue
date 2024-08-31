@@ -32,6 +32,13 @@ defineOgImageComponent('Generic', {
   hasNoDescription: !pkg.description
 })
 
+const navTab = computed(() => {
+  const tab = Array.isArray(route.query.tab) ? route.query.tab.at(-1) : route.query.tab
+  return tab ?? 'readme'
+})
+
+const pkgVer = computed(() => pkg.versions.at(0))
+
 const formatLicense = (id: string | null) => {
   switch (id && id.toLowerCase()) {
     case 'apache-2.0':
@@ -105,11 +112,22 @@ const {data: readme} = await useFetch<string>(readmeUrl)
     </div>
     <nav>
       <ul>
-        <li class="active">Readme</li>
+        <li :class="{'active': navTab == 'readme'}">
+          <NuxtLink to="?tab=readme">Readme</NuxtLink>
+        </li>
+        <li :class="{'active': navTab == 'versions'}">
+          <NuxtLink to="?tab=versions">Versions ({{pkg.versions.length}})</NuxtLink>
+        </li>
+        <li v-if="pkgVer && pkgVer.dependencies" :class="{'active': navTab == 'dependencies'}">
+          <NuxtLink to="?tab=dependencies">Dependencies ({{pkgVer.dependencies.length}})</NuxtLink>
+        </li>
+        <li :class="{'active': navTab == 'dependents'}">
+          <NuxtLink to="?tab=dependents">Dependents ({{pkg.dependents.length}})</NuxtLink>
+        </li>
       </ul>
     </nav>
-    <div class="page-body">
-      <article class="page-main card">
+    <div v-if="navTab == 'readme'" class="readme page-body">
+      <article  class="page-main readme card">
         <MarkdownView v-if="baseContentUrl && readme" :baseUrl="baseContentUrl" prefix="readme:" :value="readme"/>
         <div v-else><em>No <code>README.md</code> in repository.</em></div>
       </article>
@@ -160,6 +178,21 @@ const {data: readme} = await useFetch<string>(readmeUrl)
         </div>
       </aside>
     </div>
+    <div v-if="navTab == 'versions'" class="versions page-body">
+      <ol class="versions-list">
+        <VersionItem v-for="ver in pkg.versions" :key="ver.revision" :pkg="pkg" :ver="ver"/>
+      </ol>
+    </div>
+    <div v-if="navTab == 'dependencies'" class="dependencies page-body">
+      <ol class="dependencies-list">
+        <DepItem :upstream="true" v-for="dep in pkgVer!.dependencies!" :key="dep.name" :dep="dep"/>
+      </ol>
+    </div>
+    <div v-if="navTab == 'dependents'" class="dependents page-body">
+      <ol class="dependents-list">
+        <DepItem :upstream="false" v-for="dep in pkg.dependents" :key="dep.name" :dep="dep"/>
+      </ol>
+    </div>
   </div>
 </template>
 
@@ -199,8 +232,12 @@ const {data: readme} = await useFetch<string>(readmeUrl)
     }
   }
 
-  .page-body {
+  .readme.page-body {
     display: flex;
+
+    .card {
+      padding: 1em;
+    }
 
     @media only screen and (max-width: 700px) {
       flex-direction: column;
@@ -229,26 +266,65 @@ const {data: readme} = await useFetch<string>(readmeUrl)
   nav {
     ul {
       display: flex;
-      flex-direction: row;
       list-style: none;
 
+      margin-bottom: 1em;
+      border-color: var(--medium-color);
+      border-width: 1px;
+
       li {
+        border-width: 2px;
         padding: 0.5em 0.8em;
 
         &.active {
+          color: var(--dark-accent-color);
           background-color: var(--medium-color);
-          border-bottom: 2px solid var(--dark-color);
+          border-color: var(--dark-color);
+        }
+
+        &:hover, &:focus {
+          color: var(--dark-accent-color);
+          border-color: var(--dark-color);
+        }
+      }
+
+      @media only screen and (min-width: 600px) {
+        flex-direction: row;
+        border-bottom-style: solid;
+
+        li {
+          &.active, &:hover, &:focus {
+            border-bottom-style: solid;
+          }
+        }
+      }
+
+      @media only screen and (max-width: 600px) {
+        flex-direction: column;
+        border-left-style: solid;
+
+        li {
+          &.active, &:hover, &:focus {
+            border-left-style: solid;
+          }
         }
       }
     }
-
-    border-bottom: 1px solid var(--medium-color);
-    margin-bottom: 1em;
   }
 
   .page-main {
-    padding: 1em;
     min-height: 45vh;
+  }
+
+  .page-body {
+    ol {
+      list-style: none;
+      margin: 1em 0;
+
+      & > li:not(:first-child) {
+        margin-top: 1em;
+      }
+    }
   }
 
   aside {
