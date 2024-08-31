@@ -72,7 +72,7 @@ if __name__ == "__main__":
     except (FileNotFoundError, json.JSONDecodeError):
       continue
     id = entry['repoId']
-    if not result['index']:
+    if not result['doIndex']:
       logging.info(f"Skipping repository '{id}''s result as it opted-out of Reservoir")
       num_opt_outs +=1
     num_results += 1

@@ -164,6 +164,16 @@ def query_licenses(url: str = SPDX_DATA_URL):
     licenses[license['licenseId']] = license
   return licenses
 
+def filter_ws(value: str | None):
+  if value is not None:
+    value = value.strip() or None
+  return value
+
+def filter_license(license: str | None) -> str | None:
+  if filter_ws(license) is None: return None
+  if license in ['NONE', 'NOASSERTION']: return None
+  return license
+
 def license_id(license: RepoLicense | None) -> str | None:
   if license is None: return None
   if license['spdxId'] in ['NONE', 'NOASSERTION']: return None
@@ -174,11 +184,6 @@ def filter_repo_ids(repos: 'Iterable[Repo]', ids: 'Iterable[str]') -> 'Iterable[
   repo_map = dict((repo['id'], repo) for repo in repos)
   new_ids = set(repo_map.keys()).difference(ids)
   return map(repo_map.__getitem__, new_ids)
-
-def filter_ws(value: str | None):
-  if value is not None:
-    value = value.strip() or None
-  return value
 
 def src_of_repo(repo: Repo) -> GitHubSrc:
   return {

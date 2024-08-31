@@ -52,13 +52,17 @@ class PackageVersionMetadata(TypedDict):
   date: str
   tag: str | None
   toolchain: str | None
+  platformIndependent: bool | None
+  license: str | None
+  licenseFiles: list[str]
+  readmeFile: str | None
   dependencies: list[Dependency] | None
 
 class PackageVersion(PackageVersionMetadata):
   builds: list[BuildResult]
 
 class PackageResult(TypedDict):
-  index: bool
+  doIndex: bool
   name: str | None
   homepage: str | None
   description: str | None
@@ -93,6 +97,7 @@ class Package(PackageMetadata):
   path: str | None
 
 class SerialPackage(PackageMetadata):
+  dependents: list[Dependency]
   builds: list[OldBuild]
 
 #---
@@ -103,7 +108,10 @@ def package_metadata(pkg: Package) -> PackageMetadata:
   return cast(PackageMetadata, {k: pkg[k] for k in PackageMetadata.__annotations__.keys()})
 
 def serialize_package(pkg: Package) -> SerialPackage:
-   return cast(SerialPackage, {k: pkg[k] for k in SerialPackage.__annotations__.keys()})
+   r = cast(SerialPackage, package_metadata(pkg))
+   r['builds'] = pkg['builds']
+   r['dependents'] = []
+   return r
 
 def package_of_metadata(data: PackageMetadata) -> Package:
   pkg = cast(Package, data)

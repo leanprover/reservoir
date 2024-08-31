@@ -21,11 +21,12 @@ export interface GitHubSource extends GitSource, RepoSource {
 export type Source = GitHubSource
 
 export interface Build {
-  url?: string
+  url?: string | null
   builtAt: string
   revision: string
   toolchain: string
   requiredUpdate?: boolean
+  archiveSize?: number | null
   outcome: string
 }
 
@@ -59,6 +60,7 @@ export interface Package {
   stars: number
   sources: Source[]
   versions: PackageVer[]
+  dependents: PackageDep[]
   builds: Build[]
 }
 

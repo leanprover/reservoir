@@ -13,12 +13,16 @@ TOOLCHAIN_FILE ='lean-toolchain'
 
 class ReservoirConfig(TypedDict, total=False):
   name: str
-  homepage: str
-  description: str
   version: str
   versionTags: list[str]
-  index: bool
+  description: str
+  homepage: str
   keywords: list[str]
+  platformIndependent: bool
+  license: str
+  licenseFiles: list[str]
+  readmeFile: str | None
+  doIndex: bool
 
 def has_mathlib(deps: list[Dependency] | None):
   if deps is None:
@@ -165,6 +169,26 @@ def cwd_head_tag() -> str | None:
 def cwd_checkout(rev: str):
   run_cmd('git', 'checkout', '--detach', "--force", rev)
 
+def cfg_default(cfg: ReservoirConfig | None, key: str, default: T) -> T:
+  return cfg.get(key, default) if cfg is not None else default
+
+def cwd_licenses(cfg: ReservoirConfig | None) -> list[str]:
+  if cfg is None:
+    if os.path.exists('LICENSE'):
+      return ['LICENSE']
+    else:
+      return []
+  return cfg.get('licenseFiles', [])
+
+def cwd_readme(cfg: ReservoirConfig | None):
+  if cfg is None:
+    if os.path.exists('README.md'):
+      return 'README.md'
+    else:
+      return None
+  else:
+    return cfg.get('readmeFile', None)
+
 VERSION_TAG_PATTERN = re.compile(r'v(\d+).*')
 
 def cwd_analyze(target_toolchains: Collection[str | None] = [], tag_regex: re.Pattern[str] | None = None) -> tuple[PackageResult, bool]:
@@ -175,7 +199,7 @@ def cwd_analyze(target_toolchains: Collection[str | None] = [], tag_regex: re.Pa
   toolchain = cwd_toolchain()
   result: PackageResult = {
     'name': None,
-    'index': True,
+    'doIndex': True,
     'homepage': None,
     'description': None,
     'keywords': None,
@@ -186,6 +210,10 @@ def cwd_analyze(target_toolchains: Collection[str | None] = [], tag_regex: re.Pa
       'version': '0.0.0',
       'toolchain': toolchain,
       'dependencies': manifest.dependencies,
+      'platformIndependent': None,
+      'license': None,
+      'licenseFiles': [],
+      'readmeFile': None,
       'builds': [],
     },
     'versions': list(),
@@ -193,11 +221,15 @@ def cwd_analyze(target_toolchains: Collection[str | None] = [], tag_regex: re.Pa
   cfg = cwd_reservoir_config(toolchain)
   if cfg is not None:
     result['name'] = cfg.get('name', None)
-    result['index'] = cfg.get('index', True)
-    result['homepage'] = cfg.get('homepage', None)
-    result['description'] = cfg.get('description', None)
+    result['doIndex'] = cfg.get('doIndex', True)
+    result['homepage'] = filter_ws(cfg.get('homepage', None))
+    result['description'] = filter_ws(cfg.get('description', None))
     result['keywords'] = cfg.get('keywords', [])
     result['headVersion']['version'] = cfg.get('version', '0.0.0')
+    result['headVersion']['platformIndependent'] = cfg.get('platformIndependent', None)
+    result['headVersion']['license'] = filter_license(cfg.get('license', None))
+    result['headVersion']['licenseFiles'] = cfg.get('licenseFiles', [])
+    result['headVersion']['readmeFile'] = cwd_readme(cfg)
     version_tags = cfg.get('versionTags', list[str]())
   else:
     cfg = ReservoirConfig()
@@ -212,7 +244,7 @@ def cwd_analyze(target_toolchains: Collection[str | None] = [], tag_regex: re.Pa
       version_tags = None
   # Index and build versions
   is_mathlib = result['name'] == 'mathlib'
-  if result['index']:
+  if result['doIndex']:
     if tag_regex is None:
       failure = try_add_builds(result['headVersion'], target_toolchains, is_mathlib) or failure
     if version_tags is not None:
@@ -228,6 +260,10 @@ def cwd_analyze(target_toolchains: Collection[str | None] = [], tag_regex: re.Pa
           'tag': tag,
           'version': cfg.get('version', '0.0.0') if cfg is not None else '0.0.0',
           'toolchain': toolchain,
+          'platformIndependent': cfg_default(cfg, 'platformIndependent', None),
+          'license': filter_ws(cfg_default(cfg, 'license', None)),
+          'licenseFiles': cwd_licenses(cfg),
+          'readmeFile': cwd_readme(cfg),
           'dependencies': cwd_manifest().dependencies,
           'builds': [],
         }
