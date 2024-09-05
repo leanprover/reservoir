@@ -44,7 +44,7 @@ export interface PackageVer {
   date: string
   tag: string | null
   toolchain: string | null
-  dependencies: PackageDep[] | null
+  dependencies: PackageDep[]
 }
 
 export interface Package {

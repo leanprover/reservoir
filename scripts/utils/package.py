@@ -56,7 +56,7 @@ class PackageVersionMetadata(TypedDict):
   license: str | None
   licenseFiles: list[str]
   readmeFile: str | None
-  dependencies: list[Dependency] | None
+  dependencies: list[Dependency]
 
 class PackageVersion(PackageVersionMetadata):
   builds: list[BuildResult]
