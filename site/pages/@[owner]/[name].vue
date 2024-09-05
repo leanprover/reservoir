@@ -116,15 +116,15 @@ const {data: readme} = await useFetch<string>(readmeUrl)
     <nav>
       <ul>
         <li :class="{'active': navTab == 'readme'}">
-          <NuxtLink to="?tab=readme">Readme</NuxtLink>
+          <NuxtLink :to="{path: route.path}">Readme</NuxtLink>
         </li>
-        <li :class="{'active': navTab == 'versions'}">
+        <li v-if="pkg.versions.length > 0" :class="{'active': navTab == 'versions'}">
           <NuxtLink to="?tab=versions">Versions ({{pkg.versions.length}})</NuxtLink>
         </li>
         <li v-if="pkgVer && pkgVer.dependencies" :class="{'active': navTab == 'dependencies'}">
           <NuxtLink to="?tab=dependencies">Dependencies ({{pkgVer.dependencies.length}})</NuxtLink>
         </li>
-        <li :class="{'active': navTab == 'dependents'}">
+        <li v-if="pkg.dependents.length > 0" :class="{'active': navTab == 'dependents'}">
           <NuxtLink to="?tab=dependents">Dependents ({{pkg.dependents.length}})</NuxtLink>
         </li>
       </ul>
