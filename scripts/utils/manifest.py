@@ -27,9 +27,9 @@ def mk_dependency(contents: Any, type: str | None = None) -> Dependency | None:
     'rev': contents.get('rev', None),
   }
 
-MANIFEST_VERSION_PATTERN = re.compile(r'(\d+)\.(\d+)\.(\d+)(?:-(.*))?')
+VERSION_PATTERN = re.compile(r'(\d+)\.(\d+)\.(\d+)(?:-(.*))?')
 
-class ManifestVersion:
+class Version:
   major: int
   minor: int
   patch: int
@@ -45,14 +45,14 @@ class ManifestVersion:
     if isinstance(ver, int):
       self.minor = ver
       return
-    match = MANIFEST_VERSION_PATTERN.match(ver)
+    match = VERSION_PATTERN.match(ver)
     if match is not None:
       self.major = int(match.group(1))
       self.minor = int(match.group(2))
       self.patch = int(match.group(3))
       self.special_descr = match.group(4)
 
-  def __lt__(self, other: 'ManifestVersion | int'):
+  def __lt__(self, other: 'Version | int'):
     if isinstance(other, int):
       return self.major == 0 and self.minor < other
     else:
@@ -74,7 +74,7 @@ class Manifest():
     self.dependencies = []
     if not isinstance(contents, dict):
       return
-    manifest_version = ManifestVersion(contents.get('version', None))
+    manifest_version = Version(contents.get('version', None))
     name = contents.get('name', None)
     if name is not None:
       self.name = unescape_name(str(name))

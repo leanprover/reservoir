@@ -8,10 +8,10 @@ const props = defineProps<{build?: Build | null, markOutdated?: boolean}>()
 const build = computed<Build | {[_ in keyof Build]?: undefined}>(() => props.build || {});
 
 const outcomeIcon = computed(() => {
-  switch (build.value.outcome) {
-    case 'success':
+  switch (build.value.built) {
+    case true:
       return PassIcon
-    case 'failure':
+    case false:
       return FailIcon
     default:
       return NoneIcon
@@ -24,10 +24,10 @@ const outdated = computed(() => {
 });
 
 const outcomeClass = computed(() => {
-  switch (build.value.outcome) {
-    case 'success':
+  switch (build.value.built) {
+    case true:
       return (outdated.value && props.markOutdated) ? 'outcome-semi-success' : 'outcome-success'
-    case 'failure':
+    case false:
       return 'outcome-failure'
     default:
       return 'outcome-none'
@@ -47,12 +47,12 @@ const outcomeClass = computed(() => {
   </div>
   <template #content>
     <div class="tooltip">
-      <span v-if="build.outcome == 'success'">
+      <span v-if="build.built === true">
         Commit {{build.revision.slice(0, 7)}} builds on
         the {{ outdated ? 'old' : 'recent' }} {{build.toolchain}}
         <span v-if="build.requiredUpdate">after <code>lake update</code></span>
       </span>
-      <span v-else-if="build.outcome == 'failure'">
+      <span v-else-if="build.built === false">
         Commit {{build.revision.slice(0, 7)}} fails to build on {{build.toolchain}}
       </span>
       <span v-else>

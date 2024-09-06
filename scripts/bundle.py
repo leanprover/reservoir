@@ -16,7 +16,7 @@ def bundle_index(path: str):
   # Query toolchains
   toolchains = query_toolchains()
   toolchain_sort_keys = dict((t['name'], toolchain_sort_key(t)) for t in toolchains)
-  def build_sort_key(build: OldBuild):
+  def build_sort_key(build: Build):
     return toolchain_sort_keys.get(build['toolchain'], MIN_TOOLCHAIN_SORT_KEY)
   # Serialize index
   indexed_pkgs, aliases = load_index(path, include_builds=True)

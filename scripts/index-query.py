@@ -74,12 +74,11 @@ if __name__ == "__main__":
   # Output Results
   # ---
 
-  if args.output_manifest is not None:
-    with open(args.output_manifest, 'w') as f:
-      json.dump(pkgs, f, indent=2)
-
   if args.index_dir is not None:
     write_index(args.index_dir, pkgs, aliases)
+
+  for pkg in pkgs:
+    pkg['renames'] = []
 
   if args.output_manifest is not None:
     with open(args.output_manifest, 'w') as f:

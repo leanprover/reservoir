@@ -4,17 +4,6 @@ import logging
 import json
 import argparse
 
-def mk_old_build(ver: PackageVersion, build: BuildResult) -> OldBuild:
-  return {
-    'url': build['url'],
-    'builtAt': build['date'],
-    'outcome': 'success' if build['built'] else 'failure',
-    'revision': ver['revision'],
-    'toolchain': build['toolchain'],
-    'requiredUpdate': build['requiredUpdate'],
-    'archiveSize': build['archiveSize'],
-  }
-
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument('results',
@@ -66,10 +55,7 @@ if __name__ == "__main__":
     pkg['keywords'] = ifnone(result['keywords'], pkg['keywords'])
     pkg['updatedAt'] = max(pkg['updatedAt'], result['headVersion']['date'])
     pkg['fullName'] = f"{pkg['owner']}/{name}"
-    for ver in walk_versions(result):
-      pkg['versions'].append(version_metadata(ver))
-      for build in ver['builds']:
-        pkg['builds'].append(mk_old_build(ver, build))
+    pkg['versions'] = [result['headVersion']] + result['versions']
 
   # Save index
   write_index(args.index, pkgs.values(), aliases)

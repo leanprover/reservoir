@@ -212,7 +212,6 @@ def metadata_of_repo(repo: Repo) -> PackageMetadata:
     'updatedAt': max(repo['updatedAt'], repo['pushedAt']),
     'stars': repo['stargazerCount'],
     'sources': [cast(PackageSrc, src_of_repo(repo))],
-    'versions': [],
   }
 
 def pkg_of_repo(repo: Repo) -> Package:

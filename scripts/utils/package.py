@@ -26,25 +26,17 @@ class GitHubSrc(GitSrc):
   fullName: str
   repoUrl: str
 
-class OldBuildBase(TypedDict):
-  url: str | None
-  builtAt: str
-  revision: str
-  toolchain: str
-  outcome: str
-
-class OldBuild(OldBuildBase, total=False):
-  requiredUpdate: bool
-  archiveSize: int | None
-
 class BuildResult(TypedDict):
   built: bool | None
   tested: bool | None
   toolchain: str
-  requiredUpdate: bool
+  requiredUpdate: bool | None
   archiveSize: int | None
-  date: str
+  runAt: str
   url: str | None
+
+class Build(BuildResult):
+  revision: str
 
 class PackageVersionMetadata(TypedDict):
   version: str | None
@@ -77,6 +69,9 @@ class TestbedEntry(TypedDict):
   toolchains: str
   repoId: str
 
+INDEX_SCHEMA_VERSION_STR = '1.0.0'
+INDEX_SCHEMA_VERSION = Version(INDEX_SCHEMA_VERSION_STR)
+
 class PackageMetadata(TypedDict):
   name: str
   owner: str
@@ -89,16 +84,18 @@ class PackageMetadata(TypedDict):
   updatedAt: str
   stars: int
   sources: list[PackageSrc]
-  versions: list[PackageVersionMetadata]
 
 class Package(PackageMetadata):
-  builds: list[OldBuild]
+  schemaVersion: Version
+  versions: list[PackageVersion]
+  builds: list[Build]
   renames: list['Package']
   path: str | None
 
 class SerialPackage(PackageMetadata):
   dependents: list[Dependency]
-  builds: list[OldBuild]
+  versions: list[PackageVersionMetadata]
+  builds: list[Build]
 
 #---
 # Utils
@@ -107,21 +104,42 @@ class SerialPackage(PackageMetadata):
 def package_metadata(pkg: Package) -> PackageMetadata:
   return cast(PackageMetadata, {k: pkg[k] for k in PackageMetadata.__annotations__.keys()})
 
-def serialize_package(pkg: Package) -> SerialPackage:
-   r = cast(SerialPackage, package_metadata(pkg))
-   r['builds'] = pkg['builds']
-   r['dependents'] = []
-   return r
-
 def package_of_metadata(data: PackageMetadata) -> Package:
   pkg = cast(Package, data)
   pkg['path'] = None
-  pkg['builds'] = []
+  pkg['versions'] = []
   pkg['renames'] = []
+  pkg['builds'] = []
+  pkg['schemaVersion'] = INDEX_SCHEMA_VERSION
   return pkg
 
 def version_metadata(ver: PackageVersion) -> PackageVersionMetadata:
   return cast(PackageVersionMetadata, {k: ver[k] for k in PackageVersionMetadata.__annotations__.keys()})
+
+def version_of_metadata(data: PackageVersionMetadata) -> PackageVersion:
+  ver = cast(PackageVersion, data)
+  ver['builds'] = []
+  return ver
+
+def mk_build(ver: PackageVersion, build: BuildResult) -> Build:
+  build = cast(Build, build)
+  build['revision'] = ver['revision']
+  return build
+
+def build_result(build: Build) -> BuildResult:
+  return cast(BuildResult, {k: build[k] for k in BuildResult.__annotations__.keys()})
+
+def serialize_package(pkg: Package) -> SerialPackage:
+  r = cast(SerialPackage, package_metadata(pkg))
+  r['dependents'] = []
+  r['versions'] = []
+  r['builds'] =  []
+  for ver in pkg['versions']:
+    r['versions'].append(version_metadata(ver))
+    for build in ver['builds']:
+      r['builds'].append(mk_build(ver, build))
+  r['builds'].extend(pkg['builds'])
+  return r
 
 def walk_versions(result: PackageResult) -> Iterable[PackageVersion]:
   yield result['headVersion']
@@ -131,19 +149,19 @@ def walk_builds(result: PackageResult) -> Iterable[BuildResult]:
   for ver in walk_versions(result):
     yield from ver['builds']
 
-def git_src(pkg: Package) -> GitSrc | None:
+def git_src(pkg: PackageMetadata) -> GitSrc | None:
   for src in pkg['sources']:
     if src.get('type', None) == 'git':
       return cast(GitSrc, src)
   return None
 
-def github_src(pkg: Package) -> GitHubSrc | None:
+def github_src(pkg: PackageMetadata) -> GitHubSrc | None:
   for src in pkg['sources']:
     if src.get('host', None) == 'github':
       return cast(GitHubSrc, src)
   return None
 
-def github_repo_id(pkg: Package) -> str | None:
+def github_repo_id(pkg: PackageMetadata) -> str | None:
   for src in pkg['sources']:
     if src.get('host', None) == 'github':
       return cast(GitHubSrc, src)['id']

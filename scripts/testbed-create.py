@@ -29,7 +29,7 @@ if __name__ == "__main__":
       for line in f: exclusions.add(line.strip().lower())
 
   toolchains = resolve_toolchains(args.toolchain, "package")
-  def create_entries(pkgs: Iterable[Package]) -> Iterable[TestbedEntry]:
+  def create_entries(pkgs: Iterable[PackageMetadata]) -> Iterable[TestbedEntry]:
     for pkg in pkgs:
       src = github_src(pkg)
       if src is None:
@@ -46,7 +46,7 @@ if __name__ == "__main__":
         "repoId": src['id'],
       }
 
-  pkgs, _ = load_index(args.index)
+  pkgs = load_index_metadata(args.index)
   pkgs = filter(lambda pkg: pkg['fullName'].lower() not in exclusions, pkgs)
   if args.regex is not None:
     r = re.compile(args.regex)

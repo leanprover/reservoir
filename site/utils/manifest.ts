@@ -22,12 +22,13 @@ export type Source = GitHubSource
 
 export interface Build {
   url?: string | null
-  builtAt: string
+  runAt: string
   revision: string
   toolchain: string
-  requiredUpdate?: boolean
+  built: boolean | null
+  tested: boolean | null
+  requiredUpdate?: boolean | null
   archiveSize?: number | null
-  outcome: string
 }
 
 export interface PackageDep {

@@ -2,7 +2,7 @@ import os
 import json
 import shutil
 import logging
-from typing import Mapping, MutableMapping, overload, Literal, Iterable, TypedDict
+from typing import Mapping, MutableMapping, Iterable, TypedDict
 from requests.structures import CaseInsensitiveDict
 from utils.core import *
 from utils.package import *
@@ -57,6 +57,88 @@ def walk_index(path: str):
     for pkg_dir in os.listdir(owner_path):
       yield os.path.join(owner_dir, pkg_dir)
 
+class BuildV0Base(TypedDict):
+  url: str | None
+  builtAt: str
+  revision: str
+  toolchain: str
+  outcome: str
+
+class BuildV0(BuildV0Base, total=False):
+  requiredUpdate: bool | None
+  archiveSize: int | None
+
+def of_build_v0(build: BuildV0) -> Build:
+  return {
+    'url': build.get('url', None),
+    'built': build['outcome'] == 'success',
+    'tested': None,
+    'archiveSize': build.get('archiveSize', None),
+    'toolchain': build['toolchain'],
+    'requiredUpdate': build.get('requiredUpdate', None),
+    'revision': build['revision'],
+    'runAt': build['builtAt'],
+  }
+
+def load_versions(path: str, schema_ver: Version) -> list[PackageVersionMetadata]:
+  if not os.path.exists(path):
+    return []
+  with open(path, 'r') as f:
+    data: list[Any] = json.load(f)
+  return data
+
+def load_builds(path: str, schema_ver: Version) -> list[Build]:
+  if not os.path.exists(path):
+    return []
+  with open(path, 'r') as f:
+    data: list[Any] = json.load(f)
+  if schema_ver.major < 1:
+    return list(map(of_build_v0, data))
+  else:
+    return data
+
+def load_package(pkg_dir: str, relpath: str, include_versions: bool = True, include_builds: bool = False) -> Package:
+  with open(os.path.join(pkg_dir, 'metadata.json'), 'r') as f:
+    data = json.load(f)
+  schema_ver = Version(data.get('schemaVersion', None))
+  if 'keywords' not in data:
+    data['keywords'] = []
+  vers: list[PackageVersionMetadata] | None = data.get('versions', None)
+  pkg = package_of_metadata(data)
+  pkg['schemaVersion'] = schema_ver
+  pkg['path'] = relpath
+  # Load versions
+  if not include_versions and not include_builds:
+    return pkg
+  if vers is None:
+    vers = load_versions(os.path.join(pkg_dir, 'versions.json'), schema_ver)
+  pkg['versions'] = list(map(version_of_metadata, vers))
+  if not include_builds:
+    return pkg
+  # Load builds
+  builds = load_builds(os.path.join(pkg_dir, 'builds.json'), schema_ver)
+  ver_dict = dict((v['revision'], v) for v in pkg['versions'])
+  for build in builds:
+    ver = ver_dict.get(build['revision'], None)
+    if ver is None:
+      pkg['builds'].append(build)
+    else:
+      ver['builds'].append(build_result(build))
+  return pkg
+
+def load_index_metadata(path: str) -> list[PackageMetadata]:
+  if os.path.isdir(path):
+    pkgs = list[Package]()
+    for relpath in walk_index(path):
+      pkg_path = os.path.join(path, relpath)
+      if os.path.isdir(pkg_path):
+        pkgs.append(load_package(pkg_path, relpath, False, False))
+    return sorted(pkgs, key=lambda pkg: pkg['stars'], reverse=True)
+  else:
+    with open(path, 'r') as f:
+      pkgs: list[Package] = json.load(f)
+    return list(map(package_metadata, pkgs))
+
 def load_index(path: str, include_builds=False) -> tuple[list[Package], CaseInsensitiveDict[Package]]:
   if os.path.isdir(path):
     pkgs = list[Package]()
@@ -64,17 +146,7 @@ def load_index(path: str, include_builds=False) -> tuple[list[Package], CaseInse
     for relpath in walk_index(path):
       pkg_path = os.path.join(path, relpath)
       if os.path.isdir(pkg_path):
-        with open(os.path.join(pkg_path, 'metadata.json'), 'r') as f:
-          data = json.load(f)
-        if 'keywords' not in data:
-          data['keywords'] = []
-        if 'versions' not in data:
-          data['versions'] = []
-        pkg = package_of_metadata(data)
-        pkg['path'] = relpath
-        if include_builds:
-          pkg['builds'] = load_builds(os.path.join(pkg_path, 'builds.json'))
-        pkgs.append(pkg)
+        pkgs.append(load_package(pkg_path, relpath, True, include_builds))
       else:
         with open(pkg_path, 'r') as f:
           content = f.read().strip()
@@ -94,47 +166,52 @@ def load_index(path: str, include_builds=False) -> tuple[list[Package], CaseInse
       pkgs: list[Package] = json.load(f)
     return pkgs, CaseInsensitiveDict[Package]()
 
-def load_builds(path: str) -> list[OldBuild]:
-  if os.path.exists(path):
-    with open(path, 'r') as f:
-      return json.load(f)
-  else:
-    return list()
+def mk_builds(vers: Iterable[PackageVersion]) -> Iterable[Build]:
+  for ver in vers:
+    for build in ver['builds']:
+      yield mk_build(ver, build)
 
-def insert_build_results(builds: Iterable[OldBuild], results: Iterable[OldBuild]) -> list[OldBuild]:
-  new_builds = list[OldBuild]()
-  new_results = dict((r['toolchain'], r) for r in results)
-  for build in builds:
-    toolchain = build['toolchain']
-    result = new_results.get(toolchain, None)
-    if result is not None:
-      del new_results[toolchain]
-      if result['outcome'] == 'success' or build['outcome'] != 'success':
-        new_builds.append(result)
+def add_build_results(ver: PackageVersion, old_builds: Iterable[BuildResult]):
+  build_results = list[BuildResult]()
+  old_results = dict((r['toolchain'], r) for r in old_builds)
+  for new_build in ver['builds']:
+    toolchain = new_build['toolchain']
+    old_build = old_results.get(toolchain, None)
+    if old_build is not None:
+      del old_results[toolchain]
+      if new_build['built'] is False and old_build['built'] is True:
+        build_results.append(old_build)
+        logging.warning(f"New build of '{ver['revision']}' failed despite previous success; keeping old build")
         continue
-    new_builds.append(build)
-  for result in new_results.values():
-    new_builds.append(result)
-  return sorted(new_builds, key=lambda build: build['toolchain'], reverse=True)
+    build_results.append(new_build)
+  for build in old_results.values():
+    build_results.append(build)
+  ver['builds'] = build_results
 
-def move_package(index_dir: str, old_relpath: str, new_relpath: str):
-  old_path = os.path.join(index_dir, old_relpath)
-  if os.path.isdir(old_path):
-    new_path = os.path.join(index_dir, new_relpath)
-    if os.path.isdir(new_path):
-      logging.info(f"Index merge: '{old_relpath}' -> '{new_relpath}'")
-      old_builds = load_builds(os.path.join(old_path, 'builds.json'))
-      new_builds = load_builds(os.path.join(new_path, 'builds.json'))
-      builds = insert_build_results(old_builds, new_builds)
-      with open(os.path.join(new_path, 'builds.json'), 'w') as f:
-        json.dump(builds, f, indent=2)
-      shutil.rmtree(old_path)
+def add_builds(pkg: Package, old_builds: Iterable[Build]):
+  ver_dict = dict((v['revision'], v) for v in pkg['versions'])
+  for old_build in old_builds:
+    ver = ver_dict.get(old_build['revision'], None)
+    if ver is None:
+      pkg['builds'].append(old_build)
     else:
-      logging.info(f"Index rename: '{old_relpath}' -> '{new_relpath}'")
-      if os.path.isfile(new_path):
-        logging.info(f"Removed stub at '{new_relpath}'")
-        os.remove(new_path)
-      os.renames(old_path, new_path)
+      ver['builds'].append(build_result(old_build))
+
+def trim_version_builds(pkg: Package):
+  """Trim builds per version to one per toolchain."""
+  for ver in pkg['versions']:
+    saved_builds = dict[str, BuildResult]()
+    for curr_build in ver['builds']:
+      toolchain = curr_build['toolchain']
+      prev_build = saved_builds.get(toolchain, None)
+      if prev_build is None:
+        saved_builds[toolchain] = curr_build
+        continue
+      if curr_build['built'] is False and prev_build['built'] is True:
+        saved_builds[toolchain] = prev_build
+        logging.warning(f"New build of '{ver['revision']}' failed despite previous success; keeping old build")
+        continue
+    ver['builds'] = list(saved_builds.values())
 
 def walk_renames(pkg: Package) -> Iterable[Package]:
   for pkg in pkg['renames']:
@@ -144,24 +221,36 @@ def walk_renames(pkg: Package) -> Iterable[Package]:
 def write_index(index_dir: str, pkgs: Iterable[Package], aliases: MutableMapping[str, Package]):
   # Write packages
   for pkg in pkgs:
-    # Make package directory
     relpath = package_relpath(pkg)
     pkg_dir = os.path.join(index_dir, relpath)
     if os.path.isfile(pkg_dir):
       logging.info(f"Removed stub at '{relpath}'")
       os.remove(pkg_dir)
-    os.makedirs(pkg_dir, exist_ok=True)
-    # Write package metadata
-    with open(os.path.join(pkg_dir, "metadata.json"), 'w') as f:
-      json.dump(package_metadata(pkg), f, indent=2)
-      f.write("\n")
     # Perform renames
     for old_pkg in walk_renames(pkg):
       old_relpath = package_relpath(old_pkg)
       if old_relpath is not None and old_relpath != relpath:
-        move_package(index_dir, old_relpath, relpath)
+        old_path = os.path.join(index_dir, old_relpath)
+        if os.path.isdir(old_path):
+          if os.path.isdir(pkg_dir):
+            logging.info(f"Index merge: '{old_relpath}' -> '{relpath}'")
+            old_pkg = load_package(old_path, old_relpath, include_versions=False)
+            old_builds = load_builds(os.path.join(old_path, 'builds.json'), old_pkg['schemaVersion'])
+            add_builds(pkg, old_builds)
+            shutil.rmtree(old_path)
+          else:
+            logging.info(f"Index rename: '{old_relpath}' -> '{relpath}'")
+            os.renames(old_path, pkg_dir)
         logging.info(f"Index alias: '{old_pkg['fullName']}' -> '{pkg['fullName']}'")
         aliases[old_pkg['fullName']] = pkg
+    # Ensure package directory exists
+    os.makedirs(pkg_dir, exist_ok=True)
+    # Write package metadata
+    with open(os.path.join(pkg_dir, "metadata.json"), 'w') as f:
+      data = cast(Any, package_metadata(pkg))
+      data['schemaVersion'] = INDEX_SCHEMA_VERSION_STR
+      json.dump(data, f, indent=2)
+      f.write("\n")
     # Compute source-based aliases
     for src in pkg['sources']:
       alias = src.get('fullName', None)
@@ -170,16 +259,19 @@ def write_index(index_dir: str, pkgs: Iterable[Package], aliases: MutableMapping
           logging.info(f"Index alias: '{alias}' -> '{pkg['fullName']}'")
         aliases[alias] = pkg  # always set to ensure canonical casing
         builds_file = os.path.join(pkg_dir, 'builds.json')
+    # Write versions
+    trim_version_builds(pkg)
+    with open(os.path.join(pkg_dir, 'versions.json'), 'w') as f:
+      json.dump(pkg['versions'], f, indent=2)
+      f.write('\n')
     # Write builds
     builds_file = os.path.join(pkg_dir, 'builds.json')
     if os.path.exists(builds_file):
-      with open(os.path.join(pkg_dir, 'builds.json'), 'r') as f:
-        builds: list[OldBuild] = json.load(f)
-      builds = insert_build_results(builds, pkg['builds'])
-    else:
-      builds = pkg['builds']
-    with open(builds_file, 'w') as f:
-      f.write(json.dumps(builds, indent=2))
+      add_builds(pkg, load_builds(builds_file, pkg['schemaVersion']))
+    with open(os.path.join(pkg_dir, 'builds.json'), 'w') as f:
+      builds = mk_builds(pkg['versions'])
+      builds = sorted(builds, key=lambda b: b['runAt'], reverse=True)
+      json.dump(builds, f, indent=2)
       f.write('\n')
   # Write aliases
   for alias, target_pkg in aliases.items():

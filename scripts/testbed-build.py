@@ -61,7 +61,7 @@ def try_build(ver: PackageVersion, target_toolchain: str | None, is_mathlib=Fals
     'toolchain': target_toolchain,
     'requiredUpdate': False,
     'archiveSize': None,
-    'date': utc_iso_now(),
+    'runAt': utc_iso_now(),
     'url': None,
   }
   # Try build
