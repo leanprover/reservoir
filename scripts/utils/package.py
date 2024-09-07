@@ -85,12 +85,16 @@ class PackageMetadata(TypedDict):
   stars: int
   sources: list[PackageSrc]
 
+class PackageRename(TypedDict):
+  fullName: str
+  relpath: str | None
+
 class Package(PackageMetadata):
   schemaVersion: Version
   versions: list[PackageVersion]
   builds: list[Build]
-  renames: list['Package']
-  path: str | None
+  renames: list[PackageRename]
+  relpath: str | None
 
 class SerialPackage(PackageMetadata):
   dependents: list[Dependency]
@@ -101,19 +105,26 @@ class SerialPackage(PackageMetadata):
 # Utils
 #---
 
-def package_metadata(pkg: Package) -> PackageMetadata:
+def package_metadata(pkg: PackageMetadata) -> PackageMetadata:
   return cast(PackageMetadata, {k: pkg[k] for k in PackageMetadata.__annotations__.keys()})
 
-def package_of_metadata(data: PackageMetadata) -> Package:
+def mk_rename(pkg: Package) -> PackageRename:
+  return {'fullName': pkg['fullName'], 'relpath': pkg['relpath']}
+
+def package_of_metadata(
+    data: PackageMetadata,
+    relpath: str | None = None,
+    schema_ver: Version = INDEX_SCHEMA_VERSION
+  ) -> Package:
   pkg = cast(Package, data)
-  pkg['path'] = None
+  pkg['relpath'] = relpath
+  pkg['schemaVersion'] = schema_ver
   pkg['versions'] = []
-  pkg['renames'] = []
+  pkg['renames'] = [mk_rename(pkg)]
   pkg['builds'] = []
-  pkg['schemaVersion'] = INDEX_SCHEMA_VERSION
   return pkg
 
-def version_metadata(ver: PackageVersion) -> PackageVersionMetadata:
+def version_metadata(ver: PackageVersionMetadata) -> PackageVersionMetadata:
   return cast(PackageVersionMetadata, {k: ver[k] for k in PackageVersionMetadata.__annotations__.keys()})
 
 def version_of_metadata(data: PackageVersionMetadata) -> PackageVersion:

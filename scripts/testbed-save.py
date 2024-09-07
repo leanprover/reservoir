@@ -25,24 +25,39 @@ if __name__ == "__main__":
   with open(args.results) as f:
     results: dict[str, PackageResult] = json.load(f)
 
+  # Load index
+  indexed_pkgs, aliases = load_index(args.index)
+
   # Query result repositories
   ids = list(results.keys())
+  repos = dict[str, Repo]()
   for id, repo in zip(ids, query_repo_data(ids)):
     if repo is None:
       logging.error(f"Repository ID '{id}' not found on GitHub")
     else:
-      pkgs[id] = pkg_of_repo(repo)
+      repos[id] = repo
 
-  # Load index
-  indexed_pkgs, aliases = load_index(args.index)
-  for indexed_pkg in indexed_pkgs:
-    id = github_repo_id(indexed_pkg)
+  # Add repository data to packages
+  repo_uses = {k: list[str]() for k in repos.keys()}
+  for pkg in indexed_pkgs:
+    id = github_repo_id(pkg)
     if id is not None and id in results:
+      repo_uses[id].append(pkg['fullName'])
       repo_pkg = pkgs.get(id, None)
-      if repo_pkg is None:
-        logging.error(f"{indexed_pkg['fullName']}: Repository ID '{id}' not found on GitHub")
-      else:
-        pkgs[id]['renames'].append(indexed_pkg)
+      if repo_pkg is not None:
+        repo_pkg['renames'].append(mk_rename(pkg))
+        continue
+      pkgs[id] = pkg
+      repo = repos.get(id, None)
+      if repo is None:
+        logging.error(f"{pkg['fullName']}: Repository ID '{id}' not found on GitHub")
+        continue
+      add_repo_metadata(pkg, repo)
+  for id, uses in repo_uses.items():
+    if len(uses) < 1:
+      pkgs[id] = pkg_of_repo(repos[id])
+    elif len(uses) > 1:
+      logging.warning(F"Repository reuse: '{repos[id]['nameWithOwner']}' for {uses}")
 
   # Add testbed result data
   for id, result in results.items():

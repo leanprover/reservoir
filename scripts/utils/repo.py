@@ -248,6 +248,9 @@ def packages_with_repos(pkgs: Iterable[Package]) -> Iterable[tuple[Package, str 
       repo_pkgs.append(pkg)
   yield from zip(repo_pkgs, ids, query_repo_data(ids))
 
+def add_repo_metadata(pkg: Package, repo: Repo):
+  pkg.update(cast(Any, metadata_of_repo(repo)))
+
 def packages_by_repo(pkgs: Iterable[Package]):
   mapping = dict[str, Package]()
   for (pkg, id, repo) in packages_with_repos(pkgs):
@@ -257,7 +260,11 @@ def packages_by_repo(pkgs: Iterable[Package]):
       else:
         logging.error(f"{pkg['fullName']}: Repository ID not found on GitHub: {id}")
       continue
-    repo_pkg = mapping.get(repo['id'], None)
-    if repo_pkg is None: repo_pkg = mapping[repo['id']] = pkg_of_repo(repo)
-    pkg['renames'].append(pkg)
+    id = repo['id']
+    repo_pkg = mapping.get(id, None)
+    if repo_pkg is None:
+      repo_pkg = mapping[id] = pkg
+      add_repo_metadata(repo_pkg, repo)
+    else:
+      repo_pkg['renames'].append(mk_rename(pkg))
   return mapping
