@@ -46,6 +46,9 @@ export interface PackageVer {
   tag: string | null
   toolchain: string | null
   dependencies: PackageDep[]
+  license: string
+  licenseFiles:  string[]
+  readmeFile: string | null
 }
 
 export interface Package {

@@ -4,7 +4,7 @@ import ForwardIcon from '~icons/mdi/chevron-right'
 import type { RouteLocationRaw } from 'vue-router'
 const props = defineProps<{title: string, list: Package[], to: RouteLocationRaw}>()
 const findBuild = (pkg: Package) => (
-  pkg.builds.find(b => b.outcome == "success") ??
+  pkg.builds.find(b => b.built) ??
   pkg.builds.find(b => b.toolchain === latestToolchain.name) ??
   pkg.builds[0]
 )

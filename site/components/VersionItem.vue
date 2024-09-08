@@ -3,10 +3,12 @@ import StarIcon from '~icons/mdi/star'
 import CalendarIcon from '~icons/mdi/calendar'
 import WeightIcon from '~icons/mdi/weight'
 import TagIcon from '~icons/mdi/tag'
+import { Tippy } from 'vue-tippy'
 
 const props = defineProps<{pkg: Package, ver: PackageVer}>()
+const ver = computed(() => props.ver);
 const build = computed(() => {
-  return props.pkg.builds.find(b => b.toolchain == props.ver.toolchain && b.revision == props.ver.revision)
+  return props.pkg.builds.find(b => b.toolchain == ver.value.toolchain && b.revision == ver.value.revision)
 })
 
 function formatBytes(num: number) {
@@ -19,17 +21,28 @@ function formatBytes(num: number) {
   return `${num.toFixed(1)} YB`
 }
 
+const verTrack = computed(() => {
+  const verId = ver.value.version
+  if (!verId) return null
+  if (verId === '0.0.0') return null
+  const parts = verId.split('.')
+  return `${parts[0]}.${parts[0] == '0' ? parts[1] : 'x'}`
+})
 </script>
 
 <template>
   <li class="version card">
     <div class="version-id">
-      <div class="version-track">
-        <StarIcon v-if="ver.version === '0.0.0'" class="icon"/>
-        <span v-else>{{ver.version}}</span>
-      </div>
+      <Tippy class="version-track">
+        <span v-if="verTrack">{{verTrack}}</span>
+        <StarIcon v-else class="icon"/>
+        <template #content>
+          <span v-if="verTrack">Version track: {{verTrack}}</span>
+          <span v-else>Not a part of any version track.</span>
+        </template>
+      </Tippy>
       <div class="version-code">
-        <code>{{ver.version == '0.0.0' ? ver.revision.slice(0, 7) : ver.version}}</code>
+        <code>{{verTrack ? ver.version : ver.revision.slice(0, 7)}}</code>
       </div>
     </div>
     <div class="version-details">
@@ -43,7 +56,7 @@ function formatBytes(num: number) {
       </div>
       <div class="detail-group">
         <div v-if="ver.toolchain" class="version-detail version-toolchain">
-          <BuildOutcome class="icon" :build="build"/>
+          <BuildOutcome class="icon" :build="build" :packageToolchain="true"/>
           <span class="toolchain">
             {{ ver.toolchain.split(':')[1] }}
           </span>
@@ -92,6 +105,7 @@ li.version {
     display: flex;
     align-items: center;
     justify-content: center;
+    font-weight: bold;
 
     width: 2.8em;
     height: 2.8em;

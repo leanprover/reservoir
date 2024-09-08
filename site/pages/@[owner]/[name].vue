@@ -4,6 +4,8 @@ import UpdateIcon from '~icons/mdi/update'
 import StarIcon from '~icons/mdi/star'
 import HomepageIcon from '~icons/mdi/home'
 import GitHubIcon from '~icons/mdi/github'
+import PlusIcon from '~icons/mdi/plus-circle-outline'
+import MinusIcon from '~icons/mdi/minus-circle-outline'
 
 const route = useRoute()
 const owner = route.params.owner as string
@@ -86,8 +88,15 @@ const allToolchainBuilds = computed<ToolchainBuild[]>(() => {
 })
 const shortBuildLimit = 10
 const shortBuildToggle = ref(allToolchainBuilds.value.length > shortBuildLimit)
+const shortToolchainBuilds = computed<ToolchainBuild[]>(() => {
+  const filtered = allToolchainBuilds.value.filter(b => {
+    return b[0] == pkgVer.value?.toolchain || b[1]?.built
+  })
+  const list = filtered.length === 0 ? allToolchainBuilds.value : filtered
+  return list.slice(0, shortBuildLimit)
+})
 const toolchainBuilds = computed<ToolchainBuild[]>(() => {
-  return allToolchainBuilds.value.slice(0, shortBuildToggle.value ? shortBuildLimit : undefined)
+  return shortBuildToggle.value ? shortToolchainBuilds.value : allToolchainBuilds.value
 })
 
 const baseContentUrl = computed(() => {
@@ -95,7 +104,9 @@ const baseContentUrl = computed(() => {
   if (!githubSrc) return null
   return `https://raw.githubusercontent.com/${githubSrc.fullName}/${githubSrc.defaultBranch}/`
 })
-const readmeUrl = computed(() => `${baseContentUrl.value}README.md`)
+const readmeUrl = computed(() => {
+  return baseContentUrl.value + (pkgVer.value?.readmeFile ?? 'README.md')
+})
 const {data: readme} = await useFetch<string>(readmeUrl)
 </script>
 
@@ -152,13 +163,17 @@ const {data: readme} = await useFetch<string>(readmeUrl)
         <div>
           <h3>Lean</h3>
           <ul>
-            <li v-for="[toolchain, build] in toolchainBuilds">
-              <BuildOutcome class="icon" :build="build"/>
+            <li v-for="[toolchain, build] in toolchainBuilds" :key="toolchain" :class="{'package-toolchain': pkgVer?.toolchain == toolchain}">
+              <BuildOutcome class="icon" :build="build" :latest="pkgVer && pkgVer.revision == build?.revision" :packageToolchain="pkgVer?.toolchain == toolchain"/>
               {{ toolchain.split(':')[1] }}
             </li>
-            <li v-if="shortBuildToggle" @click="shortBuildToggle = false" >
-              <a class="hard-link" tabindex="0" @keyup.enter="shortBuildToggle = false">
-                + {{ allToolchainBuilds.length - shortBuildLimit }} more
+            <li v-if="shortToolchainBuilds.length < allToolchainBuilds.length" @click="shortBuildToggle = !shortBuildToggle" >
+              <a class="hard-link" tabindex="0" @keyup.enter="shortBuildToggle = !shortBuildToggle">
+                <component :is="shortBuildToggle ? PlusIcon : MinusIcon" class="icon"></component>
+                <span>
+                  {{ allToolchainBuilds.length - shortToolchainBuilds.length }}
+                  {{ shortBuildToggle ? 'more' : 'less' }}
+                </span>
               </a>
             </li>
           </ul>
@@ -355,11 +370,15 @@ const {data: readme} = await useFetch<string>(readmeUrl)
     ul {
       list-style: none;
 
-      li {
+      li, a {
         display: flex;
         align-items: center;
         margin-bottom: 0.5em;
       }
+    }
+
+    .package-toolchain {
+      font-weight: bold;
     }
 
     .main-link {
