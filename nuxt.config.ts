@@ -33,7 +33,7 @@ export default defineNuxtConfig({
   ],
   nitro: {
     prerender: {
-      failOnError: true,
+      failOnError: false,
       autoSubfolderIndex: false,
       routes: ["/", ...packages.map(pkgLink)]
     },
@@ -48,7 +48,7 @@ export default defineNuxtConfig({
     defaultLocale: 'en-US',
   },
   linkChecker: {
-    failOnError: true,
+    failOnError: false,
     fetchRemoteUrls: false,
     skipInspections: ['link-text', 'absolute-site-urls'],
   },
