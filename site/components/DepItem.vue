@@ -4,7 +4,9 @@ import FolderIcon from '~icons/mdi/folder'
 import UnknownIcon from '~icons/mdi/help'
 import ReservoirIcon from '~/public/favicon.svg?component'
 const props = defineProps<{dep: PackageDep, upstream: boolean}>()
-const pkg = computed(() => props.dep.scope ? findPkg(props.dep.scope, props.dep.name) : undefined)
+const dep = computed(() => props.dep)
+const pkg = computed(() => props.dep.scope ? findPkg(dep.value.scope, dep.value.name) : undefined)
+const pkgName = computed(() => props.upstream ? dep.value.name : (pkg.value ? pkg.value.fullName : dep.value.name))
 </script>
 
 <template>
@@ -17,8 +19,8 @@ const pkg = computed(() => props.dep.scope ? findPkg(props.dep.scope, props.dep.
     </div>
     <div class="dep-info">
       <h3 class="dep-header">
-        <NuxtLink class="dep-link" v-if="pkg" :to="pkgLink(pkg)">{{dep.name}}</NuxtLink>
-        <span v-else>{{dep.name}}</span>
+        <NuxtLink class="dep-name dep-link" v-if="pkg" :to="pkgLink(pkg)">{{pkgName}}</NuxtLink>
+        <span class="dep-name" v-else>{{pkgName}}</span>
         <span class="dep-version">
           <span class="label">{{ upstream ? '@ ' : 'uses '  }}</span>
           <code>
@@ -59,16 +61,28 @@ li.dep-item {
     }
   }
 
-  .dep-header {
-    display: flex;
-    align-items: baseline
+  .dep-info {
+    min-width: 0;
   }
 
+  .dep-header {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+  }
+
+  .dep-name {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-wrap: nowrap;
+    margin-right: 0.5em;
+  }
 
   .dep-version {
+    display: block;
     font-size: 0.8em;
     color: var(--dark-color);
-    margin-left: 0.5rem;
   }
 
   .dep-link {
