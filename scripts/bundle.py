@@ -6,7 +6,7 @@ import json
 def mk_dependent(pkg: SerialPackage, dep: Dependency) -> Dependency:
   return {
     'type': dep['type'],
-    'name': pkg['name'],
+    'name': unescape_name(pkg['name']),
     'scope': pkg['owner'],
     'version': dep['version'],
     'rev': dep['rev'],
