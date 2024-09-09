@@ -126,5 +126,5 @@ jobs:
     secrets: inherit
     with:
       index-repo: ${{ needs.config.outputs.index-repo }}
-      index-artifact: ${{ needs.config.outputs.reindex == 'true' && needs.config.outputs.update-index != 'true' }}
+      index-artifact: ${{ needs.config.outputs.update-index != 'true' }}
       production-deploy: ${{ needs.config.outputs.production-deploy == 'true' }}
