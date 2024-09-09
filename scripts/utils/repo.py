@@ -2,7 +2,7 @@ import os
 import json
 import logging
 import requests
-from typing import Container, TypedDict, Any
+from typing import Container, Collection, TypedDict, Any
 from utils.index import *
 from utils.core import *
 
@@ -268,3 +268,17 @@ def packages_by_repo(pkgs: Iterable[Package]):
     else:
       repo_pkg['renames'].append(mk_rename(pkg))
   return mapping
+
+def query_new_packages(limit: int, indexed_repos: Collection[str], exclusions: Container[str] = set()) -> list[Package]:
+  if limit == 0: return []
+  logging.info(f"Searching for new Lean/Lake repositories")
+  repo_ids = query_lake_repos(limit)
+  logging.info(f"{len(repo_ids)} candidate repositories with root Lake manifests")
+  repos = filter(None, query_repo_data(repo_ids))
+  if len(indexed_repos) != 0:
+    repos = [repo for repo in repos if repo['id'] not in indexed_repos]
+    logging.info(f"{len(repos)} candidate repositories not in index")
+  new_pkgs = list(pkgs_of_repos(repos, exclusions))
+  note = 'notable new' if len(indexed_repos) != 0 else 'notable'
+  logging.info(f"{len(new_pkgs)} {note} OSI-licensed packages")
+  return new_pkgs

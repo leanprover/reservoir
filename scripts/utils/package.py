@@ -65,7 +65,7 @@ class PackageResult(TypedDict):
 class TestbedEntry(TypedDict):
   artifact: str
   gitUrl: str
-  buildName: str
+  jobName: str
   toolchains: str
   repoId: str
 

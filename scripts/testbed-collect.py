@@ -63,7 +63,7 @@ if __name__ == "__main__":
   results = dict[str, PackageResult]()
   archiveSizes = list[int]()
   for entry in matrix:
-    jobId = find_build_job(entry['buildName'])['id']
+    jobId = find_build_job(entry['jobName'])['id']
     url = f"https://github.com/{TESTBED_REPO}/actions/runs/{args.run_id}/job/{jobId}#step:4:1"
     result_file = os.path.join(args.results, entry['artifact'], 'result.json')
     try:

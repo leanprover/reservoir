@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from typing import Collection
 from utils import *
 import argparse
 import os
@@ -11,7 +12,7 @@ import logging
 
 if __name__ == "__main__":
   script_dir = os.path.dirname(os.path.realpath(__file__))
-  default_exclusions = os.path.join(script_dir, "index-exclusions.txt")
+  default_exclusions = os.path.join(script_dir, "package-exclusions.txt")
   parser = argparse.ArgumentParser()
   parser.add_argument('-R', '--refresh', action='store_true',
     help='update existing packages in the index')
@@ -50,19 +51,8 @@ if __name__ == "__main__":
     aliases = CaseInsensitiveDict[Package]()
 
   # Query New Repos
-  new_pkgs = list[Package]()
-  limit = (0 if args.refresh else 100) if args.limit is None else args.limit
-  if limit != 0:
-    indexed_ids = indexed_pkgs.keys()
-    repo_ids = query_lake_repos(limit)
-    logging.info(f"{len(repo_ids)} candidate repositories with root Lake manifests")
-    repos = filter(None, query_repo_data(repo_ids))
-    if len(indexed_ids) != 0:
-      repos = list(filter_repo_ids(repos, indexed_ids))
-      logging.info(f"{len(repos)} candidate repositories not in index")
-    new_pkgs = list(pkgs_of_repos(repos, exclusions))
-  note = 'notable new' if len(indexed_pkgs) != 0 else 'notable'
-  logging.info(f"{len(new_pkgs)} {note} OSI-licensed packages")
+  limit = ifnone(args.limit, 0 if args.refresh else 100)
+  new_pkgs = query_new_packages(limit, set(indexed_pkgs.keys()), exclusions)
 
   # Finalize Index
   pkgs = itertools.chain(indexed_pkgs.values(), new_pkgs)

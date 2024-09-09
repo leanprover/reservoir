@@ -12,12 +12,22 @@ on:
         type: string
         required: false
       index-artifact:
-        description: "Use local artifact for index"
+        description: "Local artifact for index"
+        type: string
+        required: false
+        default: index
+      reuse-artifact:
+        description: "Reuse local artifact for index"
+        type: boolean
+        required: false
+        default: false
+      search-packages:
+        description: "Search GitHub for new packages"
         type: boolean
         required: false
         default: false
       pattern:
-        description: "Regex search for packages to test"
+        description: "Regex search for indexed packages to test"
         type: string
         required: false
       toolchain:
@@ -46,8 +56,13 @@ on:
         type: string
         required: true
         default: leanprover/reservoir-index
+      search-packages:
+        description: "Search GitHub for new packages"
+        type: boolean
+        required: false
+        default: false
       pattern:
-        description: "Regex search for packages to test"
+        description: "Regex search for indexed packages to test"
         type: string
         required: true
         default: ".*"
@@ -77,26 +92,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Download Index Artifact
-        if: inputs.index-artifact
+        if: inputs.reuse-artifact
         uses: actions/download-artifact@v4
         with:
-          name: index
+          name: ${{ inputs.index-artifact }}
           path: index
       - name: Download Index Repository
-        if: (!inputs.index-artifact)
+        if: inputs.index-repo && !inputs.reuse-artifact
         run: |
           mkdir index
-          gh api repos/${{ inputs.index-repo || 'leanprover/reservoir-index' }}/tarball \
+          gh api repos/${{ inputs.index-repo }}/tarball \
             | tar -xvz -C index --strip-component=1
         env:
           GH_TOKEN: ${{ secrets.RESERVOIR_INDEX_TOKEN  }}
       - name: Create Matrix
         run: |
-          scripts/testbed-create.py index -o matrix.json  \
-            -e '${{ inputs.pattern || '.*' }}' \
+          scripts/testbed-create.py -o matrix.json  \
+            ${{ inputs.index-repo && '-i index' || '' }} \
+            -e '${{ inputs.pattern }}' \
             -t '${{ inputs.toolchain || 'package' }}'  \
             -n ${{ inputs.max-size == null && 10 || inputs.max-size }} \
-            -X ${{ inputs.dev && 'scripts/testbed-dev-exclusions.txt' || 'scripts/testbed-exclusions.txt' }}
+            -Q ${{ inputs.search-packages && (inputs.dev && 100 || -1) || 0 }} \
+            -X ${{ inputs.dev && 'scripts/package-dev-exclusions.txt' || 'scripts/package-exclusions.txt' }}
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Upload Matrix
@@ -110,7 +127,7 @@ jobs:
         run: (echo -n 'matrix='; cat matrix.json) >> "$GITHUB_OUTPUT"
   build:
     needs: setup
-    name: Build ${{ matrix.buildName }}
+    name: Build ${{ matrix.jobName }}
     runs-on: ubuntu-latest
     # This job runs arbitrary untrusted code, so we need to harden permissions
     permissions:
@@ -179,13 +196,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Download Index Artifact
-        if: inputs.index-artifact
+        if: inputs.reuse-artifact
         uses: actions/download-artifact@v4
         with:
-          name: index
+          name: ${{ inputs.index-artifact }}
           path: index
       - name: Checkout External Index
-        if: (!inputs.index-artifact)
+        if: inputs.index-repo && !inputs.reuse-artifact
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.RESERVOIR_INDEX_TOKEN }}
@@ -214,7 +231,7 @@ jobs:
         if: (!inputs.update-index)
         uses: actions/upload-artifact@v4
         with:
-          name: index
+          name: ${{ inputs.index-artifact || 'index' }}
           path: index
           if-no-files-found: error
-          overwrite: true
+          overwrite: ${{ inputs.reuse-artifact == true }}
