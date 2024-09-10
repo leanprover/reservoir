@@ -236,38 +236,8 @@ def pkgs_of_repos(repos: Iterable[Repo], excluded_pkgs: Container[str] = set()) 
     return False
   return map(pkg_of_repo, filter(curate, repos))
 
-def packages_with_repos(pkgs: Iterable[Package]) -> Iterable[tuple[Package, str | None, Repo | None]]:
-  ids = list[str]()
-  repo_pkgs = list[Package]()
-  for pkg in pkgs:
-    id = github_repo_id(pkg)
-    if id is None:
-      yield pkg, id, None
-    else:
-      ids.append(id)
-      repo_pkgs.append(pkg)
-  yield from zip(repo_pkgs, ids, query_repo_data(ids))
-
 def add_repo_metadata(pkg: Package, repo: Repo):
   pkg.update(cast(Any, metadata_of_repo(repo)))
-
-def packages_by_repo(pkgs: Iterable[Package]):
-  mapping = dict[str, Package]()
-  for (pkg, id, repo) in packages_with_repos(pkgs):
-    if repo is None:
-      if id is None:
-        logging.warning(f"{pkg['fullName']}: Package lacks a GitHub source")
-      else:
-        logging.error(f"{pkg['fullName']}: Repository ID not found on GitHub: {id}")
-      continue
-    id = repo['id']
-    repo_pkg = mapping.get(id, None)
-    if repo_pkg is None:
-      repo_pkg = mapping[id] = pkg
-      add_repo_metadata(repo_pkg, repo)
-    else:
-      repo_pkg['renames'].append(mk_rename(pkg))
-  return mapping
 
 def query_new_packages(limit: int, indexed_repos: Collection[str], exclusions: Container[str] = set()) -> list[Package]:
   if limit == 0: return []
