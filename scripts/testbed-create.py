@@ -62,10 +62,7 @@ if __name__ == "__main__":
     raise RuntimeError("Testbed needs an index (with '-i') to select from it (with '-e')")
 
   # Load index
-  if args.index is not None:
-    pkgs = load_index_metadata(args.index)
-  else:
-    pkgs = []
+  pkgs = load_index_metadata(args.index) if args.index is not None else []
 
   # Query new packages
   limit = ifnone(args.query, 0)
@@ -74,13 +71,16 @@ if __name__ == "__main__":
 
   # Select packages
   if reindex:
-    pkgs = filter(lambda pkg: pkg['fullName'].lower() not in exclusions, pkgs)
+    pkgs = list(filter(lambda pkg: pkg['fullName'].lower() not in exclusions, pkgs))
+    logging.info(f"{len(pkgs)} packages in index")
     if args.regex is not None:
       r = re.compile(args.regex)
-      pkgs = filter(lambda pkg: r.search(pkg['fullName']) is not None, pkgs)
-    pkgs = itertools.chain(new_pkgs, pkgs)
+      pkgs = list(filter(lambda pkg: r.search(pkg['fullName']) is not None, pkgs))
+    logging.info(f"{len(pkgs)} packages selected from index")
+    pkgs = new_pkgs + pkgs
   else:
     pkgs = new_pkgs
+  logging.info(f"{len(pkgs)} total testbed package candidates")
 
   # Create testbed
   toolchains = resolve_toolchains(args.toolchain, "package")
