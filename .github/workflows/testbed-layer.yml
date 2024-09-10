@@ -10,8 +10,8 @@ on:
         required: true
 
 jobs:
-  build:
-    name: Build ${{ matrix.jobName }}
+  main:
+    name: ${{ matrix.jobName }}
     runs-on: ubuntu-latest
     # This job runs arbitrary untrusted code, so we need to harden permissions
     permissions:
@@ -33,15 +33,15 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - id: build
-        name: Build
-        continue-on-error: true # e.g., clone failures
+      - name: Analyze
+        continue-on-error: true
         # We run arbitrary untrusted code here
         run: |
-          scripts/testbed-build.py -v -o result.json \
+          scripts/testbed-analyze.py -v -o result.json \
             ${{ matrix.gitUrl }} -t ${{ matrix.toolchains }}
       - name: Upload Result
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
           path: result.json
+          if-no-files-found: warn

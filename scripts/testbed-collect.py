@@ -19,11 +19,6 @@ def query_jobs(repo: str, run_id: int, run_attempt: int = 1) -> 'list[Job]':
   )
   return list(map(json.loads, out.splitlines()))
 
-BUILD_JOB_PATTERN = re.compile("Build (.*)")
-def is_build_job(job: Job, name: str):
-  match = BUILD_JOB_PATTERN.search(job['name'])
-  return match is not None and match.group(1) == name
-
 def walk_entries(matrix: TestbedMatrix) -> Iterable[TestbedEntry]:
   for layer in matrix:
     yield from layer['data']
@@ -56,8 +51,8 @@ if __name__ == "__main__":
     matrix: TestbedMatrix = json.load(f)
 
   jobs = query_jobs(TESTBED_REPO, args.run_id, args.run_attempt)
-  def find_build_job(name: str) -> Job:
-    return next(job for job in jobs if is_build_job(job, name))
+  def find_testbed_job_id(name: str) -> int | None:
+    return next((job['id'] for job in jobs if job['name'].split('/')[-1] == name), None)
 
   logging.info(f"Testbed entries: {len(matrix)}")
 
@@ -67,7 +62,10 @@ if __name__ == "__main__":
   results = dict[str, PackageResult]()
   archiveSizes = list[int]()
   for entry in walk_entries(matrix):
-    jobId = find_build_job(entry['jobName'])['id']
+    jobId = find_testbed_job_id(entry['jobName'])
+    if jobId is None:
+      logging.error(f"Job ID not found for '{entry['jobName']}'")
+      continue
     url = f"https://github.com/{TESTBED_REPO}/actions/runs/{args.run_id}/job/{jobId}#step:4:1"
     result_file = os.path.join(args.results, entry['artifact'], 'result.json')
     try:
@@ -79,9 +77,9 @@ if __name__ == "__main__":
     if not result['doIndex']:
       logging.info(f"Skipping repository '{id}''s result as it opted-out of Reservoir")
       num_opt_outs +=1
-    num_results += 1
     if id in results:
       logging.error(f"Duplicate testbed result for repository ID '{id}'")
+    num_results += 1
     results[id] = result
     for build in walk_builds(result):
       build['url'] = url

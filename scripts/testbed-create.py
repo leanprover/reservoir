@@ -9,19 +9,20 @@ from typing import Collection
 from utils import *
 
 def create_entries(pkgs: Iterable[PackageMetadata], toolchains: Collection[str]) -> Iterable[TestbedEntry]:
+  index_only = len(toolchains) == 0
   for pkg in pkgs:
     src = github_src(pkg)
     if src is None:
       logging.error(f"{pkg['fullName']}: Package lacks a GitHub source")
       continue
-    job_name = pkg['fullName']
+    job_name = f"{'Index' if index_only else 'Build'} {pkg['fullName']}"
     digest = hashlib.sha256(job_name.encode()).digest()
     artifact = base64.urlsafe_b64encode(digest).decode().rstrip('=')
     yield {
       'artifact': artifact,
       'gitUrl': src['gitUrl'],
       'jobName': job_name,
-      'toolchains': 'none' if len(toolchains) == 0 else ','.join(toolchains),
+      'toolchains': 'none' if index_only else ','.join(toolchains),
       "repoId": src['id'],
     }
 

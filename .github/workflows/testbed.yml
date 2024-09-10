@@ -126,7 +126,7 @@ jobs:
   # Multiple layers are used to exceed the 256 job limit for a matrix.
   # This tactic has been reported to GitHub in a dicussion and appears acceptable.
   # https://github.com/orgs/community/discussions/38704
-  build:
+  run:
     needs: setup
     name: Layer ${{ matrix.name }}
     strategy:
@@ -138,7 +138,7 @@ jobs:
     with:
       matrix: ${{ toJson(matrix.data) }}
   collect:
-    needs: build
+    needs: run
     name: Collect Results
     runs-on: ubuntu-latest
     steps:
