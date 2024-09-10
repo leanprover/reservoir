@@ -1,0 +1,47 @@
+name: Testbed Layer
+
+on:
+  # Enable running this workflow from tesbted.yml
+  workflow_call:
+    inputs:
+      matrix:
+        description: "JSON encoded testbed entries for layer"
+        type: string
+        required: true
+
+jobs:
+  build:
+    name: Build ${{ matrix.jobName }}
+    runs-on: ubuntu-latest
+    # This job runs arbitrary untrusted code, so we need to harden permissions
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        include: ${{ fromJson(inputs.matrix) }}
+      # complete all jobs
+      fail-fast: false
+    continue-on-error: true # e.g., upload/download failures
+    steps:
+      - name: Install Elan
+        shell: bash -euo pipefail {0}
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
+            | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - id: build
+        name: Build
+        continue-on-error: true # e.g., clone failures
+        # We run arbitrary untrusted code here
+        run: |
+          scripts/testbed-build.py -v -o result.json \
+            ${{ matrix.gitUrl }} -t ${{ matrix.toolchains }}
+      - name: Upload Result
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: result.json

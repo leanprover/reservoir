@@ -24,6 +24,10 @@ def is_build_job(job: Job, name: str):
   match = BUILD_JOB_PATTERN.search(job['name'])
   return match is not None and match.group(1) == name
 
+def walk_entries(matrix: TestbedMatrix) -> Iterable[TestbedEntry]:
+  for layer in matrix:
+    yield from layer['data']
+
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument('results',
@@ -49,7 +53,7 @@ if __name__ == "__main__":
     matrix_file = os.path.join(args.results, 'matrix', 'matrix.json')
 
   with open(matrix_file, 'r') as f:
-    matrix: list[TestbedEntry] = json.load(f)
+    matrix: TestbedMatrix = json.load(f)
 
   jobs = query_jobs(TESTBED_REPO, args.run_id, args.run_attempt)
   def find_build_job(name: str) -> Job:
@@ -62,7 +66,7 @@ if __name__ == "__main__":
   num_build_results = 0
   results = dict[str, PackageResult]()
   archiveSizes = list[int]()
-  for entry in matrix:
+  for entry in walk_entries(matrix):
     jobId = find_build_job(entry['jobName'])['id']
     url = f"https://github.com/{TESTBED_REPO}/actions/runs/{args.run_id}/job/{jobId}#step:4:1"
     result_file = os.path.join(args.results, entry['artifact'], 'result.json')

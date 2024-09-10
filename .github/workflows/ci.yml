@@ -39,8 +39,7 @@ on:
       testbed-size:
         description: "Max number of testbed entries"
         type: number
-        required: true
-        default: 256
+        required: false
       production-deploy:
         description: "Deploy website to production"
         type: boolean
@@ -100,7 +99,7 @@ jobs:
             fi
           fi
           echo 'index-repo=${{ github.event_name != 'workflow_dispatch' && 'leanprover/reservoir-index' || inputs.index-repo }}' >> "$GITHUB_OUTPUT"
-          echo testbed-size=${{ github.event_name != 'workflow_dispatch' && 20 || inputs.testbed-size || 0 }} >> "$GITHUB_OUTPUT"
+          echo testbed-size=${{ github.event_name != 'workflow_dispatch' && 10 || inputs.testbed-size == '' && -1 || inputs.testbed-size }} >> "$GITHUB_OUTPUT"
           echo production-deploy=${{ inputs.production-deploy || (toJson(inputs.production-deploy) == 'null' && github.ref_name == 'master') }} >> "$GITHUB_OUTPUT"
   testbed:
     needs: [config]

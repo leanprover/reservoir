@@ -69,6 +69,12 @@ class TestbedEntry(TypedDict):
   toolchains: str
   repoId: str
 
+class TestbedLayer(TypedDict):
+  name: str
+  data: list[TestbedEntry]
+
+TestbedMatrix = list[TestbedLayer]
+
 INDEX_SCHEMA_VERSION_STR = '1.0.0'
 INDEX_SCHEMA_VERSION = Version(INDEX_SCHEMA_VERSION_STR)
 

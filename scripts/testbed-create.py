@@ -25,6 +25,10 @@ def create_entries(pkgs: Iterable[PackageMetadata], toolchains: Collection[str])
       "repoId": src['id'],
     }
 
+def create_layers(entries: Iterable[TestbedEntry]) -> Iterable[TestbedLayer]:
+  for idx, data in enumerate(paginate(entries, 256), 1):
+    yield {'name': str(idx), 'data': data}
+
 if __name__ == "__main__":
   script_dir = os.path.dirname(os.path.realpath(__file__))
   default_exclusions = os.path.join(script_dir, "package-exclusions.txt")
@@ -36,7 +40,7 @@ if __name__ == "__main__":
   parser.add_argument('-e', '--regex', type=str, default='',
     help="select indexed package(s) to analyze by a regular expression")
   parser.add_argument('-n', '--num', type=int, default=0,
-    help="max number of testbed entries (<= 0 for no limit)")
+    help="max number of testbed entries (< 0 for no limit)")
   parser.add_argument('-Q', '--query', type=int, default=0,
     help='(max) number of new packages to query from GitHub (< 0 for no limit)')
   parser.add_argument('-X', '--exclusions', default=default_exclusions,
@@ -76,7 +80,7 @@ if __name__ == "__main__":
     if args.regex is not None:
       r = re.compile(args.regex)
       pkgs = list(filter(lambda pkg: r.search(pkg['fullName']) is not None, pkgs))
-    logging.info(f"{len(pkgs)} packages selected from index")
+      logging.info(f"{len(pkgs)} packages selected from index")
     pkgs = new_pkgs + pkgs
   else:
     pkgs = new_pkgs
@@ -85,13 +89,14 @@ if __name__ == "__main__":
   # Create testbed
   toolchains = resolve_toolchains(args.toolchain, "package")
   entries = create_entries(pkgs, toolchains)
-  if args.num > 0:
+  if args.num >= 0:
     entries = itertools.islice(entries, args.num)
-  entries = list(entries)
+  layers = list(create_layers(entries))
 
   # Output matrix
+  matrix: TestbedMatrix = layers
   if args.output is None:
-    print(json.dumps(entries))
+    print(json.dumps(layers))
   else:
     with open(args.output, 'w') as f:
-      f.write(json.dumps(entries))
+      f.write(json.dumps(layers))
