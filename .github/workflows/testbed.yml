@@ -151,8 +151,10 @@ jobs:
           path: testbed
       - name: Collect Outcomes
         run: |
-          scripts/testbed-collect.py -o testbed/results.json -v \
-            testbed ${{ github.run_id }} ${{ github.run_attempt }}
+          scripts/testbed-collect.py -v \
+            testbed -o testbed/results.json \
+            ${{ github.run_id }} ${{ github.run_attempt }} \
+            -R '${{ github.repository }}'
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Upload Results Artifact

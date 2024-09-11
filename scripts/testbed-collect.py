@@ -34,13 +34,15 @@ if __name__ == "__main__":
   parser.add_argument('results',
     help="directory containing testbed results")
   parser.add_argument('run_id', type=int,
-    help="the testbed run ID")
+    help="testbed run ID")
   parser.add_argument('run_attempt', nargs='?', type=int, default=1,
-    help="the testbed run attempt")
+    help="testbed run attempt")
   parser.add_argument('-m', '--matrix',
     help="file containing the JSON build matrix")
   parser.add_argument('-o', '--output',
     help='file to output the collected results')
+  parser.add_argument('-R', '--repo',
+    help='repository with testbed jobs', default=TESTBED_REPO)
   parser.add_argument('-q', '--quiet', dest="verbosity", action='store_const', const=0, default=1,
     help='print no logging information')
   parser.add_argument('-v', '--verbose', dest="verbosity", action='store_const', const=2,
@@ -49,24 +51,25 @@ if __name__ == "__main__":
 
   configure_logging(args.verbosity)
 
+  jobs = query_jobs(args.repo, args.run_id, args.run_attempt)
+  def find_testbed_job_id(name: str) -> int | None:
+    return next((job['id'] for job in jobs if job['name'].split(' / ')[-1] == name), None)
+
+  # Load testbed matrix
   matrix_file = args.matrix
   if matrix_file is None:
     matrix_file = os.path.join(args.results, 'matrix', 'matrix.json')
-
   with open(matrix_file, 'r') as f:
     matrix: TestbedMatrix = json.load(f)
+  entries = list(walk_entries(matrix))
+  logging.info(f"Testbed entries: {len(entries)}")
 
-  jobs = query_jobs(TESTBED_REPO, args.run_id, args.run_attempt)
-  def find_testbed_job_id(name: str) -> int | None:
-    return next((job['id'] for job in jobs if job['name'].split('/')[-1].strip() == name), None)
-
-  logging.info(f"Testbed entries: {len(matrix)}")
-
+  # Collect results
   num_opt_outs = 0
   num_build_results = 0
   results: TestbedResults = list[TestbedResult]()
   archiveSizes = list[int]()
-  for entry in walk_entries(matrix):
+  for entry in entries:
     jobId = find_testbed_job_id(entry['jobName'])
     if jobId is None:
       logging.error(f"Job ID not found for '{entry['jobName']}'")
@@ -89,12 +92,14 @@ if __name__ == "__main__":
       if archiveSize is not None:
         archiveSizes.append(archiveSize)
 
+  # Print stats
   logging.info(f"Package results: {len(results)} ({num_opt_outs} opt-outs)")
   num_archives = len(archiveSizes)
   logging.info(f"Build results: {num_build_results} ({num_archives} with archives)")
   avg = 0 if num_archives == 0 else round(sum(archiveSizes)/num_archives)
   logging.info(f'Average build archive size: {fmt_bytes(avg)} ({avg} bytes)')
 
+  # Output results
   if args.output is None:
     print(json.dumps(results, indent=2))
   else:
