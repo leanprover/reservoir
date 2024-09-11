@@ -1,6 +1,6 @@
 # Reservoir
 
-Reservoir is the new, **work-in-progress** package repository for Lean and Lake. It automatically indexes about the Lean repositories published on GitHub, builds them on new toolchain releases, and presents the results in organized form on the [website](https://reservoir.lean-lang.org).
+Reservoir is the package repository for Lean and Lake. It automatically indexes about the Lean repositories published on GitHub, builds them on new toolchain releases, and presents the results in organized form on the [website](https://reservoir.lean-lang.org).
 
 ## Credits
 
