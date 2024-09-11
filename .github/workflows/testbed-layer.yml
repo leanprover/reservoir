@@ -38,7 +38,9 @@ jobs:
         # We run arbitrary untrusted code here
         run: |
           scripts/testbed-analyze.py -v -o result.json \
-            ${{ matrix.gitUrl }} -t '${{ matrix.toolchains }}'
+            ${{ matrix.gitUrl }} \
+            -T '${{ matrix.toolchains }}' \
+            -V '${{ matrix.versions }}'
       - name: Upload Result
         uses: actions/upload-artifact@v4
         with:

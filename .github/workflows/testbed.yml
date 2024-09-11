@@ -26,8 +26,12 @@ on:
         type: boolean
         required: false
         default: false
-      pattern:
-        description: "Regex search for indexed packages to test"
+      package-pattern:
+        description: "Regex search for indexed packages to analyze"
+        type: string
+        required: false
+      version-pattern:
+        description: "Regex search for versions to build"
         type: string
         required: false
       toolchain:
@@ -60,13 +64,17 @@ on:
         type: boolean
         required: false
         default: false
-      pattern:
-        description: "Regex search for indexed packages to test"
+      package-pattern:
+        description: "Regex search for indexed packages to analyze"
         type: string
-        required: true
+        required: false
         default: ".*"
+      version-pattern:
+        description: "Regex search for versions to build"
+        type: string
+        required: false
       toolchain:
-        description: "Lean toolchain(s) to test against"
+        description: "Lean toolchain(s) on which to build"
         type: string
         required: false
         default: package
@@ -107,8 +115,9 @@ jobs:
         run: |
           scripts/testbed-create.py -o matrix.json  \
             ${{ inputs.index-repo && '-i index' || '' }} \
-            -e '${{ inputs.pattern }}' \
-            -t '${{ inputs.toolchain || 'package' }}'  \
+            -P '${{ inputs.package-pattern }}' \
+            -V '${{ inputs.version-pattern }}' \
+            -T '${{ inputs.toolchain || 'package' }}'  \
             -n ${{ inputs.max-size == '' && -1 || inputs.max-size }} \
             -Q ${{ inputs.search-packages && (inputs.dev && 100 || -1) || 0 }} \
             -X ${{ inputs.dev && 'scripts/package-dev-exclusions.txt' || 'scripts/package-exclusions.txt' }}

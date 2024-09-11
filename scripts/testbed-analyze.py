@@ -280,12 +280,12 @@ if __name__ == "__main__":
     help='JSON testbed matrix entry with build configuration')
   parser.add_argument('-d', '--testbed', type=str, default=None,
     help="directory to clone the package into")
-  parser.add_argument('-t', '--toolchain', type=str, nargs='*', action='extend', default=[],
+  parser.add_argument('-T', '--toolchain', type=str, nargs='*', action='extend', default=[],
     help="Lean toolchain(s) on build the package on")
   parser.add_argument('-o', '--output', type=str, default=None,
     help='file to output the build results')
-  parser.add_argument('-e', '--tag-regex', type=str, default=None,
-    help='build tags by regular expression')
+  parser.add_argument('-V', '--versions', type=str, default=None,
+    help='select versions to build by regular expression')
   parser.add_argument('-q', '--quiet', dest="verbosity", action='store_const', const=0, default=1,
     help='print no logging information')
   parser.add_argument('-v', '--verbose', dest="verbosity", action='store_const', const=2,
@@ -293,7 +293,7 @@ if __name__ == "__main__":
   parser.add_argument('-R', '--reuse-clone', action='store_true', default=False,
     help='reuse cloned repository if it already exists')
   parser.add_argument('-H', '--head', type=str, default=None,
-    help='the initial revision of the repository to checkout')
+    help='initial revision of the repository to checkout')
   args = parser.parse_args()
 
   configure_logging(args.verbosity)
@@ -324,7 +324,9 @@ if __name__ == "__main__":
 
     # Compile tag regex (if provided)
     tag_regex: re.Pattern[str] | None = None
-    if args.tag_regex is not None:
+    if args.tag_regex == '':
+      tag_regex = None
+    elif args.tag_regex is not None:
       tag_regex = re.compile(args.tag_regex)
 
     # Clone, analyze, and build package

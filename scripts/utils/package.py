@@ -67,6 +67,7 @@ class TestbedEntry(TypedDict):
   gitUrl: str
   jobName: str
   toolchains: str
+  versions: str
   repoId: str | None
   indexName: str | None
 

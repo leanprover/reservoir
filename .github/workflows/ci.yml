@@ -26,13 +26,17 @@ on:
         type: boolean
         required: false
         default: false
-      testbed-pattern:
-        description: "Regex search for indexed packages to test"
+      package-pattern:
+        description: "Regex search for indexed packages to analyze"
         type: string
-        required: true
+        required: false
         default: ".*"
+      version-pattern:
+        description: "Regex search for versions to build"
+        type: string
+        required: false
       testbed-toolchain:
-        description: "Lean toolchain(s) to test against"
+        description: "Lean toolchain(s) on which to build"
         type: string
         required: true
         default: package
@@ -92,7 +96,7 @@ jobs:
               else
                 echo testbed=${{ inputs.testbed-size != 0  }} >> "$GITHUB_OUTPUT"
               fi
-              echo reindex=${{  github.event_name == 'workflow_dispatch' && !!inputs.testbed-pattern }} >> "$GITHUB_OUTPUT"
+              echo reindex=${{  github.event_name == 'workflow_dispatch' && !!inputs.package-pattern }} >> "$GITHUB_OUTPUT"
               echo search-packages=${{ inputs.search-packages == true }}  >> "$GITHUB_OUTPUT"
               echo update-index=${{ inputs.update-index == true }} >> "$GITHUB_OUTPUT"
               echo 'testbed-toolchain=${{ inputs.testbed-toolchain || 'none' }}' >> "$GITHUB_OUTPUT"
@@ -110,7 +114,8 @@ jobs:
     with:
       index-repo: ${{ needs.config.outputs.index-repo }}
       search-packages: ${{ needs.config.outputs.search-packages == 'true' }}
-      pattern: ${{ needs.config.outputs.reindex == 'true' && (inputs.testbed-pattern || '.*') || '' }}
+      package-pattern: ${{ needs.config.outputs.reindex == 'true' && (inputs.package-pattern || '.*') || '' }}
+      version-pattern: ${{ inputs.version-pattern }}
       toolchain: ${{ needs.config.outputs.testbed-toolchain }}
       max-size: ${{ fromJson(needs.config.outputs.testbed-size) }}
       update-index: ${{ inputs.update-index == true }}
