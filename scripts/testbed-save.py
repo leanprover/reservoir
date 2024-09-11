@@ -11,7 +11,7 @@ def add_result_data(pkg: Package, result: PackageResult):
   pkg['keywords'] = ifnone(result['keywords'], pkg['keywords'])
   pkg['updatedAt'] = max(pkg['updatedAt'], result['headVersion']['date'])
   pkg['fullName'] = f"{pkg['owner']}/{name}"
-  vers = sorted(result['versions'], key=lambda ver: ver['date'], reverse=True)
+  vers = sorted(result['versions'], key=lambda v: (Version(v['version']), v['date']), reverse=True)
   pkg['versions'] = [result['headVersion']] + vers
 
 if __name__ == "__main__":

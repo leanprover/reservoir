@@ -1,5 +1,6 @@
 import re
-from typing import TypedDict, Any
+from typing import TypedDict, Any, NoReturn, overload
+from functools import total_ordering
 
 # assumes escaped names are simple (which is fine for now)
 FRENCH_QUOTE_PATTERN = re.compile('[«»]')
@@ -29,41 +30,69 @@ def mk_dependency(contents: Any, type: str | None = None) -> Dependency | None:
 
 VERSION_PATTERN = re.compile(r'(\d+)\.(\d+)\.(\d+)(?:-(.*))?')
 
+@total_ordering
 class Version:
   major: int
   minor: int
   patch: int
   special_descr: str
 
-  def __init__(self, ver: str | int | None = None) -> None:
-    self.major = 0
-    self.minor = 0
-    self.patch = 0
-    self.specialDescr = ''
+  @overload
+  def __init__(self, ver: Any) -> NoReturn: ...
+
+  @overload
+  def __init__(self, ver: 'Version | str | int | None' = None) -> None: ...
+
+  def __init__(self, ver: Any = None) -> None:
     if ver is None:
-      return
-    if isinstance(ver, int):
+      self.major = 0
+      self.minor = 0
+      self.patch = 0
+      self.special_descr = ''
+    elif isinstance(ver, int):
+      self.major = 0
       self.minor = ver
-      return
-    match = VERSION_PATTERN.match(ver)
-    if match is not None:
+      self.patch = 0
+      self.special_descr = ''
+    elif isinstance(ver, str):
+      match = VERSION_PATTERN.match(ver)
+      if match is None:
+        raise ValueError("Ill-formed version string")
       self.major = int(match.group(1))
       self.minor = int(match.group(2))
       self.patch = int(match.group(3))
       self.special_descr = match.group(4)
-
-  def __lt__(self, other: 'Version | int'):
-    if isinstance(other, int):
-      return self.major == 0 and self.minor < other
+    elif isinstance(ver, Version):
+      self.major = ver.major
+      self.minor = ver.minor
+      self.patch = ver.patch
+      self.special_descr = ver.special_descr
     else:
-      if self.major != other.major: return self.major < other.major
-      if self.minor != other.minor: return self.minor < other.minor
-      if self.patch != other.patch: return self.patch < other.patch
-      if self.special_descr != other.special_descr:
-        if self.special_descr == '': return True
-        if other.special_descr == '': return False
-        return self.special_descr < other.special_descr
-      return False
+      raise TypeError("Invalid type for Version initializer: expected Version, str, int, or None")
+
+  def __eq__(self, other):
+    if not isinstance(other, Version):
+      try:
+        other = Version(other)
+      except (TypeError, ValueError):
+        return False
+    if self.major != other.major: return False
+    if self.minor != other.minor: return False
+    if self.patch != other.patch: return False
+    if self.special_descr != other.special_descr: return False
+    return True
+
+  def __lt__(self, other: 'Version | str | int | None'):
+    if not isinstance(other, Version):
+      other = Version(other)
+    if self.major != other.major: return self.major < other.major
+    if self.minor != other.minor: return self.minor < other.minor
+    if self.patch != other.patch: return self.patch < other.patch
+    if self.special_descr != other.special_descr:
+      if self.special_descr == '': return True
+      if other.special_descr == '': return False
+      return self.special_descr < other.special_descr
+    return False
 
 class Manifest():
   name: str | None
@@ -74,7 +103,10 @@ class Manifest():
     self.dependencies = []
     if not isinstance(contents, dict):
       return
-    manifest_version = Version(contents.get('version', None))
+    try:
+      manifest_version = Version(contents.get('version', None))
+    except (TypeError, ValueError):
+      return
     name = contents.get('name', None)
     if name is not None:
       self.name = unescape_name(str(name))
