@@ -58,7 +58,7 @@ if __name__ == "__main__":
 
   jobs = query_jobs(TESTBED_REPO, args.run_id, args.run_attempt)
   def find_testbed_job_id(name: str) -> int | None:
-    return next((job['id'] for job in jobs if job['name'].split('/')[-1] == name), None)
+    return next((job['id'] for job in jobs if job['name'].split('/')[-1].strip() == name), None)
 
   logging.info(f"Testbed entries: {len(matrix)}")
 
