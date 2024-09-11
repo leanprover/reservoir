@@ -125,6 +125,15 @@ def query_repo_data(items: Iterable[str]) -> Iterable[Repo | None]:
     logging.debug(f"GitHub GraphQL request cost: {data['rateLimit']['cost']}")
     yield from data['nodes']
 
+def query_repos(ids: Iterable[str]) -> dict[str, Repo]:
+  repos = dict[str, Repo]()
+  for id, repo in zip(ids, query_repo_data(ids)):
+    if repo is None:
+      logging.error(f"Repository ID '{id}' not found on GitHub")
+    else:
+      repos[id] = repo
+  return repos
+
 def query_lake_repos(limit: int) -> list[str]:
   # NOTE: For some reason, the GitHub rate limit is currently (07-08-24) off by one.
   rate_limit = query_github_api("rate_limit")['resources']['code_search']
@@ -214,10 +223,10 @@ def metadata_of_repo(repo: Repo) -> PackageMetadata:
     'sources': [cast(PackageSrc, src_of_repo(repo))],
   }
 
-def pkg_of_repo(repo: Repo) -> Package:
+def package_of_repo(repo: Repo) -> Package:
   return package_of_metadata(metadata_of_repo(repo))
 
-def pkgs_of_repos(repos: Iterable[Repo], excluded_pkgs: Container[str] = set()) -> Iterable[Package]:
+def curate_repos(repos: Iterable[Repo], excluded_pkgs: Container[str] = set()) -> Iterable[Repo]:
   licenses = query_licenses()
   deprecated_ids = set[str]()
   def curate(repo: Repo):
@@ -234,12 +243,12 @@ def pkgs_of_repos(repos: Iterable[Repo], excluded_pkgs: Container[str] = set()) 
         deprecated_ids.add(spdxId)
       return license.get('isOsiApproved', False)
     return False
-  return map(pkg_of_repo, filter(curate, repos))
+  return filter(curate, repos)
 
 def add_repo_metadata(pkg: Package, repo: Repo):
   pkg.update(cast(Any, metadata_of_repo(repo)))
 
-def query_new_packages(limit: int, indexed_repos: Collection[str], exclusions: Container[str] = set()) -> list[Package]:
+def query_new_repos(limit: int, indexed_repos: Collection[str], exclusions: Container[str] = set()) -> list[Repo]:
   if limit == 0: return []
   logging.info(f"Searching for new Lean/Lake repositories")
   repo_ids = query_lake_repos(limit)
@@ -248,7 +257,7 @@ def query_new_packages(limit: int, indexed_repos: Collection[str], exclusions: C
   if len(indexed_repos) != 0:
     repos = [repo for repo in repos if repo['id'] not in indexed_repos]
     logging.info(f"{len(repos)} candidate repositories not in index")
-  new_pkgs = list(pkgs_of_repos(repos, exclusions))
+  repos = list(curate_repos(repos, exclusions))
   note = 'notable new' if len(indexed_repos) != 0 else 'notable'
-  logging.info(f"{len(new_pkgs)} {note} OSI-licensed packages")
-  return new_pkgs
+  logging.info(f"{len(repos)} {note} OSI-licensed repositories")
+  return repos

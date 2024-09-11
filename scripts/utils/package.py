@@ -67,13 +67,20 @@ class TestbedEntry(TypedDict):
   gitUrl: str
   jobName: str
   toolchains: str
-  repoId: str
+  repoId: str | None
+  indexName: str | None
 
 class TestbedLayer(TypedDict):
   name: str
   data: list[TestbedEntry]
 
 TestbedMatrix = list[TestbedLayer]
+
+class TestbedResult(PackageResult):
+  repoId: str | None
+  indexName: str | None
+
+TestbedResults = list[TestbedResult]
 
 INDEX_SCHEMA_VERSION_STR = '1.0.0'
 INDEX_SCHEMA_VERSION = Version(INDEX_SCHEMA_VERSION_STR)

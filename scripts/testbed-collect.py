@@ -23,6 +23,12 @@ def walk_entries(matrix: TestbedMatrix) -> Iterable[TestbedEntry]:
   for layer in matrix:
     yield from layer['data']
 
+def mk_testbed_result(entry: TestbedEntry, pkg_result: PackageResult) -> TestbedResult:
+  result = cast(TestbedResult, pkg_result)
+  result['repoId'] = entry['repoId']
+  result['indexName'] = entry['indexName']
+  return result
+
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument('results',
@@ -56,10 +62,9 @@ if __name__ == "__main__":
 
   logging.info(f"Testbed entries: {len(matrix)}")
 
-  num_results = 0
   num_opt_outs = 0
   num_build_results = 0
-  results = dict[str, PackageResult]()
+  results: TestbedResults = list[TestbedResult]()
   archiveSizes = list[int]()
   for entry in walk_entries(matrix):
     jobId = find_testbed_job_id(entry['jobName'])
@@ -70,17 +75,13 @@ if __name__ == "__main__":
     result_file = os.path.join(args.results, entry['artifact'], 'result.json')
     try:
       with open(result_file, 'r') as f:
-        result: PackageResult = json.load(f)
+        result: TestbedResult = mk_testbed_result(entry, json.load(f))
     except (FileNotFoundError, json.JSONDecodeError):
       continue
-    id = entry['repoId']
+    results.append(result)
     if not result['doIndex']:
-      logging.info(f"Skipping repository '{id}''s result as it opted-out of Reservoir")
+      logging.info(f"'{id}' opted-out of Reservoir")
       num_opt_outs +=1
-    if id in results:
-      logging.error(f"Duplicate testbed result for repository ID '{id}'")
-    num_results += 1
-    results[id] = result
     for build in walk_builds(result):
       build['url'] = url
       num_build_results += 1
@@ -88,7 +89,7 @@ if __name__ == "__main__":
       if archiveSize is not None:
         archiveSizes.append(archiveSize)
 
-  logging.info(f"Package results: {num_results} (+ {num_opt_outs} opt-outs)")
+  logging.info(f"Package results: {len(results)} ({num_opt_outs} opt-outs)")
   num_archives = len(archiveSizes)
   logging.info(f"Build results: {num_build_results} ({num_archives} with archives)")
   avg = 0 if num_archives == 0 else round(sum(archiveSizes)/num_archives)
