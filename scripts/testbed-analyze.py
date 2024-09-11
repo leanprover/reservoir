@@ -191,7 +191,7 @@ def cwd_readme(cfg: ReservoirConfig | None):
 
 VERSION_TAG_PATTERN = re.compile(r'v(\d+).*')
 
-def cwd_analyze(target_toolchains: Collection[str | None] = [], tag_regex: re.Pattern[str] | None = None) -> tuple[PackageResult, bool]:
+def cwd_analyze(target_toolchains: Collection[str | None] = [], tag_pattern: re.Pattern[str] | None = None) -> tuple[PackageResult, bool]:
   failure = False
   # Extract Reservoir configuration from Lake
   logging.info(f"Analyzing package HEAD")
@@ -245,7 +245,7 @@ def cwd_analyze(target_toolchains: Collection[str | None] = [], tag_regex: re.Pa
   # Index and build versions
   is_mathlib = result['name'] == 'mathlib'
   if result['doIndex']:
-    if tag_regex is None:
+    if tag_pattern is None:
       failure = try_add_builds(result['headVersion'], target_toolchains, is_mathlib) or failure
     if version_tags is not None:
       logging.info(f'Detected version tags: {version_tags}')
@@ -268,7 +268,7 @@ def cwd_analyze(target_toolchains: Collection[str | None] = [], tag_regex: re.Pa
           'builds': [],
         }
         result['versions'].append(ver)
-        if tag_regex is not None and tag_regex.search(tag) is not None:
+        if tag_pattern is not None and tag_pattern.search(tag) is not None:
           failure = try_add_builds(ver, target_toolchains, is_mathlib) or failure
   return result, failure
 
@@ -284,8 +284,8 @@ if __name__ == "__main__":
     help="Lean toolchain(s) on build the package on")
   parser.add_argument('-o', '--output', type=str, default=None,
     help='file to output the build results')
-  parser.add_argument('-V', '--versions', type=str, default=None,
-    help='select versions to build by regular expression')
+  parser.add_argument('-V', '--version-tags', type=str, default=None,
+    help='select version tags to build by regular expression')
   parser.add_argument('-q', '--quiet', dest="verbosity", action='store_const', const=0, default=1,
     help='print no logging information')
   parser.add_argument('-v', '--verbose', dest="verbosity", action='store_const', const=2,
@@ -322,12 +322,12 @@ if __name__ == "__main__":
       url: str | None = args.url
       target_toolchains = resolve_toolchains(args.toolchain)
 
-    # Compile tag regex (if provided)
-    tag_regex: re.Pattern[str] | None = None
-    if args.tag_regex == '':
-      tag_regex = None
-    elif args.tag_regex is not None:
-      tag_regex = re.compile(args.tag_regex)
+    # Compile version tag regex (if provided)
+    tag_pattern: re.Pattern[str] | None = None
+    if args.version_tags == '':
+      tag_pattern = None
+    elif args.version_tags is not None:
+      tag_pattern = re.compile(args.version_tags)
 
     # Clone, analyze, and build package
     iwd = os.getcwd()
@@ -337,7 +337,7 @@ if __name__ == "__main__":
     run_cmd('git', 'fetch', '--tags', '--force')
     if args.head:
       cwd_checkout(args.head)
-    result, failure = cwd_analyze(target_toolchains, tag_regex)
+    result, failure = cwd_analyze(target_toolchains, tag_pattern)
     os.chdir(iwd)
 
     # Output result

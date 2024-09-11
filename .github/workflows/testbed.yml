@@ -31,7 +31,7 @@ on:
         type: string
         required: false
       version-pattern:
-        description: "Regex search for versions to build"
+        description: "Regex search for version tags to build"
         type: string
         required: false
       toolchain:
@@ -70,7 +70,7 @@ on:
         required: false
         default: ".*"
       version-pattern:
-        description: "Regex search for versions to build"
+        description: "Regex search for version tags to build"
         type: string
         required: false
       toolchain:
