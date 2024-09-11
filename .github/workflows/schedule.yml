@@ -30,15 +30,7 @@ permissions:
   statuses: write
 
 jobs:
-  index:
-    name: Index
-    uses: ./.github/workflows/index.yml
-    secrets: inherit
-    with:
-      index-repo: ${{ inputs.index-repo || 'leanprover/reservoir-index' }}
-      update-index: true
   testbed:
-    needs: index
     name: Testbed
     uses: ./.github/workflows/testbed.yml
     secrets: inherit
@@ -48,7 +40,7 @@ jobs:
       max-size: ${{ inputs.testbed-size == '' && -1 || fromJson(inputs.testbed-size) }}
       update-index: true
   website:
-    needs: [index, testbed]
+    needs: [testbed]
     name: Website
     uses: ./.github/workflows/website.yml
     secrets: inherit
