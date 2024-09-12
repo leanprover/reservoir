@@ -16,18 +16,13 @@ on:
         type: string
         required: false
         default: leanprover/reservoir-index
-      update-index:
-        description: "Update package index"
-        type: boolean
-        required: false
-        default: false
       search-packages:
         description: "Search GitHub for new packages"
         type: boolean
         required: false
         default: false
       package-pattern:
-        description: "Regex search for indexed packages to analyze"
+        description: "Regex search for indexed packages"
         type: string
         required: false
         default: ".*"
@@ -44,6 +39,11 @@ on:
         description: "Max number of testbed entries"
         type: number
         required: false
+      update-index:
+        description: "Save testbed results to index"
+        type: boolean
+        required: false
+        default: false
       production-deploy:
         description: "Deploy website to production"
         type: boolean
@@ -94,7 +94,7 @@ jobs:
               if ${{ github.event_name != 'workflow_dispatch' }}; then
                 echo testbed=${{ github.ref_name != 'master' }} >> "$GITHUB_OUTPUT"
               else
-                echo testbed=${{ inputs.testbed-size != 0  }} >> "$GITHUB_OUTPUT"
+                echo testbed=${{ toJson(inputs.testbed-size) == 'null' && true || inputs.testbed-size != 0 }} >> "$GITHUB_OUTPUT"
               fi
               echo reindex=${{  github.event_name == 'workflow_dispatch' && !!inputs.package-pattern }} >> "$GITHUB_OUTPUT"
               echo search-packages=${{ inputs.search-packages == true }}  >> "$GITHUB_OUTPUT"
@@ -103,7 +103,7 @@ jobs:
             fi
           fi
           echo 'index-repo=${{ github.event_name != 'workflow_dispatch' && 'leanprover/reservoir-index' || inputs.index-repo }}' >> "$GITHUB_OUTPUT"
-          echo testbed-size=${{ github.event_name != 'workflow_dispatch' && 10 || inputs.testbed-size == '' && -1 || inputs.testbed-size }} >> "$GITHUB_OUTPUT"
+          echo testbed-size=${{ github.event_name != 'workflow_dispatch' && 10 || toJson(inputs.testbed-size) == 'null' && -1 || inputs.testbed-size }} >> "$GITHUB_OUTPUT"
           echo production-deploy=${{ inputs.production-deploy || (toJson(inputs.production-deploy) == 'null' && github.ref_name == 'master') }} >> "$GITHUB_OUTPUT"
   testbed:
     needs: [config]
@@ -129,5 +129,5 @@ jobs:
     secrets: inherit
     with:
       index-repo: ${{ needs.config.outputs.index-repo }}
-      index-artifact: ${{ needs.config.outputs.update-index != 'true' }}
+      index-artifact: ${{ needs.config.outputs.testbed == 'true' && needs.config.outputs.update-index != 'true' }}
       production-deploy: ${{ needs.config.outputs.production-deploy == 'true' }}

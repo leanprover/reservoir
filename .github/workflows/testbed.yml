@@ -65,7 +65,7 @@ on:
         required: false
         default: false
       package-pattern:
-        description: "Regex search for indexed packages to analyze"
+        description: "Regex search for indexed packages"
         type: string
         required: false
         default: ".*"
@@ -118,7 +118,7 @@ jobs:
             -P '${{ inputs.package-pattern }}' \
             -V '${{ inputs.version-pattern }}' \
             -T '${{ inputs.toolchain || 'package' }}'  \
-            -n ${{ inputs.max-size == '' && -1 || inputs.max-size }} \
+            -n ${{ toJson(inputs.max-size) == 'null' && -1 || inputs.max-size }} \
             -Q ${{ inputs.search-packages && (inputs.dev && 100 || -1) || 0 }} \
             -X ${{ inputs.dev && 'scripts/package-dev-exclusions.txt' || 'scripts/package-exclusions.txt' }}
         env:
