@@ -4,6 +4,7 @@
   "include": [
     "site",
     ".nuxt/nuxt.d.ts",
+    "custom.d.ts",
   ],
   "exclude": [
     "site/functions/node_modules"
