@@ -40,13 +40,13 @@ export interface PackageDep {
 }
 
 export interface PackageVer {
-  version: string | null
+  version: string
   revision: string
   date: string
   tag: string | null
   toolchain: string | null
   dependencies: PackageDep[]
-  license: string
+  license: string | null
   licenseFiles:  string[]
   readmeFile: string | null
 }

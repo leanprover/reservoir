@@ -28,7 +28,7 @@ const pkgName = computed(() => props.upstream ? dep.value.name : (pkg.value ? pk
           </code>
         </span>
       </h3>
-      <div v-if="pkg" class="description">
+      <div v-if="pkg && pkg.description" class="description">
         {{ pkg.description  }}
       </div>
     </div>
@@ -41,7 +41,7 @@ li.dep-item {
   flex-direction: row;
   align-items: center;
   position: relative;
-  padding: 1em 1.5em;
+  padding: 1em;
 
   &:has(.dep-link):hover {
     background-color: var(--medium-color);
@@ -53,6 +53,7 @@ li.dep-item {
   }
 
   .dep-type {
+    margin-left: 0.5em;
     margin-right: 1.2em;
 
     .icon {

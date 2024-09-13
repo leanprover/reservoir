@@ -63,7 +63,7 @@ const pkgVer = computed(() => pkg.versions.at(0))
         </li>
       </ul>
     </nav>
-    <NuxtPage :package="pkg" class="page-tab"></NuxtPage>
+    <NuxtPage :package="pkg" :version="pkgVer" class="page-tab"></NuxtPage>
   </div>
 </template>
 
@@ -160,15 +160,6 @@ const pkgVer = computed(() => pkg.versions.at(0))
 
   .page-tab {
     min-height: 45vh;
-  }
-
-  ol.item-list {
-    list-style: none;
-    margin: 1em 0;
-
-    & > li:not(:first-child) {
-      margin-top: 1em;
-    }
   }
 }
 </style>

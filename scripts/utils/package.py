@@ -39,7 +39,7 @@ class Build(BuildResult):
   revision: str
 
 class PackageVersionMetadata(TypedDict):
-  version: str | None
+  version: str
   revision: str
   date: str
   tag: str | None

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import StarIcon from '~icons/mdi/star'
+import NoneIcon from '~icons/mdi/asterisk'
 import CalendarIcon from '~icons/mdi/calendar'
 import WeightIcon from '~icons/mdi/weight'
 import TagIcon from '~icons/mdi/tag'
@@ -35,7 +35,7 @@ const verTrack = computed(() => {
     <div class="version-id">
       <Tippy class="version-track">
         <span v-if="verTrack">{{verTrack}}</span>
-        <StarIcon v-else class="icon"/>
+        <NoneIcon v-else class="icon"/>
         <template #content>
           <span v-if="verTrack">Version track: {{verTrack}}</span>
           <span v-else>Not a part of any version track.</span>
@@ -63,7 +63,12 @@ const verTrack = computed(() => {
         </div>
         <div v-if="build && build.archiveSize" class="version-detail version-size">
           <WeightIcon class="icon"/>
-          <span>{{formatBytes(build.archiveSize)}}</span>
+          <Tippy>
+            <span>{{formatBytes(build.archiveSize)}}</span>
+            <template #content>
+              Build archive size: {{build.archiveSize}} bytes.
+            </template>
+          </Tippy>
         </div>
       </div>
     </div>

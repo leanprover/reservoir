@@ -34,9 +34,17 @@ const sortLink = function(key: string) {
 <template>
   <div class="sorted-list">
     <div class="list-header">
-      <slot name="header" :first="first" :last="last" :total="numItems"/>
+      <slot name="header" :first="first" :last="last" :total="numItems">
+        <div class="list-info">
+          <span class="displaying">Displaying </span>
+          <strong>{{ first+1 }}-{{ last }}</strong>
+          <span> of </span>
+          <strong>{{ numItems }}</strong>
+          <span class="total-label"><slot name="total-label"/></span>
+        </div>
+      </slot>
       <div class="sort-by">
-        <span class="label">Sort by</span>
+        <span class="label nowrap">Sort by</span>
         <Dropdown class="dropdown" panelClass="dropdown-panel" :autoOptionFocus="false" @change="first = 0"
           v-model="sortFn" :options="sortOptions" optionLabel="label" optionValue="sort">
           <template #option="{option}">
@@ -45,7 +53,7 @@ const sortLink = function(key: string) {
         </Dropdown>
       </div>
     </div>
-    <ol class="list-items">
+    <ol class="item-list">
       <template v-for="item in itemPage" :key="itemKey(item)">
         <slot name="item" :item="item"/>
       </template>
@@ -64,9 +72,20 @@ const sortLink = function(key: string) {
     justify-content: space-between;
     align-items: center;
 
+    .list-info {
+      @media only screen and (max-width: 30em) {
+        .total-label { display: none; }
+      }
+
+      @media only screen and (max-width: 35em) {
+        .displaying { display: none; }
+      }
+    }
+
     .sort-by {
       display: flex;
       align-items: center;
+      margin-left: 0.5em;
 
       .label {
         margin-right: 0.5em;
@@ -78,12 +97,11 @@ const sortLink = function(key: string) {
     }
   }
 
-  & > ol.list-items {
+  & > ol {
     list-style: none;
     margin: 1em 0;
 
     & > li {
-      padding: 1em;
       margin-bottom: 1em;
     }
   }

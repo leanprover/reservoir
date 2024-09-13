@@ -17,10 +17,15 @@ const results = computed(() => {
 })
 
 const sortOptions: NonEmptyArray<SortOption<Package>> = [
-  {label: "Stars", key: "stars", sort: (a, b) => b['stars'] - a['stars']},
-  {label: "Date Created", key: "createdAt", sort: (a, b) => new Date(b['createdAt']).getTime() - new Date(a['createdAt']).getTime()},
-  {label: "Date Updated", key: "updatedAt", sort: (a, b) => new Date(b['updatedAt']).getTime() - new Date(a['updatedAt']).getTime()},
-  {label: "Alphabetical", key: "fullName", sort: (a, b) => a['fullName'].localeCompare(b['fullName'])},
+  {label: "Stars", key: "stars", sort: (a, b) => b.stars - a.stars},
+  {label: "Date Created", key: "createdAt", sort: (a, b) => b.createdAt.localeCompare(a.createdAt)},
+  {label: "Date Updated", key: "updatedAt", sort: (a, b) => b.updatedAt.localeCompare(a.updatedAt)},
+  {label: "Package Name", key: "name", sort: (a, b) => {
+    return a.name.localeCompare(b.name) || b.stars - a.stars
+  }},
+  {label: "Package Owner", key: "owner", sort: (a, b) => {
+    return a.owner.localeCompare(b.owner) || a.name.localeCompare(b.name)
+  }},
 ]
 </script>
 
@@ -58,14 +63,8 @@ const sortOptions: NonEmptyArray<SortOption<Package>> = [
     </div>
     <SortedList v-else class="results" :sortOptions="sortOptions"
       :items="results" :itemKey="item => item.fullName">
-      <template #header="{first, last, total}">
-        <div class="results-header">
-          <span class="displaying">Displaying </span>
-          <strong>{{ first+1 }}-{{ last }}</strong>
-          <span> of </span>
-          <strong>{{ total }}</strong>
-          <span class="total-descr"> total results</span>
-        </div>
+      <template #total-label>
+        total results
       </template>
       <template #item="{item}">
         <PackageResult :pkg="item"/>
@@ -88,16 +87,6 @@ const sortOptions: NonEmptyArray<SortOption<Package>> = [
 
     p {
       margin-bottom: 1em;
-    }
-  }
-
-  .results-header {
-    @media only screen and (max-width: 500px) {
-      .total-descr { display: none; }
-    }
-
-    @media only screen and (max-width: 600px) {
-      .displaying { display: none; }
     }
   }
 
