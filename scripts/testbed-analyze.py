@@ -220,7 +220,9 @@ def cwd_analyze(target_toolchains: Collection[str | None] = [], tag_pattern: re.
   }
   cfg = cwd_reservoir_config(toolchain)
   if cfg is not None:
-    result['name'] = cfg.get('name', None)
+    name = cfg.get('name', None)
+    if name is not None:
+      result['name'] = unescape_name(name)
     result['doIndex'] = cfg.get('doIndex', True)
     result['homepage'] = filter_ws(cfg.get('homepage', None))
     result['description'] = filter_ws(cfg.get('description', None))
