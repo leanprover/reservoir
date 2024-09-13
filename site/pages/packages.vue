@@ -1,38 +1,7 @@
 <script setup lang="ts">
-import Paginator from 'primevue/paginator'
-import Dropdown from 'primevue/dropdown'
-
-const toArray = <T>(a: T | T[]) => Array.isArray(a) ? a : [a]
-
-const sortOptions = [
-  {name: "Stars", value: "stars"},
-  {name: "Date Created", value: "createdAt"},
-  {name: "Date Updated", value: "updatedAt"},
-  {name: "Alphabetical", value: "fullName"},
-] as const
-type SortKey = typeof sortOptions[number]['value']
-const sortKeys: SortKey[] = sortOptions.map(opt => opt.value)
-const isSortKey = (x: any): x is SortKey => sortKeys.includes(x)
-
 const route = useRoute()
 const keywords = computed(() => toArray(route.query.keyword).filter((x): x is string => !!x))
 const query = computed(() => toArray(route.query.q).at(-1) || '')
-const querySortKey = toArray(route.query.sort).filter(isSortKey).at(-1)
-const sortKey = ref<SortKey>(querySortKey ?? "stars")
-const sort = (pkgs: Package[], key: SortKey | "") => {
-  switch (key) {
-    case "stars":
-      return pkgs.sort((a, b) => b[key] - a[key])
-    case "createdAt":
-      return pkgs.sort((a, b) => new Date(b[key]).getTime() - new Date(a[key]).getTime())
-    case "updatedAt":
-      return pkgs.sort((a, b) => new Date(b[key]).getTime() - new Date(a[key]).getTime())
-    case "fullName":
-      return pkgs.sort((a, b) => a[key].localeCompare(b[key]))
-    default:
-      return pkgs
-  }
-}
 const results = computed(() => {
   let pkgs = [...packages]
   const q = query.value.toLocaleLowerCase()
@@ -44,17 +13,15 @@ const results = computed(() => {
       return true
     })
   }
-  return sort(pkgs, sortKey.value)
+  return pkgs
 })
-const numResults = computed(() => results.value.length)
 
-const numRows = 20
-const first = ref(parseInt(toArray(route.query.first).at(-1)!) || 0)
-const last = computed(() => Math.min(first.value + numRows, results.value.length))
-const resultPage = computed(() => {
-  const i = first.value
-  return results.value.slice(i, i+numRows)
-});
+const sortOptions: NonEmptyArray<SortOption<Package>> = [
+  {label: "Stars", key: "stars", sort: (a, b) => b['stars'] - a['stars']},
+  {label: "Date Created", key: "createdAt", sort: (a, b) => new Date(b['createdAt']).getTime() - new Date(a['createdAt']).getTime()},
+  {label: "Date Updated", key: "updatedAt", sort: (a, b) => new Date(b['updatedAt']).getTime() - new Date(a['updatedAt']).getTime()},
+  {label: "Alphabetical", key: "fullName", sort: (a, b) => a['fullName'].localeCompare(b['fullName'])},
+]
 </script>
 
 <template>
@@ -74,7 +41,7 @@ const resultPage = computed(() => {
       </h2>
       <h2 v-else>All Packages</h2>
     </div>
-    <div class="no-results" v-if="numResults === 0">
+    <div class="no-results" v-if="results.length === 0">
       <h3>
         <p>
           <span>0 packages found. </span>
@@ -89,33 +56,21 @@ const resultPage = computed(() => {
         </p>
       </h3>
     </div>
-    <div v-else class="results">
-      <div class="results-header">
-        <div class="info">
+    <SortedList v-else class="results" :sortOptions="sortOptions"
+      :items="results" :itemKey="item => item.fullName">
+      <template #header="{first, last, total}">
+        <div class="results-header">
           <span class="displaying">Displaying </span>
           <strong>{{ first+1 }}-{{ last }}</strong>
           <span> of </span>
-          <strong>{{ numResults }}</strong>
+          <strong>{{ total }}</strong>
           <span class="total-descr"> total results</span>
         </div>
-        <div class="sort-by">
-          <span class="label">Sort by</span>
-          <Dropdown class="dropdown" panelClass="sort-panel" :autoOptionFocus="false" @change="first = 0"
-            v-model="sortKey" :options="(sortOptions as any)" optionLabel="name" optionValue="value">
-            <template #option="slotProps">
-              <NuxtLink :to="{path: '/packages', query: {q: query, keyword: keywords, sort: slotProps.option.value}}">
-                {{ slotProps.option.name }}
-              </NuxtLink>
-            </template>
-          </Dropdown>
-        </div>
-      </div>
-      <ol class="results-list">
-        <PackageResult v-for="pkg in resultPage" :key="pkg.fullName" :pkg="pkg"/>
-      </ol>
-      <Paginator :pt="{root: 'paginator'}"
-        v-model:first="first" :rows="numRows" :total-records="numResults"/>
-    </div>
+      </template>
+      <template #item="{item}">
+        <PackageResult :pkg="item"/>
+      </template>
+    </SortedList>
   </div>
 </template>
 
@@ -136,166 +91,61 @@ const resultPage = computed(() => {
     }
   }
 
-  .results {
-    .results-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+  .results-header {
+    @media only screen and (max-width: 500px) {
+      .total-descr { display: none; }
+    }
 
-      .info {
-        @media only screen and (max-width: 500px) {
-          .total-descr { display: none; }
-        }
+    @media only screen and (max-width: 600px) {
+      .displaying { display: none; }
+    }
+  }
 
-        @media only screen and (max-width: 600px) {
-          .displaying { display: none; }
-        }
+  .pkg-result {
+    padding: 1em;
+
+    .name {
+      display: block;
+      margin-bottom: 0.8em;
+
+      h3 {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        text-wrap: nowrap;
+        display: block;
+        width: 100%;
       }
 
-      .sort-by {
-        display: flex;
-        align-items: center;
+      &:hover, &:focus   {
+        color: var(--light-accent-color);
+      }
 
-        .label {
-          margin-right: 0.5em;
-        }
-
-        .dropdown {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-
-          padding: 0.5em 0.8em;
-          background-color: var(--medium-color);
-          border-radius: 6px;
-          width: 10em;
-
-          &:has(*:focus) {
-            color: var(--light-text-color);
-            background-color: var(--dark-color);
-          }
-
-          *:focus {
-            outline: none;
-          }
-        }
+      &:focus {
+        outline: none;
       }
     }
 
-    ol.results-list {
+    ul.links {
       list-style: none;
-      margin: 1em 0;
+
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      margin-top: 1em;
 
       & > li {
-        padding: 1em;
-        margin-bottom: 1em;
+        display: flex;
+        margin-right: 0.8em;
 
-        .name {
-          display: block;
-          margin-bottom: 0.8em;
-
-          h3 {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            text-wrap: nowrap;
-            display: block;
-            width: 100%;
-          }
-
-          &:hover, &:focus   {
-            color: var(--light-accent-color);
-          }
-
-          &:focus {
-            outline: none;
-          }
-        }
-
-        ul.links {
-          list-style: none;
-
+        &.stars {
           display: flex;
-          flex-direction: row;
           align-items: center;
-          margin-top: 1em;
+          line-height: 1em;
 
-          & > li {
-            display: flex;
-            margin-right: 0.8em;
-
-            &.stars {
-              display: flex;
-              align-items: center;
-              line-height: 1em;
-
-              .icon {
-                color: var(--star-color);
-              }
-            }
+          .icon {
+            color: var(--star-color);
           }
         }
-      }
-    }
-
-    .paginator {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 1em 0;
-
-      button {
-        border-radius: 6px;
-        color: var(--dark-text-color);
-        padding: 0.3em 0.5em;
-        margin: 0em 0.2em;
-
-        &:hover {
-          cursor: pointer;
-          background-color: var(--medium-color);
-        }
-
-        &:focus {
-          outline: none;
-          color: var(--light-accent-color);
-        }
-
-        &[data-p-highlight="true"] {
-          color: var(--light-text-color);
-          background-color: var(--dark-color);
-        }
-      }
-    }
-  }
-}
-
-.sort-panel {
-  background-color: var(--card-color);
-
-  border: 1px solid var(--medium-color);
-  background-color: var(--card-bg-color);
-  border-radius: 6px;
-
-  option:hover {
-    background-color: var(--dark-color);
-  }
-
-  ul {
-    list-style-type: none;
-
-    li {
-      a {
-        width: 100%;
-        height: 100%;
-        display: block;
-        padding: 0.3em 0.8em;
-      }
-
-      &:hover {
-        background-color: var(--medium-color);
-      }
-
-      &[data-p-focused="true"] {
-        color: var(--light-accent-color);
       }
     }
   }
