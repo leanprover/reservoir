@@ -30,7 +30,33 @@ const navTab = computed(() => {
   return route.path == pkgLink(pkg) ? 'readme' : route.path.split('/').at(-1)
 })
 
-const pkgVer = computed(() => pkg.versions.at(0))
+const pkgVer = computed(() => {
+  const rev = toArray(route.query.rev).at(-1)
+  if (rev) {
+    const res = pkg.versions.find(ver => ver.revision == rev)
+    if (res) return res
+  }
+  const tag = toArray(route.query.tag).at(-1)
+  if (tag) {
+    const res = pkg.versions.find(ver => ver.tag == tag)
+    if (res) return res
+  }
+  const verId = toArray(route.query.ver).at(-1)
+  if (verId) {
+    const res = pkg.versions.find(ver => ver.version == verId)
+    if (res) return res
+  }
+  return pkg.versions.at(0)
+})
+
+function tabLink(tab?: string) {
+  const newQuery: any = {}
+  for (const key in ['rev', 'tag', 'ver']) {
+    newQuery[key] = route.query[key]
+  }
+  const path = pkgLink(pkg)
+  return {path: tab ? `${path}/${tab}` : path, query: route.query}
+}
 </script>
 
 <template>
@@ -50,16 +76,16 @@ const pkgVer = computed(() => pkg.versions.at(0))
     <nav>
       <ul>
         <li :class="{'active': navTab == 'readme'}">
-          <NuxtLink :to="{path: pkgLink(pkg)}">Readme</NuxtLink>
+          <NuxtLink :to="tabLink()">Readme</NuxtLink>
         </li>
         <li v-if="pkg.versions.length > 0 || navTab == 'versions'" :class="{'active': navTab == 'versions'}">
-          <NuxtLink :to="{path: `${pkgLink(pkg)}/versions`}">Versions ({{pkg.versions.length}})</NuxtLink>
+          <NuxtLink :to="tabLink('versions')">Versions ({{pkg.versions.length}})</NuxtLink>
         </li>
         <li v-if="pkgVer && pkgVer.dependencies.length > 0 || navTab == 'dependencies'" :class="{'active': navTab == 'dependencies'}">
-          <NuxtLink :to="{path: `${pkgLink(pkg)}/dependencies`}">Dependencies ({{pkgVer?.dependencies?.length ?? 0}})</NuxtLink>
+          <NuxtLink :to="tabLink('dependencies')">Dependencies ({{pkgVer?.dependencies?.length ?? 0}})</NuxtLink>
         </li>
         <li v-if="pkg.dependents.length > 0 || navTab == 'dependents'" :class="{'active': navTab == 'dependents'}">
-          <NuxtLink :to="{path: `${pkgLink(pkg)}/dependents`}">Dependents ({{pkg.dependents.length}})</NuxtLink>
+          <NuxtLink :to="tabLink('dependents')">Dependents ({{pkg.dependents.length}})</NuxtLink>
         </li>
       </ul>
     </nav>
