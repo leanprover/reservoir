@@ -40,7 +40,7 @@ jobs:
           scripts/testbed-analyze.py -v -o result.json \
             ${{ matrix.gitUrl }} \
             -T '${{ matrix.toolchains }}' \
-            -V '${{ matrix.versions }}'
+            -V '${{ matrix.versionTags }}'
       - name: Upload Result
         uses: actions/upload-artifact@v4
         with:
