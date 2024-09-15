@@ -21,12 +21,34 @@ export interface GitHubSource extends GitSource, RepoSource {
 export type Source = GitHubSource
 
 export interface Build {
-  url?: string
-  builtAt: string
+  url?: string | null
+  runAt: string
   revision: string
   toolchain: string
-  requiredUpdate?: boolean
-  outcome: string
+  built: boolean | null
+  tested: boolean | null
+  requiredUpdate?: boolean | null
+  archiveSize?: number | null
+}
+
+export interface PackageDep {
+  type: string
+  name: string
+  scope: string
+  version: string
+  rev: string | null
+}
+
+export interface PackageVer {
+  version: string
+  revision: string
+  date: string
+  tag: string | null
+  toolchain: string | null
+  dependencies: PackageDep[]
+  license: string | null
+  licenseFiles:  string[]
+  readmeFile: string | null
 }
 
 export interface Package {
@@ -34,12 +56,15 @@ export interface Package {
   owner: string
   fullName: string
   description: string | null
+  keywords: string[]
   homepage: string | null
   license: string | null
   createdAt: string
   updatedAt: string
   stars: number
   sources: Source[]
+  versions: PackageVer[]
+  dependents: PackageDep[]
   builds: Build[]
 }
 

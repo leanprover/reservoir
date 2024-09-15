@@ -4,7 +4,7 @@ const props = defineProps<{pkg: Package}>()
 const pkg = computed(() => props.pkg)
 const src = computed(() => pkg.value.sources.find(src => src.repoUrl))
 const build = computed(() =>
-  pkg.value.builds.find(b => b.outcome == "success") ??
+  pkg.value.builds.find(b => b.built) ??
   pkg.value.builds.find(b => b.toolchain === latestToolchain.name)
 )
 </script>
@@ -28,7 +28,7 @@ const build = computed(() =>
       <li class="stars"><StarIcon class="prefix icon"/>{{ pkg.stars }}</li>
       <li v-if="build" class="build">
         <BuildOutcome class="icon" :build="build"/>
-        <span v-if="build.outcome == 'success'" class="toolchain">
+        <span v-if="build.built" class="toolchain">
           {{ build.toolchain.split(':')[1] }}
         </span>
       </li>

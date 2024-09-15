@@ -4,14 +4,14 @@ import FailIcon from '~icons/mdi/close'
 import PassIcon from '~icons/mdi/check'
 import { Tippy } from 'vue-tippy'
 
-const props = defineProps<{build?: Build | null, markOutdated?: boolean}>()
+const props = defineProps<{build?: Build | null, markOutdated?: boolean, latest?: boolean, packageToolchain?: boolean}>()
 const build = computed<Build | {[_ in keyof Build]?: undefined}>(() => props.build || {});
 
 const outcomeIcon = computed(() => {
-  switch (build.value.outcome) {
-    case 'success':
+  switch (build.value.built) {
+    case true:
       return PassIcon
-    case 'failure':
+    case false:
       return FailIcon
     default:
       return NoneIcon
@@ -24,10 +24,10 @@ const outdated = computed(() => {
 });
 
 const outcomeClass = computed(() => {
-  switch (build.value.outcome) {
-    case 'success':
+  switch (build.value.built) {
+    case true:
       return (outdated.value && props.markOutdated) ? 'outcome-semi-success' : 'outcome-success'
-    case 'failure':
+    case false:
       return 'outcome-failure'
     default:
       return 'outcome-none'
@@ -46,13 +46,20 @@ const outcomeClass = computed(() => {
     <component width="66%" height="66%" :is="outcomeIcon"/>
   </div>
   <template #content>
-    <div class="tooltip">
-      <span v-if="build.outcome == 'success'">
-        Commit {{build.revision.slice(0, 7)}} builds on
-        the {{ outdated ? 'old' : 'recent' }} {{build.toolchain}}
-        <span v-if="build.requiredUpdate">after <code>lake update</code></span>
+    <div class="build-tooltip tooltip">
+      <span v-if="build.built === true">
+        Commit
+        {{build.revision.slice(0, 7)}}
+        <span class="latest" v-if="latest">(latest)</span>
+        builds on
+        {{ packageToolchain ? 'its' : 'the' }}
+        {{ outdated ? 'old' : 'recent' }}
+        {{ build.toolchain }}
+        <span v-if="build.requiredUpdate">
+          after <code>lake update</code>
+        </span>
       </span>
-      <span v-else-if="build.outcome == 'failure'">
+      <span v-else-if="build.built === false">
         Commit {{build.revision.slice(0, 7)}} fails to build on {{build.toolchain}}
       </span>
       <span v-else>
@@ -65,10 +72,24 @@ const outcomeClass = computed(() => {
 </template>
 
 <style scoped lang="scss">
+.build-tooltip {
+  .latest {
+    color: var(--light-accent-color);
+  }
+}
+
 .build-outcome {
   a, .build-outcome-icon {
     width: 100%;
     height: 100%;
+  }
+
+  a:focus {
+    outline: none;
+
+    .build-outcome-icon {
+      outline: solid black;
+    }
   }
 
   .build-outcome-icon {

@@ -16,27 +16,30 @@ on:
         type: string
         required: false
         default: leanprover/reservoir-index
-      update-index:
-        description: "Update package index"
+      search-packages:
+        description: "Search GitHub for new packages"
         type: boolean
         required: false
         default: false
-      testbed-pattern:
-        description: "Regex search for packages to test"
+      package-pattern:
+        description: "Regex search for indexed packages"
         type: string
-        required: true
+        required: false
         default: ".*"
+      version-pattern:
+        description: "Regex search for version tags to build"
+        type: string
+        required: false
       testbed-toolchain:
-        description: "Lean toolchain(s) to test against"
+        description: "Lean toolchain(s) on which to build"
         type: string
         required: true
-        default: latest
+        default: package
       testbed-size:
         description: "Max number of testbed entries"
         type: number
-        required: true
-        default: 256
-      save-testbed:
+        required: false
+      update-index:
         description: "Save testbed results to index"
         type: boolean
         required: false
@@ -63,69 +66,68 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       index-repo: ${{ steps.compute.outputs.index-repo }}
+      search-packages: ${{ steps.compute.outputs.search-packages }}
       reindex: ${{ steps.compute.outputs.reindex }}
       update-index: ${{ steps.compute.outputs.update-index }}
-      run-testbed: ${{ steps.compute.outputs.run-testbed }}
+      testbed: ${{ steps.compute.outputs.testbed }}
       testbed-size: ${{ steps.compute.outputs.testbed-size }}
+      testbed-toolchain: ${{ steps.compute.outputs.testbed-toolchain }}
       production-deploy: ${{ steps.compute.outputs.production-deploy }}
     steps:
-      # We echo these values out to make failures easier to debug from the logs
+      # We echo even simple values out to make failures easier to debug from the logs
       - id: compute
         name: Compute Configuration
         run: |
           if ${{ github.event_name == 'pull_request' }}; then
             echo reindex=${{ contains(github.event.pull_request.labels.*.name, 'A-index') }} >> "$GITHUB_OUTPUT"
-            echo run-testbed=${{ contains(github.event.pull_request.labels.*.name, 'A-testbed') }} >> "$GITHUB_OUTPUT"
+            echo search-packages=${{ contains(github.event.pull_request.labels.*.name, 'A-index') }} >> "$GITHUB_OUTPUT"
+            echo testbed=${{ contains(github.event.pull_request.labels.*.name, 'A-index') || contains(github.event.pull_request.labels.*.name, 'A-testbed') }} >> "$GITHUB_OUTPUT"
+            echo 'testbed-toolchain=${{ contains(github.event.pull_request.labels.*.name, 'A-testbed') && 'package,latest' || 'none' }}' >> "$GITHUB_OUTPUT"
           else
             if ${{ github.event_name == 'push' && github.ref_name == 'master' && contains(github.event.head_commit.message, 'UPDATE-INDEX') }}; then
               echo reindex=true >> "$GITHUB_OUTPUT"
+              echo search-packages=false >> "$GITHUB_OUTPUT"
               echo update-index=true >> "$GITHUB_OUTPUT"
+              echo testbed=true  >> "$GITHUB_OUTPUT"
+              echo testbed-toolchain=none >> "$GITHUB_OUTPUT"
             else
-              echo reindex=${{ inputs.update-index || (toJson(inputs.update-index) == 'null' && github.ref_name != 'master') }} >> "$GITHUB_OUTPUT"
+              if ${{ github.event_name != 'workflow_dispatch' }}; then
+                echo testbed=${{ github.ref_name != 'master' }} >> "$GITHUB_OUTPUT"
+              else
+                echo testbed=${{ toJson(inputs.testbed-size) == 'null' && true || inputs.testbed-size != 0 }} >> "$GITHUB_OUTPUT"
+              fi
+              echo reindex=${{  github.event_name == 'workflow_dispatch' && !!inputs.package-pattern }} >> "$GITHUB_OUTPUT"
+              echo search-packages=${{ inputs.search-packages == true }}  >> "$GITHUB_OUTPUT"
               echo update-index=${{ inputs.update-index == true }} >> "$GITHUB_OUTPUT"
-            fi
-            if ${{ inputs.testbed-size == null }}; then
-              echo run-testbed=${{ github.ref_name != 'master' }} >> "$GITHUB_OUTPUT"
-            else
-              echo run-testbed=${{ inputs.testbed-size != 0  }} >> "$GITHUB_OUTPUT"
+              echo 'testbed-toolchain=${{ inputs.testbed-toolchain || 'none' }}' >> "$GITHUB_OUTPUT"
             fi
           fi
-          echo index-repo=${{ inputs.index-repo || 'leanprover/reservoir-index' }} >> "$GITHUB_OUTPUT"
-          echo testbed-size=${{ inputs.testbed-size == null && 20 || inputs.testbed-size }} >> "$GITHUB_OUTPUT"
+          echo 'index-repo=${{ github.event_name != 'workflow_dispatch' && 'leanprover/reservoir-index' || inputs.index-repo }}' >> "$GITHUB_OUTPUT"
+          echo testbed-size=${{ github.event_name != 'workflow_dispatch' && 10 || toJson(inputs.testbed-size) == 'null' && -1 || inputs.testbed-size }} >> "$GITHUB_OUTPUT"
           echo production-deploy=${{ inputs.production-deploy || (toJson(inputs.production-deploy) == 'null' && github.ref_name == 'master') }} >> "$GITHUB_OUTPUT"
-  index:
-    name: Index
-    needs: [config]
-    if: needs.config.outputs.reindex == 'true'
-    uses: ./.github/workflows/index.yml
-    secrets: inherit
-    with:
-      index-repo: ${{ needs.config.outputs.index-repo }}
-      update-index: ${{ needs.config.outputs.update-index == 'true' }}
   testbed:
-    needs: [config, index]
-    # Run even if `index` is skipped
-    if: (!failure() && !cancelled() && needs.config.outputs.run-testbed == 'true')
+    needs: [config]
+    if: needs.config.outputs.testbed == 'true'
     name: Testbed
     uses: ./.github/workflows/testbed.yml
     secrets: inherit
     with:
       index-repo: ${{ needs.config.outputs.index-repo }}
-      index-artifact: ${{ needs.config.outputs.reindex == 'true' && needs.config.outputs.update-index != 'true' }}
-      pattern: ${{ inputs.testbed-pattern || '.*' }}
-      toolchain: ${{ inputs.testbed-toolchain || 'latest,package' }}
+      search-packages: ${{ needs.config.outputs.search-packages == 'true' }}
+      package-pattern: ${{ needs.config.outputs.reindex == 'true' && (inputs.package-pattern || '.*') || '' }}
+      version-pattern: ${{ inputs.version-pattern }}
+      toolchain: ${{ needs.config.outputs.testbed-toolchain }}
       max-size: ${{ fromJson(needs.config.outputs.testbed-size) }}
-      update-index: ${{ inputs.save-testbed == true }}
+      update-index: ${{ inputs.update-index == true }}
       dev: ${{ github.event_name != 'workflow_dispatch' }}
   website:
-    needs: [config, index, testbed]
-    # Run even if `index` or `testbed` is skipped
+    needs: [config, testbed]
+    # Run even if `testbed` is skipped
     if: (!failure() && !cancelled())
     name: Website
     uses: ./.github/workflows/website.yml
     secrets: inherit
     with:
       index-repo: ${{ needs.config.outputs.index-repo }}
-      index-artifact: ${{ needs.config.outputs.reindex == 'true' && needs.config.outputs.update-index != 'true' }}
-      testbed-artifact: ${{ needs.config.outputs.run-testbed == 'true' && !inputs.save-testbed }}
+      index-artifact: ${{ needs.config.outputs.testbed == 'true' && needs.config.outputs.update-index != 'true' }}
       production-deploy: ${{ needs.config.outputs.production-deploy == 'true' }}

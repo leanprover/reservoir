@@ -92,6 +92,10 @@ button {
   background-color: inherit;
 }
 
+.nowrap {
+  white-space: nowrap
+}
+
 .tooltip {
   text-align: center;
 

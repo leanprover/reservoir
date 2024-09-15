@@ -12,12 +12,26 @@ on:
         type: string
         required: false
       index-artifact:
-        description: "Use local artifact for index"
+        description: "Local artifact for index"
+        type: string
+        required: false
+        default: index
+      reuse-artifact:
+        description: "Reuse local artifact for index"
         type: boolean
         required: false
         default: false
-      pattern:
-        description: "Regex search for packages to test"
+      search-packages:
+        description: "Search GitHub for new packages"
+        type: boolean
+        required: false
+        default: false
+      package-pattern:
+        description: "Regex search for indexed packages to analyze"
+        type: string
+        required: false
+      version-pattern:
+        description: "Regex search for version tags to build"
         type: string
         required: false
       toolchain:
@@ -28,7 +42,6 @@ on:
         description: "Max number of packages to test"
         type: number
         required: false
-        default: 256
       update-index:
         description: "Save to index"
         type: boolean
@@ -46,21 +59,29 @@ on:
         type: string
         required: true
         default: leanprover/reservoir-index
-      pattern:
-        description: "Regex search for packages to test"
+      search-packages:
+        description: "Search GitHub for new packages"
+        type: boolean
+        required: false
+        default: false
+      package-pattern:
+        description: "Regex search for indexed packages"
         type: string
-        required: true
+        required: false
         default: ".*"
-      toolchain:
-        description: "Lean toolchain(s) to test against"
+      version-pattern:
+        description: "Regex search for version tags to build"
         type: string
-        required: true
+        required: false
+      toolchain:
+        description: "Lean toolchain(s) on which to build"
+        type: string
+        required: false
         default: package
       max-size:
         description: "Max number of testbed entries"
         type: number
-        required: true
-        default: 10
+        required: false
       update-index:
         description: "Save to index"
         type: boolean
@@ -77,26 +98,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Download Index Artifact
-        if: inputs.index-artifact
+        if: inputs.reuse-artifact
         uses: actions/download-artifact@v4
         with:
-          name: index
+          name: ${{ inputs.index-artifact }}
           path: index
       - name: Download Index Repository
-        if: (!inputs.index-artifact)
+        if: inputs.index-repo && !inputs.reuse-artifact
         run: |
           mkdir index
-          gh api repos/${{ inputs.index-repo || 'leanprover/reservoir-index' }}/tarball \
+          gh api repos/${{ inputs.index-repo }}/tarball \
             | tar -xvz -C index --strip-component=1
         env:
           GH_TOKEN: ${{ secrets.RESERVOIR_INDEX_TOKEN  }}
       - name: Create Matrix
         run: |
-          scripts/testbed-create.py index -o matrix.json  \
-            -e '${{ inputs.pattern || '.*' }}' \
-            -t '${{ inputs.toolchain || 'package' }}'  \
-            -n ${{ inputs.max-size == null && 10 || inputs.max-size }} \
-            -X ${{ inputs.dev && 'scripts/testbed-dev-exclusions.txt' || 'scripts/testbed-exclusions.txt' }}
+          scripts/testbed-create.py -o matrix.json  \
+            ${{ inputs.index-repo && '-i index' || '' }} \
+            -P '${{ inputs.package-pattern }}' \
+            -V '${{ inputs.version-pattern }}' \
+            -T '${{ inputs.toolchain || 'package' }}'  \
+            -n ${{ toJson(inputs.max-size) == 'null' && -1 || inputs.max-size }} \
+            -Q ${{ inputs.search-packages && (inputs.dev && 100 || -1) || 0 }} \
+            -X ${{ inputs.dev && 'scripts/package-dev-exclusions.txt' || 'scripts/package-exclusions.txt' }}
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Upload Matrix
@@ -108,47 +132,22 @@ jobs:
       - id: output-matrix
         name: Output Matrix
         run: (echo -n 'matrix='; cat matrix.json) >> "$GITHUB_OUTPUT"
-  build:
+  # Multiple layers are used to exceed the 256 job limit for a matrix.
+  # This tactic has been reported to GitHub in a dicussion and appears acceptable.
+  # https://github.com/orgs/community/discussions/38704
+  run:
     needs: setup
-    name: Build ${{ matrix.buildName }}
-    runs-on: ubuntu-latest
-    # This job runs arbitrary untrusted code, so we need to harden permissions
-    permissions:
-      contents: read
+    name: Layer ${{ matrix.name }}
     strategy:
       matrix:
         include: ${{ fromJson(needs.setup.outputs.matrix) }}
       # complete all jobs
       fail-fast: false
-    continue-on-error: true # e.g., upload/download failures
-    steps:
-      - name: Install Elan
-        shell: bash -euo pipefail {0}
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
-            | sh -s -- -y --default-toolchain ${{ matrix.toolchain || 'none' }}
-          echo "$HOME/.elan/bin" >> $GITHUB_PATH
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - id: build
-        name: Build
-        continue-on-error: true # e.g., clone failures
-        # We run arbitrary untrusted code here
-        run: |
-          scripts/testbed-build.py -o result.json -v \
-            ${{ matrix.gitUrl }} testbed ${{ matrix.toolchain }}
-      - name: Check Build
-        run: test "`jq -r '.outcome' result.json`" = success
-        continue-on-error: true # build failures
-      - name: Upload Result
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.artifact }}
-          path: result.json
+    uses: ./.github/workflows/testbed-layer.yml
+    with:
+      matrix: ${{ toJson(matrix.data) }}
   collect:
-    needs: build
+    needs: run
     name: Collect Results
     runs-on: ubuntu-latest
     steps:
@@ -161,8 +160,10 @@ jobs:
           path: testbed
       - name: Collect Outcomes
         run: |
-          scripts/testbed-collect.py -o testbed/results.json -v \
-            testbed ${{ github.run_id }} ${{ github.run_attempt }}
+          scripts/testbed-collect.py -v \
+            testbed -o testbed/results.json \
+            ${{ github.run_id }} ${{ github.run_attempt }} \
+            -R '${{ github.repository }}'
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Upload Results Artifact
@@ -174,15 +175,21 @@ jobs:
   save:
     needs: collect
     name: Save Results
-    if: inputs.update-index
     runs-on: ubuntu-latest
     # Permit only 1 concurrent update of the same index repository.
     concurrency:
-      group: update-index/${{ inputs.index-repo }}
+      group: ${{ inputs.update-index && format('update-index/{0}', inputs.index-repo) || format('index/{0}', github.run_id) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Download Index Artifact
+        if: inputs.reuse-artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.index-artifact }}
+          path: index
       - name: Checkout External Index
+        if: inputs.index-repo && !inputs.reuse-artifact
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.RESERVOIR_INDEX_TOKEN }}
@@ -194,7 +201,10 @@ jobs:
           name: results
       - name: Write Results to Index
         run: scripts/testbed-save.py -v results.json index
+        env:
+          GH_TOKEN: ${{ secrets.RESERVOIR_INDEX_TOKEN }}
       - name: Update External Index
+        if: inputs.update-index
         uses: EndBug/add-and-commit@v9
         with:
           cwd: index
@@ -204,3 +214,11 @@ jobs:
 
             ${{github.server_url}}/${{github.repository}}/actions/runs/${{github.run_id}}/attempts/${{github.run_attempt}}
           default_author: github_actions
+      - name: Upload Index Artifact
+        if: (!inputs.update-index)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.index-artifact || 'index' }}
+          path: index
+          if-no-files-found: error
+          overwrite: ${{ inputs.reuse-artifact == true }}
