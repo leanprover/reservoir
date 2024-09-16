@@ -17,7 +17,7 @@ const sortOptions: NonEmptyArray<SortOption<typeof deps.value[number]>> = [
         dependencies of <strong>{{ package.name }}</strong>
       </template>
       <template #item="{item}">
-        <DepItem :upstream="true" :dep="item"/>
+        <DepItem :upstream="true" :package="package" :dep="item"/>
       </template>
     </SortedList>
   </div>

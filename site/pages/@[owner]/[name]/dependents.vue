@@ -16,7 +16,7 @@ const sortOptions: NonEmptyArray<SortOption<PackageDep>> = [
         packages depending on <strong class="nowrap">{{ package.fullName }}</strong>
       </template>
       <template #item="{item}">
-        <DepItem :upstream="false" :dep="item"/>
+        <DepItem :upstream="false" :package="package" :dep="item"/>
       </template>
     </SortedList>
   </div>

@@ -6,14 +6,17 @@ import TagIcon from '~icons/mdi/tag'
 import AtIcon from '~icons/mdi/at'
 import ReservoirIcon from '~/public/favicon.svg?component'
 
-const props = defineProps<{dep: PackageDep, upstream: boolean}>()
+const props = defineProps<{package: Package, dep: PackageDep, upstream: boolean}>()
 const dep = computed(() => props.dep)
-const pkg = computed(() => props.dep.scope ? findPkg(dep.value.scope, dep.value.name) : undefined)
-const pkgVer = computed(() => pkg.value?.versions.find(ver => ver.revision == dep.value.rev))
-const pkgName = computed(() => props.upstream ? dep.value.name : (pkg.value ? pkg.value.fullName : dep.value.name))
+const depPkg = computed(() => props.dep.scope ? findPkg(dep.value.scope, dep.value.name) : undefined)
+const ver = computed(() => {
+  const pkg = props.upstream ? depPkg.value : props.package
+  return pkg?.versions.find(ver => ver.revision == dep.value.rev)
+})
+const depName = computed(() => props.upstream ? dep.value.name : (depPkg.value ? depPkg.value.fullName : dep.value.name))
 const verId = computed(() => {
   if (dep.value.version != '0.0.0') return dep.value.version
-  if (pkgVer.value?.tag) return pkgVer.value.tag
+  if (ver.value?.tag) return ver.value.tag
   if (dep.value.rev) return dep.value.rev.slice(0, 7)
   return '0.0.0'
 })
@@ -22,26 +25,26 @@ const verId = computed(() => {
 <template>
   <li class="dep-item card">
     <div v-if="upstream" class="dep-type">
-      <ReservoirIcon v-if="pkg" class="icon"/>
+      <ReservoirIcon v-if="depPkg" class="icon"/>
       <GitIcon v-else-if="dep.type == 'git'" class="icon"/>
       <FolderIcon v-else-if="dep.type == 'path'" class="icon"/>
       <UnknownIcon v-else class="icon"/>
     </div>
     <div class="dep-info">
       <h3 class="dep-header">
-        <NuxtLink class="dep-name dep-link" v-if="pkg" :to="pkgLink(pkg)">{{pkgName}}</NuxtLink>
-        <div class="dep-name" v-else>{{pkgName}}</div>
+        <NuxtLink class="dep-name dep-link" v-if="depPkg" :to="pkgLink(depPkg)">{{depName}}</NuxtLink>
+        <div class="dep-name" v-else>{{depName}}</div>
         <div class="dep-version">
           <AtIcon v-if="upstream" class="dep-at icon"/>
           <span v-else class="dep-at">uses</span>
           <div class="version-id">
-            <TagIcon v-if="dep.version == '0.0.0' && pkgVer?.tag" class="icon"/>
+            <TagIcon v-if="dep.version == '0.0.0' && ver?.tag" class="icon"/>
             <code>{{verId}}</code>
           </div>
         </div>
       </h3>
-      <div v-if="pkg && pkg.description" class="description">
-        {{ pkg.description  }}
+      <div v-if="depPkg && depPkg.description" class="description">
+        {{ depPkg.description  }}
       </div>
     </div>
   </li>
