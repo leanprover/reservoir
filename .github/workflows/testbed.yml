@@ -122,7 +122,7 @@ jobs:
             -Q ${{ inputs.search-packages && (inputs.dev && 100 || -1) || 0 }} \
             -X ${{ inputs.dev && 'scripts/package-dev-exclusions.txt' || 'scripts/package-exclusions.txt' }}
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.RESERVOIR_INDEX_TOKEN }}
       - name: Upload Matrix
         uses: actions/upload-artifact@v4
         with:
@@ -165,7 +165,7 @@ jobs:
             ${{ github.run_id }} ${{ github.run_attempt }} \
             -R '${{ github.repository }}'
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.RESERVOIR_INDEX_TOKEN }}
       - name: Upload Results Artifact
         uses: actions/upload-artifact@v4
         with:
