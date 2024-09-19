@@ -32,6 +32,7 @@ class BuildResult(TypedDict):
   toolchain: str
   requiredUpdate: bool | None
   archiveSize: int | None
+  archiveHash: str | None
   runAt: str
   url: str | None
 
@@ -68,6 +69,7 @@ class TestbedEntry(TypedDict):
   jobName: str
   toolchains: str
   versionTags: str
+  cacheBuilds: bool
   repoId: str | None
   indexName: str | None
 
