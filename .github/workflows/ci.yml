@@ -70,6 +70,7 @@ jobs:
       reindex: ${{ steps.compute.outputs.reindex }}
       update-index: ${{ steps.compute.outputs.update-index }}
       testbed: ${{ steps.compute.outputs.testbed }}
+      package-pattern: ${{ steps.compute.outputs.package-pattern }}
       testbed-size: ${{ steps.compute.outputs.testbed-size }}
       testbed-toolchain: ${{ steps.compute.outputs.testbed-toolchain }}
       production-deploy: ${{ steps.compute.outputs.production-deploy }}
@@ -79,9 +80,15 @@ jobs:
         name: Compute Configuration
         run: |
           if ${{ github.event_name == 'pull_request' }}; then
-            echo reindex=${{ contains(github.event.pull_request.labels.*.name, 'A-index') }} >> "$GITHUB_OUTPUT"
-            echo search-packages=${{ contains(github.event.pull_request.labels.*.name, 'A-index') }} >> "$GITHUB_OUTPUT"
-            echo testbed=${{ contains(github.event.pull_request.labels.*.name, 'A-index') || contains(github.event.pull_request.labels.*.name, 'A-testbed') }} >> "$GITHUB_OUTPUT"
+            if ${{ contains(github.event.pull_request.labels.*.name, 'A-index') }}; then
+              echo reindex=true >> "$GITHUB_OUTPUT"
+              echo search-packages=true >> "$GITHUB_OUTPUT"
+              echo testbed=true >> "$GITHUB_OUTPUT"
+              echo 'package-pattern=.*' >> "$GITHUB_OUTPUT"
+            elif ${{ contains(github.event.pull_request.labels.*.name, 'A-testbed') }}; then
+              echo testbed=true >> "$GITHUB_OUTPUT"
+              echo 'package-pattern=^leanprover' >> "$GITHUB_OUTPUT"
+            fi
             echo 'testbed-toolchain=${{ contains(github.event.pull_request.labels.*.name, 'A-testbed') && 'package,latest' || 'none' }}' >> "$GITHUB_OUTPUT"
           else
             if ${{ github.event_name == 'push' && github.ref_name == 'master' && contains(github.event.head_commit.message, 'UPDATE-INDEX') }}; then
@@ -114,7 +121,7 @@ jobs:
     with:
       index-repo: ${{ needs.config.outputs.index-repo }}
       search-packages: ${{ needs.config.outputs.search-packages == 'true' }}
-      package-pattern: ${{ needs.config.outputs.reindex == 'true' && (inputs.package-pattern || '.*') || '' }}
+      package-pattern: ${{ needs.config.outputs.package-pattern }}
       version-pattern: ${{ inputs.version-pattern }}
       toolchain: ${{ needs.config.outputs.testbed-toolchain }}
       max-size: ${{ fromJson(needs.config.outputs.testbed-size) }}
