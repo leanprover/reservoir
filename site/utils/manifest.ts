@@ -29,6 +29,7 @@ export interface Build {
   tested: boolean | null
   requiredUpdate?: boolean | null
   archiveSize?: number | null
+  archiveHash?: string | null
 }
 
 export interface PackageDep {

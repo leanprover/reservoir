@@ -85,7 +85,9 @@ class TestbedResult(PackageResult):
 
 TestbedResults = list[TestbedResult]
 
-INDEX_SCHEMA_VERSION_STR = '1.0.0'
+#`1.0.0: Reservoir 1.0
+# 1.1.0: Added `archiveHash`
+INDEX_SCHEMA_VERSION_STR = '1.1.0'
 INDEX_SCHEMA_VERSION = Version(INDEX_SCHEMA_VERSION_STR)
 
 class PackageMetadata(TypedDict):
@@ -154,7 +156,7 @@ def mk_build(ver: PackageVersion, build: BuildResult) -> Build:
   return build
 
 def build_result(build: Build) -> BuildResult:
-  return cast(BuildResult, {k: build[k] for k in BuildResult.__annotations__.keys()})
+  return cast(BuildResult, {k: build.get(k, None) for k in BuildResult.__annotations__.keys()})
 
 def serialize_package(pkg: Package) -> SerialPackage:
   r = cast(SerialPackage, package_metadata(pkg))

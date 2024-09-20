@@ -77,6 +77,7 @@ def of_build_v0(build: BuildV0) -> Build:
     'built': build['outcome'] == 'success',
     'tested': None,
     'archiveSize': build.get('archiveSize', None),
+    'archiveHash': build.get('archiveHash', None),
     'toolchain': build['toolchain'],
     'requiredUpdate': build.get('requiredUpdate', None),
     'revision': build['revision'],
@@ -99,7 +100,10 @@ def load_builds(path: str) -> list[Build]:
   with open(path, 'r') as f:
     data: Any = json.load(f)
   if isinstance(data, dict):
-    return data['data']
+    builds = data['data']
+    for build in builds:
+      build['archiveHash'] = build.get('archiveHash', None)
+    return builds
   else:
     return list(map(of_build_v0, data))
 
