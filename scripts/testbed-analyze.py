@@ -344,7 +344,7 @@ if __name__ == "__main__":
     if args.matrix is not None:
       entry: TestbedEntry = json.loads(args.matrix)
       url = entry['gitUrl']
-      target_toolchains = resolve_toolchains(entry['toolchains'])
+      target_toolchains = resolve_toolchains([entry['toolchains']])
       version_tags = entry['versionTags']
       cache_builds = entry['cacheBuilds']
     else:
