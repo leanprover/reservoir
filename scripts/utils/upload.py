@@ -56,13 +56,14 @@ S3_ENDPOINT = os.environ.get("S3_ENDPOINT", '').rstrip('/')
 S3_ACCESS_KEY_ID = os.environ.get('S3_ACCESS_KEY_ID', '')
 S3_SECRET_ACCESS_KEY = os.environ.get('S3_SECRET_ACCESS_KEY', '')
 S3_ENABLED = S3_ENDPOINT != '' and S3_ACCESS_KEY_ID != '' and S3_SECRET_ACCESS_KEY != ''
-def upload_build(path: str, size: int | None = None, hash: str | None = None):
+def upload_build(path: str, size: int | None = None, hash: str | None = None, prod_cache: bool = False):
   if not S3_ENABLED:
     raise RuntimeError("No cloud storage configured")
   method = 'PUT'
   if size is None: size = os.path.getsize(path)
   if hash is None: hash = filehash(path)
-  url = f"{S3_ENDPOINT}/b1/{hash}.barrel"
+  group = 'b1' if prod_cache else 'dev'
+  url = f"{S3_ENDPOINT}/{group}/{hash}.barrel"
   headers = aws4_headers(method, url, 's3', S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, hash)
   headers['content-length'] = str(size)
   headers['content-type'] = "application/vnd.reservoir.barrel+gzip"

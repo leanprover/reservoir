@@ -40,8 +40,10 @@ if __name__ == "__main__":
     help="file containing the JSON build matrix")
   parser.add_argument('-o', '--output',
     help='file to output the collected results')
-  parser.add_argument('-R', '--repo',
-    help='repository with testbed jobs', default=TESTBED_REPO)
+  parser.add_argument('-R', '--repo', default=TESTBED_REPO,
+    help='repository with testbed jobs')
+  parser.add_argument('--prod-cache', action='store_true',
+    help='upload builds to main build cache')
   parser.add_argument('-q', '--quiet', dest="verbosity", action='store_const', const=0, default=1,
     help='print no logging information')
   parser.add_argument('-v', '--verbose', dest="verbosity", action='store_const', const=2,
@@ -105,8 +107,8 @@ if __name__ == "__main__":
       if content_hash != archive_hash:
         logging.error(f"[{entry['jobName']}] Build archive hash does not matched recorded hash")
         continue
-      if S3_ENABLED:
-        upload_build(archive, archive_size, archive_hash)
+      if result['doIndex'] and S3_ENABLED:
+        upload_build(archive, archive_size, archive_hash, args.prod_cache)
 
   # Print stats
   logging.info(f"Package results: {len(results)} ({num_opt_outs} opt-outs)")

@@ -22,7 +22,7 @@ def create_entry(
     'jobName': job_name,
     'toolchains': toolchains,
     'versionTags': version_tags,
-    'cacheBuilds': True,
+    'cacheBuilds': cache_builds,
     "repoId": repo_id,
     "indexName": index_name,
   }
@@ -47,6 +47,10 @@ if __name__ == "__main__":
     help="max number of testbed entries (< 0 for no limit)")
   parser.add_argument('-Q', '--query', type=int, default=0,
     help='(max) number of new packages to query from GitHub (< 0 for no limit)')
+  parser.add_argument('--cache', action='store_false', default=True,
+    help="upload build archives in cloud storage")
+  parser.add_argument('--no-cache', dest='cache', action='store_true',
+    help="do not upload build archives in cloud storage")
   parser.add_argument('-X', '--exclusions', default=default_exclusions,
     help='file containing repos to exclude')
   parser.add_argument('-o', '--output',
@@ -109,7 +113,11 @@ if __name__ == "__main__":
       if git_url is None:
         logging.error(f"{pkg['fullName']}: Package lacks a Git source")
       else:
-        cache_builds = pkg['owner'] == 'leanprover'
+        cache_builds = (
+          args.cache and
+          pkg['owner'] in ['leanprover', 'leanprover-community'] and
+          pkg['fullName'] != 'leanprover-community/mathlib'
+        )
         entry = create_entry(
           pkg['fullName'], git_url,
           toolchains, args.version_tags, cache_builds,
