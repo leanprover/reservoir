@@ -1,6 +1,7 @@
 import { type Config } from "@netlify/functions"
 import { createApp, createRouter, useBase } from "h3"
 import { packageHandler } from './routes/package'
+import { barrelHandler } from './routes/barrel'
 import { fromNetlifyHandler, toNetlifyHandler } from "./utils/netlify"
 import { mkError } from './utils/error'
 
@@ -12,6 +13,7 @@ const app = createApp({
 
 const v1 = createRouter()
 
+v1.get("/barrels/:key", barrelHandler)
 v1.use("/packages/:owner/:name", fromNetlifyHandler(packageHandler))
 
 app.use("/api/v1", useBase("/api/v1", v1.handler))
