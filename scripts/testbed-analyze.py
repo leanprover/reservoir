@@ -304,9 +304,9 @@ if __name__ == "__main__":
     help='file to output the build results')
   parser.add_argument('-V', '--version-tags', type=str, default=None,
     help='select version tags to build by regular expression')
-  parser.add_argument('--cache', action='store_false', default=True,
+  parser.add_argument('--cache', action='store_true', default=True,
     help="include build archives in artifact")
-  parser.add_argument('--no-cache', dest='cache', action='store_true',
+  parser.add_argument('--no-cache', dest='cache', action='store_false',
     help="do not include build archives in artifact")
   parser.add_argument('-q', '--quiet', dest="verbosity", action='store_const', const=0, default=1,
     help='print no logging information')
