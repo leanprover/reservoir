@@ -134,11 +134,11 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: site
-          path: dist
+          path: .output/public
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: npm
       - name: Install Node Modules
         run: npm ci --ignore-scripts
@@ -151,7 +151,7 @@ jobs:
       - id: publish
         name: Publish to Netlify
         run: |
-          npx netlify-cli deploy --json --dir=dist --functions=site/functions --skip-functions-cache \
+          npx netlify-cli deploy --json --skip-functions-cache \
             ${{ inputs.production-deploy && '--prod' || format('--alias={0}', steps.deploy-info.outputs.alias) }} \
             --message '${{ github.event_name == 'pull_request' && format('pr#{0}: {1}', github.event.number, github.event.pull_request.title) || format('ref/{0}: {1}', github.ref_name, steps.deploy-info.outputs.message) }}' \
             > deploy.json

@@ -1,0 +1,7 @@
+{
+  "type": "module",
+  "dependencies": {
+    "@netlify/functions": "^2.8.0",
+    "h3": "^1.12.0"
+  }
+}

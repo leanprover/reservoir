@@ -2,11 +2,12 @@
   // https://nuxt.com/docs/guide/concepts/typescript
   "extends": "./.nuxt/tsconfig.json",
   "include": [
+    "api",
     "site",
     ".nuxt/nuxt.d.ts",
     "custom.d.ts",
   ],
   "exclude": [
-    "site/functions/node_modules"
+    "api/node_modules"
   ]
 }

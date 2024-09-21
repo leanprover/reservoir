@@ -1,0 +1,11 @@
+[build]
+command = "npm run generate"
+publish = ".output/public/"
+
+[dev]
+command = "npm run dev"
+port = 3000
+publish = ".output/public/"
+
+[functions]
+directory = "api/"
