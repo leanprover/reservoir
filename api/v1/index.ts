@@ -1,11 +1,16 @@
 import { type Config } from "@netlify/functions"
-import { createApp, createRouter, useBase } from "h3"
+import { createApp, createRouter, defineEventHandler, useBase } from "h3"
 import { packageHandler } from './routes/package'
 import { barrelHandler } from './routes/barrel'
-import { fromNetlifyHandler, toNetlifyHandler } from "./utils/netlify"
+import { toNetlifyHandler } from "./utils/netlify"
 import { mkError } from './utils/error'
 
 const app = createApp({
+  onRequest: async event => {
+    const lakeVer = event.headers.get("X-Lake-Registry-Api-Version")
+    const reservoirVer = event.headers.get("X-Reservoir-Api-Version")
+    console.log(`${event.method} Reservoir:${reservoirVer ?? "-"} Lake:${lakeVer ?? "-"} ${event.path} `)
+  },
   onError: async (error, event) => {
     await event.respondWith(mkError(error.statusCode, error.statusMessage ?? '', event.headers))
   },
@@ -13,8 +18,8 @@ const app = createApp({
 
 const v1 = createRouter()
 
-v1.get("/barrels/:key", barrelHandler)
-v1.use("/packages/:owner/:name", fromNetlifyHandler(packageHandler))
+v1.use("/barrels/:barrel", barrelHandler)
+v1.use("/packages/:owner/:name", packageHandler)
 
 app.use("/api/v1", useBase("/api/v1", v1.handler))
 app.use("/api/v0", useBase("/api/v0", v1.handler))

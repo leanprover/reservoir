@@ -1,27 +1,15 @@
-import { mkError } from '../utils/error'
-import { type Context as NetlifyContext } from "@netlify/functions"
+import { z } from 'zod'
+import { getRouterParams } from 'h3'
+import { InternalServerError, defineEventErrorHandler, NotFound, validateMethod } from '../utils/error'
 
-export async function packageHandler(req: Request, context: NetlifyContext) {
-  const {owner, name} = context.params
-  const lakeVer = req.headers.get("X-Lake-Registry-Api-Version")
-  const reservoirVer = req.headers.get("X-Reservoir-Api-Version")
-  console.log(`${req.method} ${owner ?? ""}/${name ?? ""} Reservoir:${reservoirVer ?? "-"} Lake:${lakeVer ?? "-"}`)
-  if (req.method !== "GET") {
-    if (req.method === "HEAD") { // body not allowed
-      return new Response(null, {status: 405, headers: {'Allow': 'GET'}})
-    } else {
-      return mkError(405, `${req.method} not allowed; can only GET packages`, {'Allow': 'GET'})
-    }
-  }
-  if (!name) {
-    return mkError(400, "Ill-formed package name")
-  }
-  if (!owner) {
-    return mkError(400, "Ill-formed package owner")
-  }
-  const origin = new URL(req.url).origin
-  const path = `${encodeURIComponent(owner.toLowerCase())}/${encodeURIComponent(name.toLowerCase())}`
-  const fileUrl = `${origin}/index/${path}/metadata.json`
+/**
+ * Fetch the package metadata for `<owner>/<name>` from the index at `baseUrl`.
+ *
+ * `owner` and `path` should be URL encoded.
+ */
+export async function getPackage(baseUrl: string, owner: string, name: string) {
+  const path = `${owner.toLowerCase()}/${name.toLowerCase()}`
+  const fileUrl = `${baseUrl}/${path}/metadata.json`
   console.log(`Fetch ${fileUrl}`)
   const res = await fetch(fileUrl)
   if (res.status == 200) {
@@ -29,9 +17,21 @@ export async function packageHandler(req: Request, context: NetlifyContext) {
       headers: {"Content-Type": "application/json; charset=utf-8"}
     })
   } else if (res.status == 404) {
-    return mkError(404, `Package '${owner}/${name}' not found in index`)
+    console.log("Package not found")
+    throw new NotFound("Package not found in index")
   } else {
-    console.error(`Fetch failed with status ${res.status}`)
-    return mkError(500, "Failed to retrieve package data from index")
+    console.error(`Fetch failed (${res.status}): ${await res.text}`)
+    throw new InternalServerError("Failed to retrieve package data from index")
   }
-};
+}
+
+export const GetPackageParams = z.object({
+  name: z.string().min(1),
+  owner: z.string().min(1),
+})
+
+export const packageHandler = defineEventErrorHandler(event => {
+  validateMethod(event.method, ["GET"])
+  const {owner, name} = GetPackageParams.parse(getRouterParams(event))
+  return getPackage(`${event.web!.url!.origin}/index`, owner, name)
+})
