@@ -1,15 +1,17 @@
 import { z } from 'zod'
-import { getRouterParams } from 'h3'
+import { createRouter, getRouterParams, getQuery } from 'h3'
 import { InternalServerError, defineEventErrorHandler, NotFound, validateMethod } from '../utils/error'
+import { getBarrel, parseBarrelExt } from '../routes/barrel'
+import type { Build } from '../../../site/utils/manifest'
 
 /**
- * Fetch the package metadata for `<owner>/<name>` from the index at `baseUrl`.
+ * Fetch JSON data for the package `<owner>/<name>`
+ * stored at `<filePath>.json` in the index at `indexUrl`.
  *
  * `owner` and `path` should be URL encoded.
  */
-export async function getPackage(baseUrl: string, owner: string, name: string) {
-  const path = `${owner.toLowerCase()}/${name.toLowerCase()}`
-  const fileUrl = `${baseUrl}/${path}/metadata.json`
+export async function fetchPackageJson(indexUrl: string, owner: string, name: string, filePath: string) {
+  const fileUrl = `${indexUrl}/${owner.toLowerCase()}/${name.toLowerCase()}/${filePath}.json`
   console.log(`Fetch ${fileUrl}`)
   const res = await fetch(fileUrl)
   if (res.status == 200) {
@@ -25,13 +27,44 @@ export async function getPackage(baseUrl: string, owner: string, name: string) {
   }
 }
 
-export const GetPackageParams = z.object({
+export const PackageParams = z.object({
   name: z.string().min(1),
   owner: z.string().min(1),
 })
 
-export const packageHandler = defineEventErrorHandler(event => {
+export const packageRouter = createRouter()
+
+packageRouter.use('/packages/:owner/:name', defineEventErrorHandler(event => {
   validateMethod(event.method, ["GET"])
-  const {owner, name} = GetPackageParams.parse(getRouterParams(event))
-  return getPackage(`${event.web!.url!.origin}/index`, owner, name)
+  const {owner, name} = PackageParams.parse(getRouterParams(event))
+  return fetchPackageJson(event.context.reservoir.indexUrl, owner, name, 'metadata')
+}))
+
+packageRouter.use('/packages/:owner/:name/builds', defineEventErrorHandler(event => {
+  validateMethod(event.method, ["GET"])
+  const {owner, name} = PackageParams.parse(getRouterParams(event))
+  return fetchPackageJson(event.context.reservoir.indexUrl, owner, name, 'builds')
+}))
+
+packageRouter.use('/packages/:owner/:name/versions', defineEventErrorHandler(event => {
+  validateMethod(event.method, ["GET"])
+  const {owner, name} = PackageParams.parse(getRouterParams(event))
+  return fetchPackageJson(event.context.reservoir.indexUrl, owner, name, 'versions')
+}))
+
+const PackageGetBarrelParams = PackageParams.extend({
+  barrelRev: z.string().transform(parseBarrelExt)
+    .refine(rev => rev.length == 40, "Expected revision of exactly 40 hexits")
 })
+
+packageRouter.use('/packages/:owner/:name/barrels/:barrelRev', defineEventErrorHandler(async event => {
+  validateMethod(event.method, ["GET"])
+  const {owner, name, barrelRev} = PackageGetBarrelParams.parse(getRouterParams(event))
+  const res = await fetchPackageJson(event.context.reservoir.indexUrl, owner, name, 'builds')
+  const builds: Build[] = (await res.json())['data']
+  const hash = builds.find(build => build.revision == barrelRev)?.archiveHash
+  if (!hash) {
+    throw new NotFound("Barrel not found for revision")
+  }
+  return getBarrel(hash, getQuery(event).dev != undefined, barrelRev)
+}))

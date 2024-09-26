@@ -88,15 +88,17 @@ export function defineEventErrorHandler<
               return `${str}[${elem}]`
             }
           }, '')
-          return `Invalid ${field}: ${issue.message}`
+          if (issue.message == 'Required') {
+            return `Missing ${field}`
+          } else {
+            return `Invalid ${field}: ${issue.message}`
+          }
         }).join('; ')
         return mkError(400, message)
-      } else if (e instanceof Error) {
-        console.error(`Unhandled server error: ${e.stack}`)
-        return mkError(500, e.message)
       } else {
-        console.error(`Unknown server error: ${e}`)
-        return mkError(500, 'Unknown error')
+        const info = e instanceof Error ? e.stack : e
+        console.error(`Unhandled server error: ${info}`)
+        return mkError(500, 'Internal server error')
       }
     }
   })

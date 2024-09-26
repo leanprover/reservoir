@@ -3,7 +3,8 @@ import { getRouterParams, getQuery } from "h3"
 import { GetObjectCommand, NoSuchKey, S3Client, S3ServiceException } from "@aws-sdk/client-s3"
 import { NotFound, InternalServerError, validateMethod, defineEventErrorHandler } from '../utils/error'
 
-export async function getBarrel(key: string) {
+export async function getBarrel(hash: string, dev: boolean, name?: string) {
+  const key = `${dev ? 'dev' : 'b1'}/${hash}.barrel`
   // Configure S3 client
   const endpoint = process.env.S3_ENDPOINT
   const accessKeyId = process.env.S3_ACCESS_KEY_ID
@@ -44,7 +45,8 @@ export async function getBarrel(key: string) {
       throw new NotFound("Barrel not found")
     }
     const headers: Record<string, string> = {
-      "Content-Type": "application/vnd.reservoir.barrel+gzip"
+      "Content-Type": "application/vnd.reservoir.barrel+gzip",
+      "Content-Disposition": `attachment; filename=${name ?? hash}.barrel`
     }
     if (resp.ContentLength) headers['Content-Length'] = resp.ContentLength?.toString()
     return new Response(resp.Body!.transformToWebStream(), {headers})
@@ -59,17 +61,26 @@ export async function getBarrel(key: string) {
   }
 }
 
-const barrelExt = ".barrel"
+export function parseBarrelExt(barrel: string, ctx: z.RefinementCtx) {
+  const dotIdx = barrel.indexOf('.')
+  if (dotIdx < 0) return barrel
+  const ext = barrel.slice(dotIdx+1)
+  if (ext == 'barrel') return barrel.slice(0, dotIdx)
+  ctx.addIssue({
+    code: z.ZodIssueCode.custom,
+    message: `Expected file extension to be 'barrel', got '${ext}'`,
+    fatal: true,
+  });
+  return z.NEVER
+}
+
 export const GetBarrelParams = z.object({
-  barrel: z.string().transform(key => {
-    return key.endsWith(barrelExt) ? key : key + barrelExt
-  }).refine(key => {
-    return key.length == 64 + barrelExt.length
-  }, "Expected name with exactly 64 hexits")
+  barrel: z.string().transform(parseBarrelExt)
+    .refine(key => key.length == 64, "Expected name with exactly 64 hexits")
 })
 
 export const barrelHandler = defineEventErrorHandler(event => {
   validateMethod(event.method, ["GET"])
   const {barrel} = GetBarrelParams.parse(getRouterParams(event, {decode: true}))
-  return getBarrel(`${getQuery(event).dev != undefined ? 'dev' : 'b1'}/${barrel}`)
+  return getBarrel(barrel, getQuery(event).dev != undefined)
 })
