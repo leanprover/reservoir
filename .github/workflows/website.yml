@@ -140,8 +140,13 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-      - name: Install Node Modules
+          cache-dependency-path: |
+            package-lock.json
+            ap1/v1/package-lock.json
+      - name: Install Site Node Modules
         run: npm ci --ignore-scripts
+      - name: Install API Node Modules
+        run: cd api/v1 && npm ci
       - id: deploy-info
         name: Compute Deploy Info
         run: |
