@@ -1,8 +1,7 @@
-import {packages, pkgLink} from './site/utils/manifest'
+import {packages, pkgLink} from './utils/manifest'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  srcDir: 'site',
   devtools: { enabled: true },
   typescript: { strict: true },
   build: {
@@ -65,6 +64,13 @@ export default defineNuxtConfig({
               return 'mathjax';
             }
           }
+        }
+      }
+    },
+    css: {
+      preprocessorOptions: {
+        scss: {
+          api: 'modern-compiler'
         }
       }
     }
