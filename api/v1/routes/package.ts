@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { createRouter, getRouterParams, getQuery } from 'h3'
 import { InternalServerError, defineEventErrorHandler, NotFound, validateMethod } from '../utils/error'
-import { getBarrel, parseBarrelExt } from '../routes/barrel'
+import { getBarrel } from '../routes/barrel'
 import type { Build } from '../../../site/utils/manifest'
 
 /**
@@ -52,19 +52,38 @@ packageRouter.use('/packages/:owner/:name/versions', defineEventErrorHandler(eve
   return fetchPackageJson(event.context.reservoir.indexUrl, owner, name, 'versions')
 }))
 
-const PackageGetBarrelParams = PackageParams.extend({
-  barrelRev: z.string().transform(parseBarrelExt)
-    .refine(rev => rev.length == 40, "Expected revision of exactly 40 hexits")
+function normalizeToolchain(toolchain: string): string {
+  let origin, ver
+  const colonIdx = toolchain.indexOf(':')
+  if (colonIdx < 0) {
+    origin = "leanprover/lean4"
+    ver = toolchain
+  } else {
+    origin = toolchain.slice(0, colonIdx)
+    ver = toolchain.slice(colonIdx+1)
+  }
+  if (ver[0] >= '0' && ver[0] <= '9') {
+    ver = `v${ver}`
+  }
+  return `${origin}:${ver}`
+}
+
+const PackageBarrelQuery = z.object({
+  rev: z.string().refine(rev => rev.length == 40, "Expected revision of exactly 40 hexits"),
+  toolchain: z.string().transform(normalizeToolchain),
+  dev: z.any().optional().transform(dev => dev != undefined),
 })
 
-packageRouter.use('/packages/:owner/:name/barrels/:barrelRev', defineEventErrorHandler(async event => {
+packageRouter.use('/packages/:owner/:name/barrel', defineEventErrorHandler(async event => {
   validateMethod(event.method, ["GET"])
-  const {owner, name, barrelRev} = PackageGetBarrelParams.parse(getRouterParams(event))
+  const {owner, name} = PackageParams.parse(getRouterParams(event))
+  const {rev, toolchain, dev} = PackageBarrelQuery.parse(getQuery(event))
+  console.log(`Looking for barrel for '${owner}/${name}' at ${rev.slice(0, 7)} on '${toolchain}'`)
   const res = await fetchPackageJson(event.context.reservoir.indexUrl, owner, name, 'builds')
   const builds: Build[] = (await res.json())['data']
-  const hash = builds.find(build => build.revision == barrelRev)?.archiveHash
+  const hash = builds.find(build => build.revision == rev && build.toolchain == toolchain)?.archiveHash
   if (!hash) {
-    throw new NotFound("Barrel not found for revision")
+    throw new NotFound("Barrel not found for the specified revision and toolchain")
   }
-  return getBarrel(hash, getQuery(event).dev != undefined, barrelRev)
+  return getBarrel(hash, dev)
 }))
