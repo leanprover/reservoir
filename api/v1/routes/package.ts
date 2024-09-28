@@ -69,8 +69,8 @@ function normalizeToolchain(toolchain: string): string {
 }
 
 const PackageBarrelQuery = z.object({
-  rev: z.string().refine(rev => rev.length == 40, "Expected revision of exactly 40 hexits"),
-  toolchain: z.string().transform(normalizeToolchain),
+  rev: z.string().refine(rev => rev.length == 40, "Expected revision of exactly 40 hexits").optional(),
+  toolchain: z.string().transform(normalizeToolchain).optional(),
   dev: z.any().optional().transform(dev => dev != undefined),
 })
 
@@ -78,12 +78,17 @@ packageRouter.use('/packages/:owner/:name/barrel', defineEventErrorHandler(async
   validateMethod(event.method, ["GET"])
   const {owner, name} = PackageParams.parse(getRouterParams(event))
   const {rev, toolchain, dev} = PackageBarrelQuery.parse(getQuery(event))
-  console.log(`Looking for barrel for '${owner}/${name}' at ${rev.slice(0, 7)} on '${toolchain}'`)
+  console.log(`Looking for barrel for '${owner}/${name}' at '${rev?.slice(0, 7)}' on '${toolchain}'`)
   const res = await fetchPackageJson(event.context.reservoir.indexUrl, owner, name, 'builds')
   const builds: Build[] = (await res.json())['data']
-  const hash = builds.find(build => build.revision == rev && build.toolchain == toolchain)?.archiveHash
+  const hash = builds.find(build => {
+    if (!build.archiveHash) return false
+    if (rev && build.revision != rev) return false
+    if (toolchain && build.toolchain != toolchain) return false
+    return true
+  })?.archiveHash
   if (!hash) {
-    throw new NotFound("Barrel not found for the specified revision and toolchain")
+    throw new NotFound("No barrel found that satisfies criteria")
   }
   return getBarrel(hash, dev)
 }))
