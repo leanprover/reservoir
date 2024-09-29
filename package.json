@@ -9,8 +9,8 @@
     "url": "git+https://github.com/tydeu/reservoir.git"
   },
   "workspaces": [
-    "api/v1",
-    "site"
+    "site",
+    "api/v1"
   ],
   "private": true,
   "type": "module",
