@@ -3,6 +3,7 @@ from utils import *
 from typing import TypedDict
 import json
 import argparse
+import shutil
 import os
 
 class Job(TypedDict):
@@ -18,6 +19,11 @@ def query_jobs(repo: str, run_id: int, run_attempt: int = 1) -> 'list[Job]':
   )
   return list(map(json.loads, out.splitlines()))
 
+def download_artifact(name: str, dir: str, run_id: int, allow_failure: bool = False):
+  return run_cmd(
+    'gh', 'run', 'download', str(run_id), '-n', name, '-D', dir,
+    allow_failure=allow_failure) == 0
+
 def walk_entries(matrix: TestbedMatrix) -> Iterable[TestbedEntry]:
   for layer in matrix:
     yield from layer['data']
@@ -31,7 +37,7 @@ def mk_testbed_result(entry: TestbedEntry, pkg_result: PackageResult) -> Testbed
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument('results',
-    help="directory containing testbed results")
+    help="directory to store testbed results")
   parser.add_argument('run_id', type=int,
     help="testbed run ID")
   parser.add_argument('run_attempt', nargs='?', type=int, default=1,
@@ -62,7 +68,9 @@ if __name__ == "__main__":
   # Load testbed matrix
   matrix_file = args.matrix
   if matrix_file is None:
-    matrix_file = os.path.join(args.results, 'matrix', 'matrix.json')
+    matrix_file = os.path.join(args.results, 'matrix.json')
+    if not os.path.exists(matrix_file):
+      download_artifact('matrix', args.results, args.run_id)
   with open(matrix_file, 'r') as f:
     matrix: TestbedMatrix = json.load(f)
   entries = list(walk_entries(matrix))
@@ -74,21 +82,26 @@ if __name__ == "__main__":
   results: TestbedResults = list[TestbedResult]()
   archive_sizes = list[int]()
   for entry in entries:
+    logging.debug(f"[{entry['jobName']}] Collecting results...")
     jobId = find_testbed_job_id(entry['jobName'])
     if jobId is None:
-      logging.error(f"Job ID not found for '{entry['jobName']}'")
+      logging.error(f"[{entry['jobName']}] Job ID not found")
       continue
     url = f"https://github.com/{TESTBED_REPO}/actions/runs/{args.run_id}/job/{jobId}#step:4:1"
     artifact_dir = os.path.join(args.results, entry['artifact'])
+    if not download_artifact(entry['artifact'], artifact_dir, args.run_id, allow_failure=True):
+      continue
     result_file = os.path.join(artifact_dir, 'result.json')
     try:
       with open(result_file, 'r') as f:
         result: TestbedResult = mk_testbed_result(entry, json.load(f))
     except (FileNotFoundError, json.JSONDecodeError):
+      logging.warning(f"[{entry['jobName']}] No result found")
+      shutil.rmtree(artifact_dir)
       continue
     results.append(result)
     if not result['doIndex']:
-      logging.info(f"'{id}' opted-out of Reservoir")
+      logging.info(f"[{entry['jobName']}] Opted-out of Reservoir")
       num_opt_outs +=1
     for build in walk_builds(result):
       build['url'] = url
@@ -109,6 +122,7 @@ if __name__ == "__main__":
         continue
       if result['doIndex'] and S3_ENABLED:
         upload_build(archive, archive_size, archive_hash, args.prod_cache)
+    shutil.rmtree(artifact_dir)
 
   # Print stats
   logging.info(f"Package results: {len(results)} ({num_opt_outs} opt-outs)")
@@ -120,8 +134,6 @@ if __name__ == "__main__":
   logging.info(f'Average build archive size: {fmt_bytes(avg)} ({avg} bytes)')
 
   # Output results
-  if args.output is None:
-    print(json.dumps(results, indent=2))
-  else:
-    with open(args.output, 'w') as f:
-      f.write(json.dumps(results, indent=2))
+  result_file = ifnone(args.output, os.path.join(args.results, 'results.json'))
+  with open(args.output, 'w') as f:
+    f.write(json.dumps(results, indent=2))
