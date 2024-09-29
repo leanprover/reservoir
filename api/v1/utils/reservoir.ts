@@ -19,7 +19,6 @@ export function initReservoirContext(event: H3Event) {
   event.context.reservoir = {
     apiVersion: reservoirVer,
     lakeApiVersion: lakeVer,
-    //indexUrl: `${event.web!.url!.origin}/index`,
-    indexUrl: 'https://ju9jldr4lttgij4vxadp36u3zb8--reservoir-lean-lang.netlify.app/index',
+    indexUrl: `${event.web!.url!.origin}/index`,
   }
 }
