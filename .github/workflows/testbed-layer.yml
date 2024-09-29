@@ -36,14 +36,10 @@ jobs:
       - name: Analyze
         continue-on-error: true
         # We run arbitrary untrusted code here
-        run: |
-          scripts/testbed-analyze.py -v -o result.json \
-            ${{ matrix.gitUrl }} \
-            -T '${{ matrix.toolchains }}' \
-            -V '${{ matrix.versionTags }}'
+        run: scripts/testbed-analyze.py -v -d testbed -m '${{ toJson(matrix) }}'
       - name: Upload Result
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: result.json
+          path: testbed/artifact
           if-no-files-found: warn

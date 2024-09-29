@@ -39,16 +39,18 @@ on:
         description: "Max number of testbed entries"
         type: number
         required: false
+      cache-builds:
+        description: "Upload builds to cloud cache"
+        type: boolean
+        required: false
       update-index:
         description: "Save testbed results to index"
         type: boolean
         required: false
-        default: false
       production-deploy:
         description: "Deploy website to production"
         type: boolean
         required: false
-        default: false
 
 # GITHUB_TOKEN permissions needed for deployment (copied from website.yml)
 permissions:
@@ -70,8 +72,10 @@ jobs:
       reindex: ${{ steps.compute.outputs.reindex }}
       update-index: ${{ steps.compute.outputs.update-index }}
       testbed: ${{ steps.compute.outputs.testbed }}
+      package-pattern: ${{ steps.compute.outputs.package-pattern }}
       testbed-size: ${{ steps.compute.outputs.testbed-size }}
       testbed-toolchain: ${{ steps.compute.outputs.testbed-toolchain }}
+      cache-builds: ${{ steps.compute.outputs.cache-builds  }}
       production-deploy: ${{ steps.compute.outputs.production-deploy }}
     steps:
       # We echo even simple values out to make failures easier to debug from the logs
@@ -79,10 +83,17 @@ jobs:
         name: Compute Configuration
         run: |
           if ${{ github.event_name == 'pull_request' }}; then
-            echo reindex=${{ contains(github.event.pull_request.labels.*.name, 'A-index') }} >> "$GITHUB_OUTPUT"
-            echo search-packages=${{ contains(github.event.pull_request.labels.*.name, 'A-index') }} >> "$GITHUB_OUTPUT"
-            echo testbed=${{ contains(github.event.pull_request.labels.*.name, 'A-index') || contains(github.event.pull_request.labels.*.name, 'A-testbed') }} >> "$GITHUB_OUTPUT"
+            if ${{ contains(github.event.pull_request.labels.*.name, 'A-index') }}; then
+              echo reindex=true >> "$GITHUB_OUTPUT"
+              echo testbed=true >> "$GITHUB_OUTPUT"
+              echo 'package-pattern=.*' >> "$GITHUB_OUTPUT"
+            elif ${{ contains(github.event.pull_request.labels.*.name, 'A-testbed') }}; then
+              echo testbed=true >> "$GITHUB_OUTPUT"
+              echo 'package-pattern=^leanprover' >> "$GITHUB_OUTPUT"
+            fi
+            echo search-packages=${{ contains(github.event.pull_request.labels.*.name, 'A-search') }} >> "$GITHUB_OUTPUT"
             echo 'testbed-toolchain=${{ contains(github.event.pull_request.labels.*.name, 'A-testbed') && 'package,latest' || 'none' }}' >> "$GITHUB_OUTPUT"
+            echo cache-builds=${{ contains(github.event.pull_request.labels.*.name, 'A-cache') }} >> "$GITHUB_OUTPUT"
           else
             if ${{ github.event_name == 'push' && github.ref_name == 'master' && contains(github.event.head_commit.message, 'UPDATE-INDEX') }}; then
               echo reindex=true >> "$GITHUB_OUTPUT"
@@ -90,6 +101,7 @@ jobs:
               echo update-index=true >> "$GITHUB_OUTPUT"
               echo testbed=true  >> "$GITHUB_OUTPUT"
               echo testbed-toolchain=none >> "$GITHUB_OUTPUT"
+              echo cache-builds=true  >> "$GITHUB_OUTPUT"
             else
               if ${{ github.event_name != 'workflow_dispatch' }}; then
                 echo testbed=${{ github.ref_name != 'master' }} >> "$GITHUB_OUTPUT"
@@ -98,6 +110,7 @@ jobs:
               fi
               echo reindex=${{  github.event_name == 'workflow_dispatch' && !!inputs.package-pattern }} >> "$GITHUB_OUTPUT"
               echo search-packages=${{ inputs.search-packages == true }}  >> "$GITHUB_OUTPUT"
+              echo cache-builds=${{ inputs.cache-builds == true }}  >> "$GITHUB_OUTPUT"
               echo update-index=${{ inputs.update-index == true }} >> "$GITHUB_OUTPUT"
               echo 'testbed-toolchain=${{ inputs.testbed-toolchain || 'none' }}' >> "$GITHUB_OUTPUT"
             fi
@@ -114,11 +127,12 @@ jobs:
     with:
       index-repo: ${{ needs.config.outputs.index-repo }}
       search-packages: ${{ needs.config.outputs.search-packages == 'true' }}
-      package-pattern: ${{ needs.config.outputs.reindex == 'true' && (inputs.package-pattern || '.*') || '' }}
+      package-pattern: ${{ needs.config.outputs.package-pattern }}
       version-pattern: ${{ inputs.version-pattern }}
       toolchain: ${{ needs.config.outputs.testbed-toolchain }}
       max-size: ${{ fromJson(needs.config.outputs.testbed-size) }}
-      update-index: ${{ inputs.update-index == true }}
+      cache-builds: ${{ needs.config.outputs.cache-builds == 'true' }}
+      update-index: ${{ needs.config.outputs.update-index == 'true' }}
       dev: ${{ github.event_name != 'workflow_dispatch' }}
   website:
     needs: [config, testbed]

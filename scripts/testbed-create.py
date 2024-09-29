@@ -8,7 +8,11 @@ import argparse
 from typing import Collection
 from utils import *
 
-def create_entry(name: str, git_url: str, toolchains: str, version_tags: str, repo_id: str | None, index_name: str | None) -> TestbedEntry:
+def create_entry(
+    name: str, git_url: str,
+    toolchains: str, version_tags: str, cache_builds: bool,
+    repo_id: str | None, index_name: str | None
+    ) -> TestbedEntry:
   job_name = f"{'Index' if toolchains == '' else 'Build'} {name}"
   digest = hashlib.sha256(job_name.encode()).digest()
   artifact = base64.urlsafe_b64encode(digest).decode().rstrip('=')
@@ -18,6 +22,7 @@ def create_entry(name: str, git_url: str, toolchains: str, version_tags: str, re
     'jobName': job_name,
     'toolchains': toolchains,
     'versionTags': version_tags,
+    'cacheBuilds': cache_builds,
     "repoId": repo_id,
     "indexName": index_name,
   }
@@ -42,6 +47,10 @@ if __name__ == "__main__":
     help="max number of testbed entries (< 0 for no limit)")
   parser.add_argument('-Q', '--query', type=int, default=0,
     help='(max) number of new packages to query from GitHub (< 0 for no limit)')
+  parser.add_argument('--cache', action='store_true', default=True,
+    help="upload build archives in cloud storage")
+  parser.add_argument('--no-cache', dest='cache', action='store_false',
+    help="do not upload build archives in cloud storage")
   parser.add_argument('-X', '--exclusions', default=default_exclusions,
     help='file containing repos to exclude')
   parser.add_argument('-o', '--output',
@@ -80,7 +89,10 @@ if __name__ == "__main__":
 
   # Create testbed
   for repo in new_repos:
-    entry = create_entry(repo['nameWithOwner'], repo['url'], toolchains, args.version_tags, repo['id'], None)
+    entry = create_entry(
+      repo['nameWithOwner'], repo['url'],
+      toolchains, args.version_tags, False,
+      repo['id'], None)
     entries.append(entry)
   if reindex:
     pkgs = list(filter(lambda pkg: pkg['fullName'].lower() not in exclusions, pkgs))
@@ -101,7 +113,15 @@ if __name__ == "__main__":
       if git_url is None:
         logging.error(f"{pkg['fullName']}: Package lacks a Git source")
       else:
-        entry = create_entry(pkg['fullName'], git_url, toolchains, args.version_tags, repo_id, pkg['fullName'])
+        cache_builds = (
+          args.cache and
+          pkg['owner'] in ['leanprover', 'leanprover-community'] and
+          pkg['fullName'] != 'leanprover-community/mathlib'
+        )
+        entry = create_entry(
+          pkg['fullName'], git_url,
+          toolchains, args.version_tags, cache_builds,
+          repo_id, pkg['fullName'])
         entries.append(entry)
   logging.info(f"{len(entries)} total testbed candidates")
   if args.num >= 0:

@@ -1,6 +1,7 @@
 import logging
 import subprocess
 import itertools
+import hashlib
 from datetime import datetime, timezone
 from typing import TypeVar, Iterable, Iterator, Literal, overload
 
@@ -31,6 +32,17 @@ def fmt_bytes(num: float):
 
 def ifnone(value: T | None, default: T) -> T:
   return default if value is None else value
+
+# adapted from https://stackoverflow.com/a/44873382
+def filehash(path: str) -> str:
+    "SHA-256 hash of a file"
+    h  = hashlib.sha256()
+    b  = bytearray(128*1024)
+    mv = memoryview(b)
+    with open(path, 'rb', buffering=0) as f:
+        while n := f.readinto(mv):
+            h.update(mv[:n])
+    return h.hexdigest()
 
 #---
 # Time

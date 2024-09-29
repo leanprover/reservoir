@@ -30,7 +30,12 @@ def has_mathlib(deps: list[Dependency] | None):
   else:
     return any(dep.get('name', None) == 'mathlib' for dep in deps)
 
-def try_build(ver: PackageVersion, target_toolchain: str | None, is_mathlib=False) -> tuple[BuildResult | None, bool]:
+def try_build(
+    ver: PackageVersion,
+    build_dir: str | None,
+    target_toolchain: str | None,
+    is_mathlib: bool = False
+    )-> tuple[BuildResult | None, bool]:
   # Reset directory
   run_cmd('git', 'reset', '--hard')
   run_cmd('git', 'clean', '-ffdx')
@@ -61,6 +66,7 @@ def try_build(ver: PackageVersion, target_toolchain: str | None, is_mathlib=Fals
     'toolchain': target_toolchain,
     'requiredUpdate': False,
     'archiveSize': None,
+    'archiveHash': None,
     'runAt': utc_iso_now(),
     'url': None,
   }
@@ -91,14 +97,16 @@ def try_build(ver: PackageVersion, target_toolchain: str | None, is_mathlib=Fals
     result['built'] = False
     return result, True
   # Try to pack result
-  try:
-    with tempfile.TemporaryDirectory() as tmp:
-      archive = os.path.join(tmp, 'build.tgz')
-      run_cmd('lake', 'pack', archive)
-      archiveSize = result['archiveSize'] = os.path.getsize(archive)
-      logging.info(f'Packed build archive size: {fmt_bytes(archiveSize)} ({archiveSize})')
-  except Exception as e:
-    logging.error(f'Failed to pack build archive: {e}')
+  with tempfile.TemporaryDirectory() as tmp:
+    archive = os.path.join(tmp, 'build.barrel')
+    if run_cmd('lake', 'pack', archive, allow_failure=True) != 0:
+      logging.error('Failed to pack build archive')
+    else:
+      archive_size = result['archiveSize'] = os.path.getsize(archive)
+      logging.info(f'Packed build archive size: {fmt_bytes(archive_size)} ({archive_size})')
+      if build_dir is not None:
+        archive_hash = result['archiveHash'] = filehash(archive)
+        shutil.move(archive, os.path.join(build_dir, f"{archive_hash}.barrel"))
   # Try test
   if run_cmd('lake', 'check-test', allow_failure=True) == 0:
     success = result['tested'] = run_cmd('lake', 'test', allow_failure=True) == 0
@@ -111,17 +119,19 @@ def try_build(ver: PackageVersion, target_toolchain: str | None, is_mathlib=Fals
     logging.warning(f"No package test driver found; skipped testing")
   return result, False
 
-def try_add_build(ver: PackageVersion, target_toolchain: str | None, is_mathlib=False):
-  result, failure = try_build(ver, target_toolchain, is_mathlib)
-  if result is not None: ver['builds'].append(result)
-  return failure
-
-def try_add_builds(ver: PackageVersion, target_toolchains: Collection[str | None], is_mathlib=False):
+def try_add_builds(
+    ver: PackageVersion,
+    build_dir: str | None,
+    target_toolchains: Collection[str | None],
+    is_mathlib: bool = False
+    ):
   failure = False
   if len(target_toolchains) == 0:
     logging.info("No target toolchains specified; skipping build")
   for toolchain in target_toolchains:
-    failure = try_add_build(ver, toolchain, is_mathlib) or failure
+    result, toolchain_failure = try_build(ver, build_dir, toolchain, is_mathlib)
+    if result is not None: ver['builds'].append(result)
+    failure = toolchain_failure or failure
   return failure
 
 def cwd_toolchain():
@@ -191,7 +201,12 @@ def cwd_readme(cfg: ReservoirConfig | None):
 
 VERSION_TAG_PATTERN = re.compile(r'v(\d+).*')
 
-def cwd_analyze(target_toolchains: Collection[str | None] = [], tag_pattern: re.Pattern[str] | None = None) -> tuple[PackageResult, bool]:
+def cwd_analyze(
+    out_dir: str,
+    cache_builds: bool = False,
+    target_toolchains: Collection[str | None] = [],
+    tag_pattern: re.Pattern[str] | None = None
+    ) -> tuple[PackageResult, bool]:
   failure = False
   # Extract Reservoir configuration from Lake
   logging.info(f"Analyzing package HEAD")
@@ -246,9 +261,10 @@ def cwd_analyze(target_toolchains: Collection[str | None] = [], tag_pattern: re.
       version_tags = None
   # Index and build versions
   is_mathlib = result['name'] == 'mathlib'
+  build_dir = out_dir if cache_builds else None
   if result['doIndex']:
     if tag_pattern is None:
-      failure = try_add_builds(result['headVersion'], target_toolchains, is_mathlib) or failure
+      failure = try_add_builds(result['headVersion'], build_dir, target_toolchains, is_mathlib) or failure
     if version_tags is not None:
       logging.info(f'Detected version tags: {version_tags}')
       for tag in version_tags:
@@ -271,7 +287,7 @@ def cwd_analyze(target_toolchains: Collection[str | None] = [], tag_pattern: re.
         }
         result['versions'].append(ver)
         if tag_pattern is not None and tag_pattern.search(tag) is not None:
-          failure = try_add_builds(ver, target_toolchains, is_mathlib) or failure
+          failure = try_add_builds(ver, build_dir, target_toolchains, is_mathlib) or failure
   return result, failure
 
 if __name__ == "__main__":
@@ -281,13 +297,17 @@ if __name__ == "__main__":
   parser.add_argument('-m', '--matrix', type=str, default=None,
     help='JSON testbed matrix entry with build configuration')
   parser.add_argument('-d', '--testbed', type=str, default=None,
-    help="directory to clone the package into")
+    help="directory to test in and output results")
   parser.add_argument('-T', '--toolchain', type=str, nargs='*', action='extend', default=[],
     help="Lean toolchain(s) on build the package on")
   parser.add_argument('-o', '--output', type=str, default=None,
     help='file to output the build results')
   parser.add_argument('-V', '--version-tags', type=str, default=None,
     help='select version tags to build by regular expression')
+  parser.add_argument('--cache', action='store_true', default=True,
+    help="include build archives in artifact")
+  parser.add_argument('--no-cache', dest='cache', action='store_false',
+    help="do not include build archives in artifact")
   parser.add_argument('-q', '--quiet', dest="verbosity", action='store_const', const=0, default=1,
     help='print no logging information')
   parser.add_argument('-v', '--verbose', dest="verbosity", action='store_const', const=2,
@@ -305,49 +325,60 @@ if __name__ == "__main__":
     testbed = tempfile.mkdtemp()
     logging.debug(f"Created temporary testbed: {testbed}")
     reuse_clone = False
+    repo = os.path.join(testbed, 'repo')
   else:
-    testbed = args.testbed
-    reuse_clone = bool(args.reuse_clone) and os.path.exists(testbed)
+    testbed = os.path.abspath(args.testbed)
+    repo = os.path.join(testbed, 'repo')
+    reuse_clone = bool(args.reuse_clone) and os.path.exists(repo)
     if not reuse_clone:
-      os.makedirs(testbed, exist_ok=True)
-      shutil.rmtree(testbed)
+      os.makedirs(repo, exist_ok=True)
+      shutil.rmtree(repo)
+
+  # Make output directory
+  out_dir = os.path.join(testbed, 'artifact')
+  os.makedirs(out_dir, exist_ok=True)
 
   try:
+
     # Extract matrix configuration
     if args.matrix is not None:
       entry: TestbedEntry = json.loads(args.matrix)
       url = entry['gitUrl']
-      target_toolchains = resolve_toolchains(entry['toolchains'])
+      target_toolchains = resolve_toolchains([entry['toolchains']])
+      version_tags = entry['versionTags']
+      cache_builds = entry['cacheBuilds']
     else:
       if args.url is None and not reuse_clone:
         raise RuntimeError("a Git URL is required (either by argument or through `--matrix`)")
       url: str | None = args.url
       target_toolchains = resolve_toolchains(args.toolchain)
+      version_tags = args.version_tags
+      cache_builds = args.cache
 
     # Compile version tag regex (if provided)
     tag_pattern: re.Pattern[str] | None = None
-    if args.version_tags == '':
+    if version_tags == '':
       tag_pattern = None
-    elif args.version_tags is not None:
-      tag_pattern = re.compile(args.version_tags)
+    elif version_tags is not None:
+      tag_pattern = re.compile(version_tags)
 
     # Clone, analyze, and build package
     iwd = os.getcwd()
-    os.chdir(testbed)
-    if url is not None:
+    logging.info(f"Setting up testbed in '{repo}'")
+    os.makedirs(repo, exist_ok=True)
+    os.chdir(repo)
+    if url is not None and not reuse_clone:
       run_cmd('git', 'clone', url, '.')
     run_cmd('git', 'fetch', '--tags', '--force')
     if args.head:
       cwd_checkout(args.head)
-    result, failure = cwd_analyze(target_toolchains, tag_pattern)
+    result, failure = cwd_analyze(out_dir, cache_builds, target_toolchains, tag_pattern)
     os.chdir(iwd)
 
     # Output result
-    if args.output is None:
-      print(json.dumps(result, indent=2))
-    else:
-      with open(args.output, 'w') as f:
-        f.write(json.dumps(result, indent=2))
+    result_file = ifnone(args.output, os.path.join(out_dir, 'result.json'))
+    with open(result_file, 'w') as f:
+      f.write(json.dumps(result, indent=2))
 
   finally:
     # Cleanup
