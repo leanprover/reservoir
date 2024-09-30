@@ -69,7 +69,6 @@ jobs:
     outputs:
       index-repo: ${{ steps.compute.outputs.index-repo }}
       search-packages: ${{ steps.compute.outputs.search-packages }}
-      reindex: ${{ steps.compute.outputs.reindex }}
       update-index: ${{ steps.compute.outputs.update-index }}
       testbed: ${{ steps.compute.outputs.testbed }}
       package-pattern: ${{ steps.compute.outputs.package-pattern }}
@@ -84,7 +83,6 @@ jobs:
         run: |
           if ${{ github.event_name == 'pull_request' }}; then
             if ${{ contains(github.event.pull_request.labels.*.name, 'A-index') }}; then
-              echo reindex=true >> "$GITHUB_OUTPUT"
               echo testbed=true >> "$GITHUB_OUTPUT"
               echo 'package-pattern=.*' >> "$GITHUB_OUTPUT"
             elif ${{ contains(github.event.pull_request.labels.*.name, 'A-testbed') }}; then
@@ -96,19 +94,20 @@ jobs:
             echo cache-builds=${{ contains(github.event.pull_request.labels.*.name, 'A-cache') }} >> "$GITHUB_OUTPUT"
           else
             if ${{ github.event_name == 'push' && github.ref_name == 'master' && contains(github.event.head_commit.message, 'UPDATE-INDEX') }}; then
-              echo reindex=true >> "$GITHUB_OUTPUT"
               echo search-packages=false >> "$GITHUB_OUTPUT"
               echo update-index=true >> "$GITHUB_OUTPUT"
               echo testbed=true  >> "$GITHUB_OUTPUT"
+              echo 'package-pattern=.*' >> "$GITHUB_OUTPUT"
               echo testbed-toolchain=none >> "$GITHUB_OUTPUT"
               echo cache-builds=true  >> "$GITHUB_OUTPUT"
             else
               if ${{ github.event_name != 'workflow_dispatch' }}; then
                 echo testbed=${{ github.ref_name != 'master' }} >> "$GITHUB_OUTPUT"
+                echo 'package-pattern=^leanprover' >> "$GITHUB_OUTPUT"
               else
                 echo testbed=${{ toJson(inputs.testbed-size) == 'null' && true || inputs.testbed-size != 0 }} >> "$GITHUB_OUTPUT"
+                echo 'package-pattern=${{ inputs.package-pattern }}' >> "$GITHUB_OUTPUT"
               fi
-              echo reindex=${{  github.event_name == 'workflow_dispatch' && !!inputs.package-pattern }} >> "$GITHUB_OUTPUT"
               echo search-packages=${{ inputs.search-packages == true }}  >> "$GITHUB_OUTPUT"
               echo cache-builds=${{ inputs.cache-builds == true }}  >> "$GITHUB_OUTPUT"
               echo update-index=${{ inputs.update-index == true }} >> "$GITHUB_OUTPUT"
