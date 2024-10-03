@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import GitHubIcon from '~icons/simple-icons/github'
-import TwitterIcon from '~icons/simple-icons/twitter'
+import XIcon from '~icons/simple-icons/x'
 import LinkedinIcon from '~icons/simple-icons/linkedin'
 import ZulipIcon from '~icons/simple-icons/zulip'
 </script>
@@ -8,17 +8,26 @@ import ZulipIcon from '~icons/simple-icons/zulip'
 <template>
   <div class="footer-links">
     <div>
-      <h2 class="group-header">Lean</h2>
+      <h2 class="group-header">About</h2>
       <ul>
         <li><a href="https://lean-lang.org/">lean-lang.org</a></li>
         <li><a href="https://lean-fro.org/">The Lean FRO</a></li>
-        <li><a href="https://leanprover-community.github.io/">Lean Community</a></li>
-        <li><a href="https://github.com/leanprover/lean4/issues">Report a bug</a></li>
-        <li><a href="https://loogle.lean-fro.org/">Loogle</a></li>
+        <li><NuxtLink to="/policies/terms">Terms of Use</NuxtLink></li>
+        <li><NuxtLink to="/policies/privacy">Privacy Policy</NuxtLink></li>
       </ul>
     </div>
     <div>
-      <h2 class="group-header">Books</h2>
+      <h2 class="group-header">Explore</h2>
+      <ul>
+        <li><a href="https://adam.math.hhu.de//">Games</a></li>
+        <li><a href="https://live.lean-lang.org/">Playground</a></li>
+        <li><a href="https://leanprover-community.github.io/">Community</a></li>
+        <li><a href="https://moogle.ai/">Moogle</a></li>
+        <li><a href="https://loogle.lean-lang.org/">Loogle</a></li>
+      </ul>
+    </div>
+    <div>
+      <h2 class="group-header">Learn</h2>
       <ul>
         <li><a href="https://lean-lang.org/lean4/doc/whatIsLean.html">The Lean Manual</a></li>
         <li><a href="https://lean-lang.org/theorem_proving_in_lean4/">Theorem Proving in Lean</a></li>
@@ -38,7 +47,7 @@ import ZulipIcon from '~icons/simple-icons/zulip'
         </li>
         <li>
           <a href="https://twitter.com/leanprover">
-            <TwitterIcon class="prefix icon"/><span>@leanprover</span>
+            <XIcon class="prefix icon"/><span>@leanprover</span>
           </a>
         </li>
         <li>

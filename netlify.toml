@@ -7,7 +7,7 @@ publish = "site/.output/public/"
 
 [dev]
 command = "npm run dev"
-port = 3000
+targetPort = 3000
 publish = "site/.output/public/"
 
 [functions]
