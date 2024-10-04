@@ -3,13 +3,16 @@ from utils import *
 import argparse
 import json
 
-def mk_dependent(pkg: SerialPackage, dep: Dependency) -> Dependency:
+def mk_dependent(pkg: SerialPackage, dep: Dependency) -> Dependent:
   return {
     'type': dep['type'],
     'name': unescape_name(pkg['name']),
     'scope': pkg['owner'],
     'version': dep['version'],
+    'transitive': dep.get('transitive', None),
     'rev': dep['rev'],
+    'inputRev': dep.get('inputRev', None),
+    'url': dep.get('url', None),
   }
 
 def bundle_index(path: str):
@@ -22,10 +25,15 @@ def bundle_index(path: str):
   indexed_pkgs, aliases = load_index(path, include_builds=True)
   pkgs = list[SerialPackage]()
   pkg_map = dict[str, SerialPackage]()
+  url_map = dict[str, SerialPackage]()
   for indexed_pkg in indexed_pkgs:
     pkg = serialize_package(indexed_pkg)
     pkg['builds'] = sorted(pkg['builds'], key=build_sort_key, reverse=True)
     pkg_map[pkg['fullName']] = pkg
+    src = git_src(pkg)
+    if src is not None:
+      url = src['gitUrl'].removesuffix('.git')
+      url_map[url] = pkg
     pkgs.append(pkg)
   # Compute package dependents
   for pkg in pkgs:
@@ -34,10 +42,16 @@ def bundle_index(path: str):
     deps = vers[0]['dependencies']
     if deps is None: continue
     for dep in deps:
-      if dep['scope'] == '': continue
-      dep_pkg = pkg_map.get(f"{dep['scope']}/{dep['name']}", None)
-      if dep_pkg is not None:
-        dep_pkg['dependents'].append(mk_dependent(pkg, dep))
+      dep_pkg = None
+      scope = dep.get('scope', None)
+      if scope is not None:
+        dep_pkg = pkg_map.get(f"{dep['scope']}/{dep['name']}", None)
+      if dep_pkg is None:
+        url = dep.get('url', None)
+        if url is None: continue
+        dep_pkg = url_map.get(url.removesuffix('.git'), None)
+        if dep_pkg is None: continue
+      dep_pkg['dependents'].append(mk_dependent(pkg, dep))
   # Return manifest
   return {
     'bundledAt': utc_iso_now(),

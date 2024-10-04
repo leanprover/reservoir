@@ -3,9 +3,11 @@ import subprocess
 import itertools
 import hashlib
 from datetime import datetime, timezone
-from typing import TypeVar, Iterable, Iterator, Literal, overload
+from typing import Any, Mapping, TypeVar, Iterable, Iterator, Literal, overload
 
 T = TypeVar('T')
+K = TypeVar('K')
+V = TypeVar('V')
 
 def configure_logging(verbosity: int):
   if verbosity == 0:
@@ -32,6 +34,22 @@ def fmt_bytes(num: float):
 
 def ifnone(value: T | None, default: T) -> T:
   return default if value is None else value
+
+def filter_type(type: type[T], value: Any, default: V = None) -> T | V:
+  return value if isinstance(value, type) else default
+
+def get_type(mapping: Mapping[K, Any], key: K, type: type[T], default: V = None) -> T | V:
+  return filter_type(type, mapping.get(key, default), default)
+
+def get_type_values(mapping: Mapping[K, Any], key: K, type: type[T]) -> Iterable[T]:
+  for e in get_type(mapping, key, Iterable, []):
+    if isinstance(e, type):
+      yield e
+
+def filter_ws(value: str | None):
+  if value is not None:
+    value = value.strip() or None
+  return value
 
 # adapted from https://stackoverflow.com/a/44873382
 def filehash(path: str) -> str:

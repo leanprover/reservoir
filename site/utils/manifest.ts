@@ -35,9 +35,12 @@ export interface Build {
 export interface PackageDep {
   type: string
   name: string
-  scope: string
+  scope: string | null
   version: string
+  transitive?: boolean | null
   rev: string | null
+  inputRev?: string | null
+  url?: string | null
 }
 
 export interface PackageVer {

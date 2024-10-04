@@ -8,7 +8,7 @@ import ReservoirIcon from '~/public/favicon.svg?component'
 
 const props = defineProps<{package: Package, dep: PackageDep, upstream: boolean}>()
 const dep = computed(() => props.dep)
-const depPkg = computed(() => props.dep.scope ? findPkg(dep.value.scope, dep.value.name) : undefined)
+const depPkg = computed(() => dep.value.scope ? findPkg(dep.value.scope, dep.value.name) : undefined)
 const ver = computed(() => {
   const pkg = props.upstream ? depPkg.value : props.package
   return pkg?.versions.find(ver => ver.revision == dep.value.rev)

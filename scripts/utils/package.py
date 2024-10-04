@@ -87,7 +87,8 @@ TestbedResults = list[TestbedResult]
 
 #`1.0.0: Reservoir 1.0
 # 1.1.0: Added `archiveHash`
-INDEX_SCHEMA_VERSION_STR = '1.1.0'
+# 1.2.0: More Dependency data (`transitive``, `inputRev`, `url``)
+INDEX_SCHEMA_VERSION_STR = '1.2.0'
 INDEX_SCHEMA_VERSION = Version(INDEX_SCHEMA_VERSION_STR)
 
 class PackageMetadata(TypedDict):
@@ -182,6 +183,12 @@ def git_src(pkg: PackageMetadata) -> GitSrc | None:
   for src in pkg['sources']:
     if src.get('type', None) == 'git':
       return cast(GitSrc, src)
+  return None
+
+def git_url(pkg: PackageMetadata) -> str | None:
+  for src in pkg['sources']:
+    if src.get('type', None) == 'git':
+      return cast(GitSrc, src)['gitUrl']
   return None
 
 def github_src(pkg: PackageMetadata) -> GitHubSrc | None:
