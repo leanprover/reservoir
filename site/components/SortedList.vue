@@ -37,7 +37,7 @@ const sortLink = function(key: string) {
       <slot name="header" :first="first" :last="last" :total="numItems">
         <div class="list-info">
           <span class="displaying">Displaying </span>
-          <strong>{{ first+1 }}-{{ last }}</strong>
+          <strong>{{ last > 0 ? first+1 : 0 }}-{{ last }}</strong>
           <span> of </span>
           <strong>{{ numItems }}</strong>
           <span class="total-label"><slot name="total-label"/></span>
