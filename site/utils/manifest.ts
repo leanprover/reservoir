@@ -36,12 +36,18 @@ export interface PackageDep {
   type: string
   name: string
   scope: string | null
+  fullName?: string | null
   version: string
   transitive?: boolean | null
   rev: string | null
   inputRev?: string | null
   url?: string | null
 }
+
+export interface PackageDependent extends PackageDep {
+  fullName: string
+}
+
 
 export interface PackageVer {
   version: string
@@ -68,7 +74,7 @@ export interface Package {
   stars: number
   sources: Source[]
   versions: PackageVer[]
-  dependents: PackageDep[]
+  dependents: PackageDependent[]
   builds: Build[]
 }
 
@@ -94,6 +100,10 @@ export function findPkg(owner: string, name: string) {
     return p.owner.toLowerCase() === owner.toLowerCase() &&
       p.name.toLowerCase() == name.toLowerCase()
   })
+}
+
+export function getPkg(fullName: string) {
+  return packages.find(p => p.fullName == fullName)
 }
 
 export function rawPkgLink(owner: string, name: string) {

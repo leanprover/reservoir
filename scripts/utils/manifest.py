@@ -19,10 +19,10 @@ class DepBase(TypedDict):
   url : str | None
 
 class Dependent(DepBase):
-  pass
+  fullName: str
 
-class Dependency(DepBase):
-  pass
+class Dependency(DepBase, total=False):
+  fullName: str
 
 def mk_dependency(contents: Any, type: str | None = None) -> Dependency | None:
   if not isinstance(contents, dict): return None

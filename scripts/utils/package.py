@@ -116,7 +116,7 @@ class Package(PackageMetadata):
   relpath: str | None
 
 class SerialPackage(PackageMetadata):
-  dependents: list[Dependency]
+  dependents: list[Dependent]
   versions: list[PackageVersionMetadata]
   builds: list[Build]
 

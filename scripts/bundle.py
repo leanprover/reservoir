@@ -6,8 +6,9 @@ import json
 def mk_dependent(pkg: SerialPackage, dep: Dependency) -> Dependent:
   return {
     'type': dep['type'],
-    'name': unescape_name(pkg['name']),
+    'name': pkg['name'],
     'scope': pkg['owner'],
+    'fullName': pkg['fullName'],
     'version': dep['version'],
     'transitive': dep.get('transitive', None),
     'rev': dep['rev'],
@@ -39,19 +40,26 @@ def bundle_index(path: str):
   for pkg in pkgs:
     vers = pkg['versions']
     if len(vers) == 0: continue
-    deps = vers[0]['dependencies']
-    if deps is None: continue
-    for dep in deps:
-      dep_pkg = None
-      scope = dep.get('scope', None)
-      if scope is not None:
-        dep_pkg = pkg_map.get(f"{dep['scope']}/{dep['name']}", None)
-      if dep_pkg is None:
-        url = dep.get('url', None)
-        if url is None: continue
-        dep_pkg = url_map.get(url.removesuffix('.git'), None)
-        if dep_pkg is None: continue
-      dep_pkg['dependents'].append(mk_dependent(pkg, dep))
+    to_add = True
+    for ver in vers:
+      deps = ver['dependencies']
+      if deps is None: continue
+      for dep in deps:
+        dep_pkg = None
+        scope = dep.get('scope', None)
+        if scope is not None:
+          dep_pkg = pkg_map.get(f"{dep['scope']}/{dep['name']}", None)
+          if dep_pkg is not None:
+            dep['fullName'] = dep_pkg['fullName']
+        if dep_pkg is None:
+          url = dep.get('url', None)
+          if url is None: continue
+          dep_pkg = url_map.get(url.removesuffix('.git'), None)
+          if dep_pkg is None: continue
+          dep['fullName'] = dep_pkg['fullName']
+        if to_add:
+          dep_pkg['dependents'].append(mk_dependent(pkg, dep))
+      to_add = False
   # Return manifest
   return {
     'bundledAt': utc_iso_now(),
