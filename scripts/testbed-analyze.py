@@ -179,8 +179,8 @@ def cwd_head_tag() -> str | None:
 def cwd_checkout(rev: str):
   run_cmd('git', 'checkout', '--detach', "--force", rev)
 
-def cfg_default(cfg: ReservoirConfig | None, key: str, default: T) -> T:
-  return cfg.get(key, default) if cfg is not None else default
+def cfg_default(cfg: ReservoirConfig | None, key: str, type: type[T], default: V = None) -> T | V:
+  return get_type(cfg, key, type, default) if cfg is not None else default
 
 def cwd_licenses(cfg: ReservoirConfig | None) -> list[str]:
   if cfg is None:
@@ -190,14 +190,14 @@ def cwd_licenses(cfg: ReservoirConfig | None) -> list[str]:
       return []
   return cfg.get('licenseFiles', [])
 
-def cwd_readme(cfg: ReservoirConfig | None):
+def cwd_readme(cfg: ReservoirConfig | None) -> str | None:
   if cfg is None:
     if os.path.exists('README.md'):
       return 'README.md'
     else:
       return None
   else:
-    return cfg.get('readmeFile', None)
+    return get_type(cfg, 'readmeFile', str)
 
 VERSION_TAG_PATTERN = re.compile(r'v(\d+).*')
 
@@ -235,19 +235,19 @@ def cwd_analyze(
   }
   cfg = cwd_reservoir_config(toolchain)
   if cfg is not None:
-    name = cfg.get('name', None)
+    name = get_type(cfg, 'name', str)
     if name is not None:
       result['name'] = unescape_name(name)
-    result['doIndex'] = cfg.get('doIndex', True)
-    result['homepage'] = filter_ws(cfg.get('homepage', None))
-    result['description'] = filter_ws(cfg.get('description', None))
-    result['keywords'] = cfg.get('keywords', [])
-    result['headVersion']['version'] = cfg.get('version', '0.0.0')
-    result['headVersion']['platformIndependent'] = cfg.get('platformIndependent', None)
-    result['headVersion']['license'] = filter_license(cfg.get('license', None))
-    result['headVersion']['licenseFiles'] = cfg.get('licenseFiles', [])
+    result['doIndex'] = get_type(cfg, 'doIndex', bool, True)
+    result['homepage'] = filter_ws(get_type(cfg, 'homepage', str))
+    result['description'] = filter_ws(get_type(cfg, 'description', str))
+    result['keywords'] = list(get_type_values(cfg, 'keywords', str))
+    result['headVersion']['version'] = get_type(cfg, 'version', str, '0.0.0')
+    result['headVersion']['platformIndependent'] = get_type(cfg, 'platformIndependent', bool, None)
+    result['headVersion']['license'] = filter_license(get_type(cfg, 'license', str))
+    result['headVersion']['licenseFiles'] = list(get_type_values(cfg, 'licenseFiles', str))
     result['headVersion']['readmeFile'] = cwd_readme(cfg)
-    version_tags = cfg.get('versionTags', list[str]())
+    version_tags = list(get_type_values(cfg, 'versionTags', str))
   else:
     cfg = ReservoirConfig()
     name = manifest.name
@@ -276,10 +276,10 @@ def cwd_analyze(
           'date': cwd_commit_date(),
           'revision': cwd_head_revision(),
           'tag': tag,
-          'version': cfg.get('version', '0.0.0') if cfg is not None else '0.0.0',
+          'version': cfg_default(cfg, 'version', str, '0.0.0'),
           'toolchain': toolchain,
-          'platformIndependent': cfg_default(cfg, 'platformIndependent', None),
-          'license': filter_ws(cfg_default(cfg, 'license', None)),
+          'platformIndependent': cfg_default(cfg, 'platformIndependent', bool),
+          'license': filter_ws(cfg_default(cfg, 'license', str)),
           'licenseFiles': cwd_licenses(cfg),
           'readmeFile': cwd_readme(cfg),
           'dependencies': cwd_manifest().dependencies,

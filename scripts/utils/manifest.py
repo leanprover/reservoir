@@ -1,31 +1,44 @@
 import re
 from typing import TypedDict, Any, NoReturn, overload
 from functools import total_ordering
+from utils.core import *
 
 # assumes escaped names are simple (which is fine for now)
 FRENCH_QUOTE_PATTERN = re.compile('[«»]')
 def unescape_name(name: str) -> str:
   return FRENCH_QUOTE_PATTERN.sub('', name)
 
-class Dependency(TypedDict):
+class DepBase(TypedDict):
   type: str
   name: str
-  scope: str
+  scope: str | None
   version: str
+  transitive: bool | None
   rev: str | None
+  inputRev: str | None
+  url : str | None
+
+class Dependent(DepBase):
+  fullName: str
+
+class Dependency(DepBase, total=False):
+  fullName: str
 
 def mk_dependency(contents: Any, type: str | None = None) -> Dependency | None:
   if not isinstance(contents, dict): return None
-  type = type or contents.get('type', None)
+  type = type or get_type(contents, 'type', str)
   if type is None: return None
-  name = contents.get('name', None)
+  name = get_type(contents, 'name', str)
   if name is None: return None
   return {
     'type': type,
     'name': unescape_name(name),
-    'scope': contents.get('scope', ''),
-    'version': contents.get('version', '0.0.0'),
-    'rev': contents.get('rev', None),
+    'scope': filter_ws(get_type(contents, 'scope', str)),
+    'version': get_type(contents, 'version', str, '0.0.0'),
+    'transitive': get_type(contents, 'inherited', bool),
+    'rev': get_type(contents, 'rev', str),
+    'inputRev': get_type(contents, 'inputRev', str),
+    'url': get_type(contents, 'url', str),
   }
 
 VERSION_PATTERN = re.compile(r'(\d+)\.(\d+)\.(\d+)(?:-(.*))?')

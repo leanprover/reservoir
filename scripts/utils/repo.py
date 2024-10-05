@@ -173,11 +173,6 @@ def query_licenses(url: str = SPDX_DATA_URL):
     licenses[license['licenseId']] = license
   return licenses
 
-def filter_ws(value: str | None):
-  if value is not None:
-    value = value.strip() or None
-  return value
-
 def filter_license(license: str | None) -> str | None:
   if filter_ws(license) is None: return None
   if license in ['NONE', 'NOASSERTION']: return None
