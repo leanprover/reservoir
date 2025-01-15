@@ -16,7 +16,7 @@
         </li>
         <li>
           <b>A root <code>lake-manifest.json</code>.</b>
-          There mut be a file named exactly <code>lake-manifest.json</code>
+          There must be a file named exactly <code>lake-manifest.json</code>
           in the top-level directory of the repository.
           Prior to April 2024, Reservoir required a root <code>lakefile.lean</code> instead.
         </li>
