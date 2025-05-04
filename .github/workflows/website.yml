@@ -97,6 +97,9 @@ jobs:
         run: npm ci
       - name: Build Site
         run: npm run generate
+        env:
+          # Node default is 4GB and the build exceeds that
+          NODE_OPTIONS: --max-old-space-size=8192
       - name: Download Index Artifact
         if: inputs.index-artifact
         uses:  actions/download-artifact@v4

@@ -15,11 +15,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "cd site && nuxt build",
-    "dev": "cd site && nuxt dev",
-    "generate": "cd site && nuxt generate",
-    "preview": "cd site && nuxt preview",
-    "postinstall": "cd site && nuxt prepare"
+    "build": "cd site && npm run build",
+    "dev": "cd site && npm run dev",
+    "generate": "cd site && npm run generate",
+    "preview": "cd site && npm run preview",
+    "postinstall": "cd site && npm run postinstall"
   },
   "devDependencies": {
     "netlify-cli": "^17.15.2"
