@@ -96,7 +96,7 @@ jobs:
       - name: Install Node Modules
         run: npm ci
       - name: Build Site
-        run: nuxt --max_old_space_size=8192 generate
+        run: npm run generate
       - name: Download Index Artifact
         if: inputs.index-artifact
         uses:  actions/download-artifact@v4
