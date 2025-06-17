@@ -3,99 +3,231 @@ import GitHubIcon from '~icons/simple-icons/github'
 import XIcon from '~icons/simple-icons/x'
 import LinkedinIcon from '~icons/simple-icons/linkedin'
 import ZulipIcon from '~icons/simple-icons/zulip'
+import MastodonIcon from '~icons/simple-icons/mastodon'
+import BlueskyIcon from '~icons/simple-icons/bluesky'
+
+import LeanIcon from '~/assets/white-logo.svg'
+
 </script>
 
 <template>
-  <div class="footer-links">
-    <div>
-      <h2 class="group-header">About</h2>
-      <ul>
-        <li><a href="https://lean-lang.org/">lean-lang.org</a></li>
-        <li><a href="https://lean-fro.org/">The Lean FRO</a></li>
-        <li><NuxtLink to="/policies/terms">Terms of Use</NuxtLink></li>
-        <li><NuxtLink to="/policies/privacy">Privacy Policy</NuxtLink></li>
-      </ul>
+  <footer role="contentinfo" aria-label="Site footer" class="footer">
+    <div class="footer-grid container">
+      <nav class="footer-column" aria-label="LEAN">
+        <LeanIcon class="lean-icon" width="100" height="100"/>
+      </nav>
+
+      <nav class="footer-column" aria-label="LEAN">
+        <h3 id="get-started" class="footer-heading">Get Started</h3>
+        <ul class="footer-links">
+          <li><a href="/install" class="footer-text">Install</a></li>
+          <li><a href="/learn" class="footer-text">Learn</a></li>
+          <li><a href="/community" class="footer-text">Community</a></li>
+          <li><a href="/reservoir" class="footer-text">Reservoir</a></li>
+        </ul>
+      </nav>
+
+      <nav class="footer-column" aria-label="Documentation">
+        <h3 id="documentation" class="footer-heading">Documentation</h3>
+        <ul class="footer-links">
+          <li><a href="/doc/reference/latest/" class="footer-text">Reference manual</a></li>
+          <li><a href="/language-reference" class="footer-text">Language reference</a></li>
+          <li><a href="/use-cases" class="footer-text">Use cases</a></li>
+          <li><a href="/learn#how-to-cite-lean" class="footer-text">Cite lean</a></li>
+        </ul>
+      </nav>
+
+      <nav class="footer-column" aria-label="Resources">
+        <h3 id="resources" class="footer-heading">Resources</h3>
+        <ul class="footer-links">
+          <li><a href="https://live.lean-lang.org/" class="footer-text">Lean playground</a></li>
+          <li>
+            <a
+              href="https://marketplace.visualstudio.com/items?itemName=leanprover.lean4"
+              class="footer-text"
+            >
+              VSCode extension
+            </a>
+          </li>
+          <li><a href="https://loogle.lean-lang.org/" class="footer-text">Loogle</a></li>
+          <li><a href="https://github.com/leanprover-community/mathlib4" class="footer-text">Mathlib</a></li>
+        </ul>
+      </nav>
+
+      <nav class="footer-column" aria-label="FRO">
+        <h3 id="fro" class="footer-heading">FRO</h3>
+        <ul class="footer-links">
+          <li><a href="/fro#mission" class="footer-text">Mission</a></li>
+          <li><a href="/fro/team" class="footer-text">Team</a></li>
+          <li><a href="/fro/advisors" class="footer-text">Advisors</a></li>
+          <li><a href="/contact" class="footer-text">Contact</a></li>
+        </ul>
+      </nav>
+
+      <nav class="footer-column" aria-label="Policies">
+        <h3 class="footer-heading">Policies</h3>
+        <ul class="footer-links">
+          <li><a href="/privacy" class="footer-text">Privacy Policy</a></li>
+          <li><a href="/terms-of-use" class="footer-text">Terms of Use</a></li>
+          <li><a href="/logo-policy" class="footer-text">Lean Logo Policy</a></li>
+        </ul>
+      </nav>
     </div>
-    <div>
-      <h2 class="group-header">Explore</h2>
-      <ul>
-        <li><a href="https://adam.math.hhu.de//">Games</a></li>
-        <li><a href="https://live.lean-lang.org/">Playground</a></li>
-        <li><a href="https://leanprover-community.github.io/">Community</a></li>
-        <li><a href="https://moogle.ai/">Moogle</a></li>
-        <li><a href="https://loogle.lean-lang.org/">Loogle</a></li>
-      </ul>
+
+    <div class="footer-divider container" role="separator"></div>
+
+    <div class="footer-bottom container">
+      <div class="footer-copy">© 2025 Lean FRO. All rights reserved.</div>
+      <div class="footer-socials">
+        <label class="theme-switch">
+          <input type="checkbox" class="change-theme" />
+          <span class="slider"></span>
+        </label>
+        <a><MastodonIcon /></a>
+        <a><BlueskyIcon /></a>
+        <a><ZulipIcon /></a>
+        <a><XIcon /></a>
+      </div>
     </div>
-    <div>
-      <h2 class="group-header">Learn</h2>
-      <ul>
-        <li><a href="https://lean-lang.org/lean4/doc/whatIsLean.html">The Lean Manual</a></li>
-        <li><a href="https://lean-lang.org/theorem_proving_in_lean4/">Theorem Proving in Lean</a></li>
-        <li><a href="https://lean-lang.org/functional_programming_in_lean/">Functional Programming in Lean</a></li>
-        <li><a href="https://avigad.github.io/mathematics_in_lean/">Mathematics in Lean</a></li>
-        <li><a href="https://hrmacbeth.github.io/math2001/">The Mechanics of Proof</a></li>
-        <li><a href="https://djvelleman.github.io/HTPIwL/">How To Prove It With Lean</a></li>
-      </ul>
-    </div>
-    <div>
-      <h2 class="group-header">Social</h2>
-      <ul>
-        <li>
-          <a href="https://github.com/leanprover">
-            <GitHubIcon class="prefix icon"/><span>leanprover</span>
-          </a>
-        </li>
-        <li>
-          <a href="https://twitter.com/leanprover">
-            <XIcon class="prefix icon"/><span>@leanprover</span>
-          </a>
-        </li>
-        <li>
-          <a href="https://www.linkedin.com/company/lean-fro">
-            <LinkedinIcon class="prefix icon"/><span>Lean FRO</span>
-          </a>
-        </li>
-        <li>
-          <a href="https://leanprover.zulipchat.com/">
-            <ZulipIcon class="prefix icon"/><span>leanprover</span>
-          </a>
-        </li>
-      </ul>
-    </div>
-  </div>
+  </footer>
 </template>
 
-<style lang="scss">
+<style scoped>
+
+.lean-icon {
+  width: 80px;
+  height: 40px;
+}
+
+footer {
+  background-color: var(--color-primary);
+  color: var(--color-text-contrast);
+  padding: var(--space-4);
+  font-family: var(--font-primary);
+  transition: background-color var(--transition-base);
+  margin-top: 50px;
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--space-10);
+  margin: var(--space-8) auto;
+  box-sizing: border-box;
+}
+
+.footer-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: var(--space-8);
+  padding-bottom: var(--space-12);
+  font-size: var(--fs-sm);
+  box-sizing: border-box;
+}
+
+.footer-heading {
+  font-size: var(--fs-sm);
+  margin-bottom: var(--space-2);
+  color: var(--color-text-contrast);
+}
+
+.footer-text {
+  font-size: var(--fs-sm);
+  color: var(--color-text-contrast);
+  line-height: 1.4;
+}
+
+.footer-links li {
+  padding-bottom: 0.5rem;
+  list-style-type: none;
+}
+
 .footer-links {
   display: flex;
-  padding: 0.5em 2em 3em 1.5em;
+  flex-direction: column;
+}
 
-  @media only screen and (max-width: 700px) {
+.footer-logo {
+  width: 80px;
+  filter: brightness(0) invert(1);
+}
+
+.footer-divider {
+  border-top: 1px solid #ffffff1c;
+  padding: 0;
+}
+
+.footer-socials {
+  display: flex;
+  gap: 20px;
+}
+
+.theme-switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 24px;
+}
+
+.theme-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  background-color: #ccc;
+  border-radius: 34px;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  transition: background-color 0.3s;
+}
+
+.slider::before {
+  content: "";
+  position: absolute;
+  height: 20px;
+  width: 20px;
+  left: 4px;
+  bottom: 2px;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform 0.3s;
+}
+
+input:checked + .slider {
+  background-color: #4a90e2;
+}
+
+input:checked + .slider::before {
+  transform: translateX(22px);
+}
+
+@media (max-width: 768px) {
+  .footer-grid {
+    grid-template-columns: repeat(1, 1fr);
+  }
+
+  .footer-bottom {
     flex-direction: column;
+    gap: 30px;
+  }
+
+  .footer-socials {
+    gap: 0px;
     justify-content: space-between;
-  }
-
-  @media screen and (min-width: 700px) {
-    flex-direction: row;
-    justify-content: space-around;
-  }
-
-  ul {
-    list-style: none;
-
-    li {
-      display: flex;
-      align-items: center;
-
-      padding: 0.3em 0;
-      line-height: 1em;
-    }
-  }
-
-  .group-header {
-    margin-top: 1em;
-    margin-bottom: 0.5em;
-    color: var(--gutter-accent-color);
+    width: 100%;
   }
 }
 </style>

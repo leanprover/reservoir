@@ -50,7 +50,7 @@ const findBuild = (pkg: Package) => (
     align-items: center;
 
     margin: 0 0 0.8em 0;
-    padding: 1em;
+    padding: 2em;
 
     .text {
       display: flex;

@@ -32,6 +32,7 @@ const sortOptions: NonEmptyArray<SortOption<Package>> = [
 <template>
   <div class="search-page">
     <div class="page-header">
+      <SearchBar class="packages-search-bar" />
       <h2 v-if="query || keywords.length > 0">
         Search Results
         <span class="search">
@@ -74,6 +75,12 @@ const sortOptions: NonEmptyArray<SortOption<Package>> = [
 </template>
 
 <style lang="scss">
+
+.packages-search-bar {
+  margin-bottom: 2em;
+  width: 100%;
+}
+
 .search-page {
   max-width: 100vw;
 

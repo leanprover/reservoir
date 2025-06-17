@@ -95,46 +95,50 @@ const commit = (event: Event, clickedPkg?: Package) => {
 </script>
 
 <template>
-  <div class="search-bar">
-    <AutoComplete ref="ctrl"
-      class="search-control" panelClass="search-panel"
-      placeholder="Press 'S' to start searching..." optionLabel="name"
-      v-model="query" :suggestions="filteredPkgs" :autoOptionFocus="false"
-      @complete="filter" @change="onChange" @keyup.enter="commit"
-      :virtualScrollerOptions="{ itemSize: 50 }">
-      <template #option="slotProps">
-        <div @click="commit($event, slotProps.option)">
-          <h4 class="name">
-            <component :is="slotProps.option.highlightedName"/>
-          </h4>
-          <div class="description">
-            <span v-if="slotProps.option.highlightedDescription">
-              <component :is="slotProps.option.highlightedDescription"/>
-            </span>
-            <em v-else>No description provided.</em>
+    <div class="search-bar">
+      <AutoComplete ref="ctrl"
+        class="search-control" panelClass="search-panel"
+        placeholder="Press 'S' to start searching..." optionLabel="name"
+        v-model="query" :suggestions="filteredPkgs" :autoOptionFocus="false"
+        @complete="filter" @change="onChange" @keyup.enter="commit"
+        :virtualScrollerOptions="{ itemSize: 50 }">
+        <template #option="slotProps">
+          <div @click="commit($event, slotProps.option)">
+            <h4 class="name">
+              <component :is="slotProps.option.highlightedName"/>
+            </h4>
+            <div class="description">
+              <span v-if="slotProps.option.highlightedDescription">
+                <component :is="slotProps.option.highlightedDescription"/>
+              </span>
+              <em v-else>No description provided.</em>
+            </div>
           </div>
-        </div>
-      </template>
-    </AutoComplete>
-    <div tabindex="0" class="search-button" @click="commit" @keyup.enter="commit">
-      <SearchIcon width="100%" height="100%"/>
+        </template>
+      </AutoComplete>
+      <div tabindex="0" class="search-button" @click="commit" @keyup.enter="commit">
+        <SearchIcon width="100%" height="100%"/>
+      </div>
     </div>
-  </div>
 </template>
 
 <style lang="scss">
+
 .search-bar {
   display: flex;
+  width: 100%;
   align-items: center;
-  font-size: 1.3em;
+  font-size: 1.1em;
   border-radius: 6px;
   outline: none;
+  width: min(900px, 100%);
+  border: 3px solid #257bcb;
+  background-color: white;
+  box-shadow: 0 0 0 5px #416cc53b;
 
   &:has(input:focus, .search-button:focus) {
     box-shadow: 0 0 0 0.3rem var(--dark-accent-color);
   }
-
-  background-color: var(--dark-accent-color);
 
   &:has(.search-button:hover, .search-button:focus) {
     background-color: var(--light-accent-color);
@@ -144,8 +148,8 @@ const commit = (event: Event, clickedPkg?: Package) => {
     flex-grow: 1;
 
     input {
-      padding: 0.3rem;
-      border-radius: 6px 0 0 6px;
+      padding: 20px;
+      border-radius: 3px 0 0 3px;
       border: none;
       width: 100%;
 
@@ -158,7 +162,8 @@ const commit = (event: Event, clickedPkg?: Package) => {
   .search-button {
     cursor: pointer;
     height: 1.3em;
-    width: 2em;
+    width: 3.5em;
+    color: black;
 
     &:focus {
       outline: none
@@ -169,7 +174,7 @@ const commit = (event: Event, clickedPkg?: Package) => {
 .search-panel {
   background-color: var(--card-bg-color);
   border: 1px solid black;
-  border-radius: 6px;
+  border-radius: 3px;
   height: 40vh;
 
   .p-virtualscroller {

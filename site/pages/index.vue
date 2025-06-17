@@ -20,15 +20,13 @@ defineOgImage({
 
 <template>
   <div class="layout">
+    <NavBarWatcher :enabled="true"/>
     <header class="gutter">
+      <div class="landing-bg"></div>
       <div class="contents">
-        <div class="top-line">
-          <Logo/>
-          <NavLinks/>
-        </div>
         <div class="landing-callout">
-          <div class="landing-search">
-            <h1 class="label">Lake's package registry</h1>
+          <h1 class="label"><strong>This is the Reservoir</strong>, the place for all the Lean packages and documentations</h1>
+          <div class="search-bar-container">
             <SearchBar/>
           </div>
         </div>
@@ -43,7 +41,6 @@ defineOgImage({
               <a :href="latestStableToolchain.releaseUrl" class="name">{{ latestStableToolchain.name }}</a>
             </div>
             <a class="get-started" href="https://lean-lang.org/lean4/doc/quickstart.html">
-              <GetStartedIcon class="prefix icon"/>
               <span>Get Started with Lean</span>
             </a>
           </div>
@@ -64,40 +61,80 @@ defineOgImage({
         </div>
       </div>
     </main>
-    <footer class="gutter">
-      <FooterLinks class="contents"/>
-    </footer>
+    <FooterLinks class="contents"/>
   </div>
 </template>
 
+<style lang="css" scoped>
+
+header.gutter {
+  height: 25rem;
+  display: flex;
+  position: relative;
+}
+</style>
+
 <style lang="scss">
-.landing-callout {
+
+
+.search-bar-container {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  transform: translateY(50%);
   display: flex;
   justify-content: center;
 }
 
-.landing-search {
-  padding-top: 1em;
-  font-size: max(1.5em, min(5vw, 2em));
-  margin-bottom: max(1em, min(5vw, 1.5em));
 
+.site-header.fixed {
+  position: fixed !important;
+}
+
+.site-header.active {
+  background-color: transparent !important;
+  backdrop-filter: none !important;
+
+  .navbar {
+    border: 0px !important;
+  }
+
+  .nav-item, .nav-item a, .nav-item svg {
+    color: white;
+  }
+
+}
+
+header > .contents {
+  padding: 0px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: calc(var(--nav-padding-y) * 2 + 1em);
+}
+
+.landing-callout {
+  display: flex;
+  margin: 0px 20px;
+  justify-content: center;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  position: relative;
   .label {
-    font-size: inherit;
-    text-wrap: nowrap;
-    margin-bottom: 0.8em;
-
-    @media only screen and (max-width: 500px) {
-      padding: 0 3.5vw;
-    }
-
-    @media only screen and (min-width: 500px) {
-      padding: 0 min(10vw, 4em);
-    }
+    text-align: center;
+    font-weight: 400;
+    font-size: 2.5rem;
   }
+}
 
-  .search-bar {
-    font-size: 0.8em;
-  }
+.landing-bg {
+  position: absolute;
+  width: 100vw;
+  height: 100%;
+  left: 0;
+  background-image: url('@/assets/background.svg');
+  background-size: cover;
 }
 
 .landing-page {
@@ -146,21 +183,24 @@ defineOgImage({
       }
 
       .get-started {
-        display: flex;
         flex-direction: row;
-        align-items: center;
-
         line-height: 1em;
-        padding: 0.5em 2em;
-        border-radius: 12px;
-
         white-space: nowrap;
-        font-family: 'Merriweather', serif;
-
         color: var(--light-text-color);
-        background-color: var(--dark-accent-color);
+        background-color: var(--color-primary);
+        border-radius: var(--radius-md);
+        padding: var(--space-4) var(--space-12);
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        justify-content: center;
+        font-size: var(--fs-md);
+        font-weight: 500;
+        cursor: pointer;
+        transition: all var(--transition-base);
+
         &:hover, &:focus {
-          background-color: var(--light-accent-color);
+          background-color: var(--color-primary-focus);
         }
 
         &:focus {

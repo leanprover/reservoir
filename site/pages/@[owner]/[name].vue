@@ -3,6 +3,11 @@ const route = useRoute()
 const owner = route.params.owner as string
 const name = route.params.name as string
 const maybePkg = findPkg(owner, name)
+
+definePageMeta({
+  layout: 'page',
+})
+
 if (maybePkg === undefined) {
   throw createError({
     statusCode: 404,
@@ -12,12 +17,12 @@ if (maybePkg === undefined) {
 }
 const pkg: Package = maybePkg
 if (pkg.owner !== owner || pkg.name !== name) {
-  navigateTo(pkgLink(pkg), {replace: true})
+  navigateTo(pkgLink(pkg), { replace: true })
 }
 
 useHead({
   title: pkg.name,
-  meta: pkg.description ? [{name: 'description', content: pkg.description}] : undefined
+  meta: pkg.description ? [{ name: 'description', content: pkg.description }] : undefined
 })
 
 defineOgImageComponent('Generic', {
@@ -55,58 +60,145 @@ function tabLink(tab?: string) {
     newQuery[key] = route.query[key]
   }
   const path = pkgLink(pkg)
-  return {path: tab ? `${path}/${tab}` : path, query: route.query}
+  return { path: tab ? `${path}/${tab}` : path, query: route.query }
 }
 </script>
 
 <template>
-  <div class="package-page">
-    <div class="page-header">
-      <h2>
-        <span>{{ pkg.name }}</span>
-        <span class='version' v-if="pkgVer && pkgVer.version != '0.0.0'">v{{pkgVer.version}}</span>
-      </h2>
-      <div class="description" v-if="pkg.description">{{ pkg.description }}</div>
-      <div class="keywords" v-if="pkg.keywords.length > 0">
-        <NuxtLink class="keyword hard-link" v-for="keyword in pkg.keywords" :to="{path: '/packages', query: {keyword}}">
-          #{{ keyword }}
-        </NuxtLink>
+  <nav class="page-nav">
+    <ul class="container">
+      <li :class="{ 'active': navTab == 'readme' }">
+        <NuxtLink :to="tabLink()">Readme</NuxtLink>
+      </li>
+      <li v-if="pkg.versions.length > 0 || navTab == 'versions'" :class="{ 'active': navTab == 'versions' }">
+        <NuxtLink :to="tabLink('versions')">Versions ({{ pkg.versions.length }})</NuxtLink>
+      </li>
+      <li v-if="pkgVer && pkgVer.dependencies.length > 0 || navTab == 'dependencies'"
+        :class="{ 'active': navTab == 'dependencies' }">
+        <NuxtLink :to="tabLink('dependencies')">Dependencies ({{ pkgVer?.dependencies?.length ?? 0 }})</NuxtLink>
+      </li>
+      <li v-if="pkg.dependents.length > 0 || navTab == 'dependents'" :class="{ 'active': navTab == 'dependents' }">
+        <NuxtLink :to="tabLink('dependents')">Dependents ({{ pkg.dependents.length }})</NuxtLink>
+      </li>
+    </ul>
+  </nav>
+
+  <div class="contents">
+    <div class="package-page">
+      <div class="page-header">
+        <div class="page-side">
+          <h2>
+            <img :src="`https://github.com/${pkg.owner}.png`" :alt="pkg.owner" width="40" height="40"/>
+            <span>{{ pkg.name }}</span>
+            <span class='version' v-if="pkgVer && pkgVer.version != '0.0.0'">v{{ pkgVer.version }}</span>
+          </h2>
+          <div class="description" v-if="pkg.description">{{ pkg.description }}</div>
+          <div class="keywords" v-if="pkg.keywords.length > 0">
+            <NuxtLink class="keyword hard-link" v-for="keyword in pkg.keywords"
+              :to="{ path: '/packages', query: { keyword } }">
+              #{{ keyword }}
+            </NuxtLink>
+          </div>
+        </div>
+        <div>
+
+        </div>
       </div>
+      <NuxtPage :package="pkg" :version="pkgVer" class="page-tab"></NuxtPage>
     </div>
-    <nav>
-      <ul>
-        <li :class="{'active': navTab == 'readme'}">
-          <NuxtLink :to="tabLink()">Readme</NuxtLink>
-        </li>
-        <li v-if="pkg.versions.length > 0 || navTab == 'versions'" :class="{'active': navTab == 'versions'}">
-          <NuxtLink :to="tabLink('versions')">Versions ({{pkg.versions.length}})</NuxtLink>
-        </li>
-        <li v-if="pkgVer && pkgVer.dependencies.length > 0 || navTab == 'dependencies'" :class="{'active': navTab == 'dependencies'}">
-          <NuxtLink :to="tabLink('dependencies')">Dependencies ({{pkgVer?.dependencies?.length ?? 0}})</NuxtLink>
-        </li>
-        <li v-if="pkg.dependents.length > 0 || navTab == 'dependents'" :class="{'active': navTab == 'dependents'}">
-          <NuxtLink :to="tabLink('dependents')">Dependents ({{pkg.dependents.length}})</NuxtLink>
-        </li>
-      </ul>
-    </nav>
-    <NuxtPage :package="pkg" :version="pkgVer" class="page-tab"></NuxtPage>
   </div>
 </template>
 
 <style lang="scss">
+
+.page-nav {
+  width: 100%;
+  border-bottom: 1px solid var(--color-border);
+
+  ul {
+    display: flex;
+    list-style: none;
+    border: 0px;
+
+    li {
+      border-width: 2px;
+      padding: 1.2em 0.8em;
+      font-size: 0.9rem;
+
+      &.active {
+        color: var(--dark-accent-color);
+        background-color: var(--medium-color);
+        border-color: var(--dark-color);
+      }
+
+      &:hover,
+      &:focus {
+        color: var(--dark-accent-color);
+        border-color: var(--dark-color);
+      }
+    }
+
+    @media only screen and (min-width: 600px) {
+      flex-direction: row;
+      border-bottom-style: solid;
+
+      li {
+
+        &.active,
+        &:hover,
+        &:focus {
+          border-bottom-style: solid;
+        }
+      }
+    }
+
+    @media only screen and (max-width: 600px) {
+      flex-direction: column;
+      border-left-style: solid;
+
+      li {
+        padding: 1em;
+
+        &.active,
+        &:hover,
+        &:focus {
+          border-left-style: solid;
+        }
+      }
+    }
+  }
+}
+
 .package-page {
   margin-bottom: 1.5em;
 
+  aside {
+    margin-bottom: 1.5em;
+  }
+
   .page-header {
-    padding: 1.5em;
-    background-color: var(--medium-color);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .page-side {
     border-radius: 6px;
     margin-bottom: 1em;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 
     h2 {
       overflow: hidden;
       text-overflow: ellipsis;
       text-wrap: nowrap;
+      gap: 10px;
+      display: flex;
+      align-items: center;
+
+      img {
+        border-radius: 7px;
+      }
     }
 
     .version {
@@ -135,57 +227,9 @@ function tabLink(tab?: string) {
     }
   }
 
-  nav {
-    ul {
-      display: flex;
-      list-style: none;
-
-      margin-bottom: 1em;
-      border-color: var(--medium-color);
-      border-width: 1px;
-
-      li {
-        border-width: 2px;
-        padding: 0.5em 0.8em;
-
-        &.active {
-          color: var(--dark-accent-color);
-          background-color: var(--medium-color);
-          border-color: var(--dark-color);
-        }
-
-        &:hover, &:focus {
-          color: var(--dark-accent-color);
-          border-color: var(--dark-color);
-        }
-      }
-
-      @media only screen and (min-width: 600px) {
-        flex-direction: row;
-        border-bottom-style: solid;
-
-        li {
-          &.active, &:hover, &:focus {
-            border-bottom-style: solid;
-          }
-        }
-      }
-
-      @media only screen and (max-width: 600px) {
-        flex-direction: column;
-        border-left-style: solid;
-
-        li {
-          &.active, &:hover, &:focus {
-            border-left-style: solid;
-          }
-        }
-      }
-    }
-  }
-
   .page-tab {
     min-height: 45vh;
+    gap: 30px;
   }
 }
 </style>
