@@ -79,10 +79,6 @@ import LeanIcon from '~/assets/white-logo.svg'
     <div class="footer-bottom container">
       <div class="footer-copy">© 2025 Lean FRO. All rights reserved.</div>
       <div class="footer-socials">
-        <label class="theme-switch">
-          <input type="checkbox" class="change-theme" />
-          <span class="slider"></span>
-        </label>
         <a><MastodonIcon /></a>
         <a><BlueskyIcon /></a>
         <a><ZulipIcon /></a>

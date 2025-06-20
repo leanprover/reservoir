@@ -28,12 +28,7 @@ import MoonrIcon from '~/assets/moon-outline.svg'
 
           <div class="desktop-menu-part">
             <li class="nav-item">
-              <button class="nav-link change-theme" aria-label="Change Theme">
-                <MoonrIcon />
-              </button>
-            </li>
-            <li class="nav-item">
-              <a href="https://github.com/leanprover/lean4" class="nav-link" target="_blank" rel="noopener noreferrer">
+              <a href="https://github.com/leanprover/reservoir" class="nav-link" target="_blank" rel="noopener noreferrer">
                 <GithubIcon />
               </a>
             </li>
