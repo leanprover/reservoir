@@ -40,7 +40,7 @@ defineOgImage({
               <h4 class="label">Latest Lean Stable:</h4>
               <a :href="latestStableToolchain.releaseUrl" class="name">{{ latestStableToolchain.name }}</a>
             </div>
-            <a class="get-started" href="https://calm-wisp-fefd29.netlify.app/lean4/doc/quickstart.html">
+            <a class="get-started" href="https://lean-lang.org/learn">
               <span>Get Started with Lean</span>
             </a>
           </div>

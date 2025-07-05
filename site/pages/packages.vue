@@ -52,7 +52,7 @@ const sortOptions: NonEmptyArray<SortOption<Package>> = [
         <p>
           <span>0 packages found. </span>
           <span>
-            <a class="hard-link" href="https://calm-wisp-fefd29.netlify.app/lean4/doc/quickstart.html">Get started</a>
+            <a class="hard-link" href="https://lean-lang.org/learn">Get started</a>
             to create your own!
           </span>
         </p>
