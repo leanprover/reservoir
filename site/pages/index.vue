@@ -20,14 +20,14 @@ defineOgImage({
 
 <template>
   <div class="layout">
-    <NavBarWatcher :enabled="true"/>
+    <NavBarWatcher :enabled="true" />
     <header class="gutter">
       <div class="landing-bg"></div>
       <div class="contents">
         <div class="landing-callout">
-          <h1 class="label"><strong>This is the Reservoir</strong>, the place for all the Lean packages and documentations</h1>
+          <h1 class="label"><strong>This is Reservoir</strong>, the registry for all Lean packages and documentation.</h1>
           <div class="search-bar-container">
-            <SearchBar/>
+            <SearchBar />
           </div>
         </div>
       </div>
@@ -40,7 +40,7 @@ defineOgImage({
               <h4 class="label">Latest Lean Stable:</h4>
               <a :href="latestStableToolchain.releaseUrl" class="name">{{ latestStableToolchain.name }}</a>
             </div>
-            <a class="get-started" href="https://lean-lang.org/lean4/doc/quickstart.html">
+            <a class="get-started" href="https://calm-wisp-fefd29.netlify.app/lean4/doc/quickstart.html">
               <span>Get Started with Lean</span>
             </a>
           </div>
@@ -55,18 +55,19 @@ defineOgImage({
           </p>
         </div>
         <div class="highlights">
-          <HighlightCategory title="Most Popular" :list="popular" :to="{path: '/packages', query: {sort: 'stars'}}"/>
-          <HighlightCategory title="Newly Created" :list="created" :to="{path: '/packages', query: {sort: 'createdAt'}}"/>
-          <HighlightCategory title="Recently Updated" :list="updated" :to="{path: '/packages', query: {sort: 'updatedAt'}}"/>
+          <HighlightCategory title="Most Popular" :list="popular" :to="{ path: '/packages', query: { sort: 'stars' } }" />
+          <HighlightCategory title="Newly Created" :list="created"
+            :to="{ path: '/packages', query: { sort: 'createdAt' } }" />
+          <HighlightCategory title="Recently Updated" :list="updated"
+            :to="{ path: '/packages', query: { sort: 'updatedAt' } }" />
         </div>
       </div>
     </main>
-    <FooterLinks class="contents"/>
+    <FooterLinks class="contents" />
   </div>
 </template>
 
 <style lang="css" scoped>
-
 header.gutter {
   height: 25rem;
   display: flex;
@@ -75,8 +76,6 @@ header.gutter {
 </style>
 
 <style lang="scss">
-
-
 .search-bar-container {
   position: absolute;
   bottom: 0;
@@ -91,21 +90,28 @@ header.gutter {
   position: fixed !important;
 }
 
-.site-header.active {
-  background-color: transparent !important;
-  backdrop-filter: none !important;
+@media (min-width: 1024px) {
+  .site-header.active {
+    background-color: transparent !important;
+    backdrop-filter: none !important;
 
-  .navbar {
-    border: 0px !important;
+    .navbar {
+      border: 0px !important;
+    }
+
+    &.active .search-icon {
+      color: white;
+    }
+
+    .nav-item,
+    .nav-item a,
+    .nav-item svg {
+      color: white;
+    }
   }
-
-  .nav-item, .nav-item a, .nav-item svg {
-    color: white;
-  }
-
 }
 
-header > .contents {
+header>.contents {
   padding: 0px;
   display: flex;
   align-items: center;
@@ -121,10 +127,17 @@ header > .contents {
   width: 100%;
   height: 100%;
   position: relative;
+
   .label {
     text-align: center;
     font-weight: 400;
     font-size: 2.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .landing-callout .label {
+      font-size: 1.8rem;
   }
 }
 
@@ -150,7 +163,7 @@ header > .contents {
     .top-line {
       display: flex;
 
-      & > * {
+      &>* {
         margin-bottom: 1.5em;
       }
 
@@ -176,7 +189,7 @@ header > .contents {
         white-space: nowrap;
         font-size: 1.2em;
 
-        & > .label {
+        &>.label {
           font-weight: bold;
           margin-right: 0.5em;
         }
@@ -199,7 +212,8 @@ header > .contents {
         cursor: pointer;
         transition: all var(--transition-base);
 
-        &:hover, &:focus {
+        &:hover,
+        &:focus {
           background-color: var(--color-primary-focus);
         }
 

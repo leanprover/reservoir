@@ -80,7 +80,7 @@ li.version {
   display: flex;
   flex-direction: row;
   align-items: center;
-  padding: 1em 1.5em;
+  padding: 2em 2em;
 
   .version-id {
     display: flex;

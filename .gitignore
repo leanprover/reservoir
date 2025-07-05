@@ -22,3 +22,6 @@ __pycache__
 
 # Local Netlify folder
 .netlify
+
+index
+manifest.json

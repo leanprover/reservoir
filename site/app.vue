@@ -288,6 +288,8 @@ main {
     padding: 1em;
     width: 100%;
   }
+
+  margin-bottom: 50px;
 }
 
 header {

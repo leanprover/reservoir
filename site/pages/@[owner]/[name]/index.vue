@@ -4,8 +4,9 @@ import UpdateIcon from '~icons/mdi/update'
 import StarIcon from '~icons/mdi/star'
 import HomepageIcon from '~icons/mdi/home'
 import GitHubIcon from '~icons/mdi/github'
-import PlusIcon from '~icons/mdi/plus-circle-outline'
-import MinusIcon from '~icons/mdi/minus-circle-outline'
+import PlusIcon from '~icons/eva/plus-outline'
+import MinusIcon from '~icons/eva/minus-outline'
+
 
 const props = defineProps<{package: Package}>()
 const pkg = computed(() => props.package)
@@ -173,12 +174,13 @@ const {data: readme} = await useFetch<string>(readmeUrl)
   }
 
   aside {
-    h4 {
-      margin-bottom: 0.8em;
-    }
-
     & > * {
       margin-top: 1em;
+    }
+
+    h4 {
+      margin-bottom: 1em;
+      margin-top: 0px;
     }
 
     .icon {
@@ -190,11 +192,12 @@ const {data: readme} = await useFetch<string>(readmeUrl)
 
     ul {
       list-style: none;
+      margin-bottom: 1.2em;
 
       li, a {
         display: flex;
         align-items: center;
-        margin-bottom: 0.5em;
+        margin-bottom: 1em;
       }
     }
 

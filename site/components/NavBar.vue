@@ -1,9 +1,6 @@
 <script setup lang="ts">
-import IndexIcon from '~icons/mdi/lake'
-import ReservoirIcon from '~/assets/reservoir.svg?component'
-
 import GithubIcon from '~/assets/github.svg'
-import MoonrIcon from '~/assets/moon-outline.svg'
+import SearchIcon from '~icons/eva/search-outline.svg'
 
 </script>
 
@@ -23,14 +20,20 @@ import MoonrIcon from '~/assets/moon-outline.svg'
         <ul class="desktop-menu">
           <div class="desktop-menu-part">
             <li class="nav-item"><NuxtLink to="/packages" class="nav-link">All Packages</NuxtLink></li>
-            <li class="nav-item"><NuxtLink to="/inclusion-criteria" class="nav-link">Terms</NuxtLink></li>
+            <li class="nav-item"><NuxtLink to="/inclusion-criteria" class="nav-link">Criteria</NuxtLink></li>
           </div>
 
           <div class="desktop-menu-part">
+            <NuxtLink to="/packages">
+              <div class="nav-link">
+                <SearchIcon class="search-icon" width="25px" height="25px" />
+              </div>
+            </NuxtLink>
+
             <li class="nav-item">
-              <a href="https://github.com/leanprover/reservoir" class="nav-link" target="_blank" rel="noopener noreferrer">
+              <NuxtLink to="https://github.com/leanprover/reservoir" class="nav-link" target="_blank" rel="noopener noreferrer">
                 <GithubIcon />
-              </a>
+              </NuxtLink>
             </li>
           </div>
         </ul>
@@ -38,13 +41,8 @@ import MoonrIcon from '~/assets/moon-outline.svg'
 
       <ul class="mobile-nav">
         <ul class="nav-list">
-          <li class="nav-item"><NuxtLink to="/install" class="nav-link">Install</NuxtLink></li>
-          <li class="nav-item"><NuxtLink to="/learn" class="nav-link">Learn</NuxtLink></li>
-          <li class="nav-item"><NuxtLink to="/community" class="nav-link">Community</NuxtLink></li>
-          <li class="nav-item"><NuxtLink to="/use-cases" class="nav-link">Use Cases</NuxtLink></li>
-          <li class="nav-item"><a href="https://live.lean-lang.org/" class="nav-link" target="_blank">Playground</a></li>
-          <li class="nav-item"><a href="https://reservoir.lean-lang.org/" class="nav-link" target="_blank">Reservoir</a></li>
-          <li class="nav-item"><NuxtLink to="/blog" class="nav-link">Blog</NuxtLink></li>
+          <li class="nav-item"><NuxtLink to="/packages" class="nav-link">All Packages</NuxtLink></li>
+          <li class="nav-item"><NuxtLink to="/inclusion-criteria" class="nav-link">Criteria</NuxtLink></li>
         </ul>
       </ul>
     </nav>
@@ -52,6 +50,7 @@ import MoonrIcon from '~/assets/moon-outline.svg'
 </template>
 
 <style scoped lang="scss">
+
 
 .site-header {
   position: sticky;
@@ -61,7 +60,6 @@ import MoonrIcon from '~/assets/moon-outline.svg'
   backdrop-filter: blur(10px);
   transition: background-color var(--transition-base), border-color var(--transition-base);
   width: 100%;
-
 
   @media (max-width: 1024px) {
     background-color: var(--color-bg);
@@ -78,7 +76,7 @@ import MoonrIcon from '~/assets/moon-outline.svg'
   width: 100%;
 
   @media (max-width: 768px) {
-    padding: var(--space-1) var(--space-2);
+    padding: var(--space-1) var(--space-6);
   }
 
   .navbar-container {
@@ -233,6 +231,17 @@ import MoonrIcon from '~/assets/moon-outline.svg'
   }
 }
 
+
+.nav-toggle-checkbox:checked ~ .mobile-nav,
+.nav-toggle .nav-toggle-checkbox:checked ~ .mobile-nav {
+    display: block;
+}
+
+.navbar:has(.nav-toggle-checkbox:checked) .mobile-nav {
+    display: block;
+}
+  
+
 .nav-item {
   display: flex;
   align-items: center;
@@ -242,7 +251,7 @@ import MoonrIcon from '~/assets/moon-outline.svg'
     background-color: rgb(102 142 226 / 12%);
     color: var(--color-primary);
   }
-  
+
   &.active .nav-link svg {
     fill: var(--color-primary);
   }
@@ -340,3 +349,7 @@ import MoonrIcon from '~/assets/moon-outline.svg'
   }
 }
 </style>
+
+<script>
+
+</script>

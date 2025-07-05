@@ -101,7 +101,6 @@ footer {
   padding: var(--space-4);
   font-family: var(--font-primary);
   transition: background-color var(--transition-base);
-  margin-top: 50px;
 }
 
 .footer-grid {

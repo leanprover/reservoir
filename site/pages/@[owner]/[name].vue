@@ -90,7 +90,7 @@ function tabLink(tab?: string) {
           <h2>
             <img :src="`https://github.com/${pkg.owner}.png`" :alt="pkg.owner" width="40" height="40"/>
             <span>{{ pkg.name }}</span>
-            <span class='version' v-if="pkgVer && pkgVer.version != '0.0.0'">v{{ pkgVer.version }}</span>
+            <span class='version' v-if="pkgVer && pkgVer.version != '0.0.0'">{{ pkgVer.version }}</span>
           </h2>
           <div class="description" v-if="pkg.description">{{ pkg.description }}</div>
           <div class="keywords" v-if="pkg.keywords.length > 0">
@@ -202,9 +202,9 @@ function tabLink(tab?: string) {
     }
 
     .version {
-      margin-left: 0.5em;
       color: var(--dark-color);
-      font-size: 0.9em;
+      font-size: 0.8em;
+      font-weight: 500;
     }
 
     .description {

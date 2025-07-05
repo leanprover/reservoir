@@ -1,7 +1,12 @@
 {
   "name": "site",
+  "version": "1.0.0",
   "private": true,
+  "description": "",
+  "license": "ISC",
+  "author": "",
   "type": "module",
+  "main": "index.js",
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev",

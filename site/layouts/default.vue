@@ -1,6 +1,5 @@
 <template>
   <div class="layout">
-    <div class="bg-top-line" />
     <NavBar/>
     <main>
       <div class="contents">
