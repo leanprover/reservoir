@@ -66,7 +66,6 @@ import LeanIcon from '~/assets/white-logo.svg'
         <ul class="footer-links">
           <li><a href="http://lean-lang.org/privacy" class="footer-text">Privacy Policy</a></li>
           <li><a href="http://lean-lang.org/terms" class="footer-text">Terms of Use</a></li>
-          <li><a href="http://lean-lang.org/logo-policy" class="footer-text">Lean Logo Policy</a></li>
         </ul>
       </nav>
     </div>
