@@ -137,7 +137,7 @@ const commit = (event: Event, clickedPkg?: Package) => {
   box-shadow: 0 0 0 5px #416cc53b;
 
   &:has(input:focus, .search-button:focus) {
-    box-shadow: 0 0 0 0.3rem var(--dark-accent-color);
+    box-shadow: 0 0 0 5px rgba(65, 108, 197, 0.331372549);
   }
 
   &:has(.search-button:hover, .search-button:focus) {
