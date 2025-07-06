@@ -24,8 +24,8 @@ const props = defineProps<{error: {
 
 <style lang="scss">
 .error-page {
-  height: 100%;
 
+  margin: 50px 100px;
   display: flex;
   flex-direction: column;
   align-items: center;

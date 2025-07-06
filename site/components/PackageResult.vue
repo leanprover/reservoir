@@ -38,7 +38,7 @@ const build = computed(() =>
 
 <style lang="scss">
 .pkg-result {
-  padding: 1em;
+  padding: 2em;
   margin-bottom: 1em;
 
   .name {

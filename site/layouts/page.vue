@@ -2,9 +2,7 @@
   <div class="layout">
     <NavBar/>
     <main>
-      <div class="contents">
         <slot/>
-      </div>
     </main>
     <footer class="gutter">
       <FooterLinks class="contents"/>
@@ -15,7 +13,10 @@
 <style scoped>
 
 main {
-    margin-top: 0px;
+      margin-top: 0px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .bg-top-line {

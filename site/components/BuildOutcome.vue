@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import NoneIcon from '~icons/mdi/asterisk'
-import FailIcon from '~icons/mdi/close'
-import PassIcon from '~icons/mdi/check'
+import FailIcon from '~icons/eva/close-outline'
+import PassIcon from '~icons/eva/checkmark-outline'
 import { Tippy } from 'vue-tippy'
 
 const props = defineProps<{build?: Build | null, markOutdated?: boolean, latest?: boolean, packageToolchain?: boolean}>()
@@ -37,13 +37,13 @@ const outcomeClass = computed(() => {
 
 <template>
 <Tippy class="build-outcome">
-  <NuxtLink v-if="build.url" :to="build.url">
+  <NuxtLink v-if="build.url" :to="build.url" custom>
     <div class="build-outcome-icon" :class="[outcomeClass]">
-      <component width="66%" height="66%" :is="outcomeIcon"/>
+      <component width="80%" height="80%" :is="outcomeIcon"/>
     </div>
   </NuxtLink>
   <div v-else class="build-outcome-icon" :class="[outcomeClass]">
-    <component width="66%" height="66%" :is="outcomeIcon"/>
+    <component width="80%" height="80%" :is="outcomeIcon"/>
   </div>
   <template #content>
     <div class="build-tooltip tooltip">
@@ -101,19 +101,23 @@ const outcomeClass = computed(() => {
     color: var(--outcome-icon-color);
 
     &.outcome-success {
-      background-color: var(--success-color);
+      border: 1px solid var(--success-color);
+      color: var(--success-color);
     }
 
     &.outcome-semi-success {
-      background-color: var(--warning-color);
+      border: 1px solid var(--warning-color);
+      color: var(--warning-color);
     }
 
     &.outcome-failure {
-      background-color: var(--failure-color);
+      border: 1px solid var(--failure-color);
+      color: var(--failure-color);
     }
 
     &.outcome-none {
-      background-color: var(--dark-accent-color);
+      border: 1px solid var(--dark-accent-color);
+      color: var(--dark-accent-color);
     }
   }
 }

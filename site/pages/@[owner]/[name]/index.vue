@@ -4,8 +4,9 @@ import UpdateIcon from '~icons/mdi/update'
 import StarIcon from '~icons/mdi/star'
 import HomepageIcon from '~icons/mdi/home'
 import GitHubIcon from '~icons/mdi/github'
-import PlusIcon from '~icons/mdi/plus-circle-outline'
-import MinusIcon from '~icons/mdi/minus-circle-outline'
+import PlusIcon from '~icons/eva/plus-outline'
+import MinusIcon from '~icons/eva/minus-outline'
+
 
 const props = defineProps<{package: Package}>()
 const pkg = computed(() => props.package)
@@ -82,11 +83,8 @@ const {data: readme} = await useFetch<string>(readmeUrl)
 
 <template>
   <div class="readme-tab">
-    <article class="readme card">
-      <MarkdownView v-if="baseContentUrl && readme" :baseUrl="baseContentUrl" prefix="readme:" :value="readme"/>
-      <div v-else><em>No <code>README.md</code> in repository.</em></div>
-    </article>
     <aside>
+      <h4>METADATA</h4>
       <ul>
         <li>
           <LegalIcon class="icon"/>
@@ -101,8 +99,8 @@ const {data: readme} = await useFetch<string>(readmeUrl)
           <span>{{ pkg.stars }} stars</span>
         </li>
       </ul>
+      <h4>LEAN</h4>
       <div>
-        <h3>Lean</h3>
         <ul>
           <li v-for="[toolchain, build] in toolchainBuilds" :key="toolchain" :class="{'package-toolchain': pkgVer?.toolchain == toolchain}">
             <BuildOutcome class="icon" :build="build" :latest="pkgVer && pkgVer.revision == build?.revision" :packageToolchain="pkgVer?.toolchain == toolchain"/>
@@ -120,14 +118,14 @@ const {data: readme} = await useFetch<string>(readmeUrl)
         </ul>
       </div>
       <div class="main-link" v-if="pkg.homepage">
-        <h3>Homepage</h3>
+        <h4>HOMEPAGE</h4>
         <div>
           <HomepageIcon class="icon"/>
           <a class="hard-link" :href="pkg.homepage">{{ pkg.homepage.split('://')[1] }}</a>
         </div>
       </div>
       <div class="main-link">
-        <h3>Repository</h3>
+        <h4>REPOSITORY</h4>
         <template v-for="src in pkg.sources" :key="src.id">
           <div v-if="src.host === 'github'">
             <GitHubIcon class="icon"/>
@@ -136,6 +134,10 @@ const {data: readme} = await useFetch<string>(readmeUrl)
         </template>
       </div>
     </aside>
+    <article class="readme card">
+      <MarkdownView v-if="baseContentUrl && readme" :baseUrl="baseContentUrl" prefix="readme:" :value="readme"/>
+      <div v-else><em>No <code>README.md</code> in repository.</em></div>
+    </article>
   </div>
 </template>
 
@@ -172,12 +174,13 @@ const {data: readme} = await useFetch<string>(readmeUrl)
   }
 
   aside {
-    h3 {
-      margin-bottom: 0.8em;
-    }
-
     & > * {
       margin-top: 1em;
+    }
+
+    h4 {
+      margin-bottom: 1em;
+      margin-top: 0px;
     }
 
     .icon {
@@ -189,11 +192,12 @@ const {data: readme} = await useFetch<string>(readmeUrl)
 
     ul {
       list-style: none;
+      margin-bottom: 1.2em;
 
       li, a {
         display: flex;
         align-items: center;
-        margin-bottom: 0.5em;
+        margin-bottom: 1em;
       }
     }
 

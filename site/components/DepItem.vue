@@ -47,7 +47,7 @@ const verId = computed(() => {
       </Tippy>
     </div>
     <div class="dep-info">
-      <h3 class="dep-header">
+      <h4 class="dep-header">
         <NuxtLink class="dep-name dep-link" v-if="depPkg" :to="pkgLink(depPkg)">
           <span>{{depName}}</span>
         </NuxtLink>
@@ -60,7 +60,7 @@ const verId = computed(() => {
             <code>{{verId}}</code>
           </span>
         </span>
-      </h3>
+      </h4>
       <div v-if="depPkg && depPkg.description" class="description">
         {{ depPkg.description  }}
       </div>
@@ -74,7 +74,7 @@ li.dep-item {
   flex-direction: row;
   align-items: center;
   position: relative;
-  padding: 1em;
+  padding: 2em;
   z-index: 0;
 
   &:has(.dep-link):hover {

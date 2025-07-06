@@ -29,7 +29,7 @@ defineOgImageComponent('Generic', {
 :root {
   --light-color: #f9fbfd;
   --medium-color: #ebedf1;
-  --dark-color: #708090;
+  --dark-color: #1C74C1;
   --dark-accent-color: #6699cc;
   --light-accent-color: #a1c0e0;
   --light-text-color: white;
@@ -47,10 +47,116 @@ defineOgImageComponent('Generic', {
   --outcome-icon-color: var(--light-text-color);
   --card-bg-color: white;
   --star-color: gold;
+
+
+    /* Typography */
+    --font-primary: 'Open Sans', Arial, sans-serif;
+    --font-secondary: 'Oranienbaum', serif;
+    --fs-xs: 0.75rem;
+    --fs-sm: 0.875rem;
+    --fs-base: 1rem;
+    --fs-md: 1.1rem;
+    --fs-lg: 1.25rem;
+    --fs-xl: 2rem;
+    --fs-2xl: 3.3rem;
+
+    /* Spacing (4px scale) */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-10: 2.5rem;
+    --space-12: 3rem;
+    --space-13: 3.5rem;
+    --space-14: 4rem;
+    --space-16: 5rem;
+
+    /* Semantic spacing */
+    --gap-sm: var(--space-2);
+    --gap-md: 10px;
+    --gap-lg: 30px;
+    --gap-xl: 100px;
+
+    /* Section padding */
+    --section-padding: var(--space-10);
+    --section-padding-top: var(--space-16);
+
+    /* Border Radius */
+    --radius-sm: 0.25rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 1rem;
+    --radius-pill: 9999px;
+
+    /* Sizes */
+    --container-width: 1240px;
+    --logo-size: 1.25rem;
+    --logo-footer-size: 60px;
+    --icon-size: 64px;
+
+    /* Layout */
+    --nav-padding-y: var(--space-6);
+    --nav-padding-x: 10vw;
+    --nav-height: calc(var(--nav-padding-y) * 2 + 3em);
+
+    /* Transitions */
+    --transition-fast: 0.2s;
+    --transition-base: 0.3s;
+    --transition-slow: 0.6s;
+    --transition-delay-none: 0s;
+    --transition-delay-small: 0.05s;
+    --transition-delay-medium: 0.1s;
+    --transition-delay-large: 0.15s;
+
+    /* Animation */
+    --animation-delay: 10000ms;
+
+    /* Z-Index */
+    --z-below: -1;
+    --z-normal: 0;
+    --z-above: 1;
+    --z-header: 1000;
+
+    /* Colors */
+    --color-surface: #fff;
+    --color-primary: #1C74C1;
+    --color-primary-focus: #1763a5;
+    --color-primary-light: #4a90e2;
+    --color-secondary: #607D8B;
+    --color-text: #333;
+    --color-text-contrast: white;
+    --color-text-light: #64748b;
+    --color-muted: #607D8B;
+    --color-bg: #F9FBFD;
+    --color-bg-translucent: rgba(249, 251, 253, 0.81);
+    --color-white: #fff;
+    --color-border: #E4EBF3;
+    --color-border-light: #D1D9E2;
+    --color-hover: rgba(56, 110, 224, 0.08);
+    --color-link-hover: #0073e6;
+    --color-link-hover: #0073e6;
+    --color-shadow: rgba(35, 55, 139, 0.1);
+
+    /* Components */
+    --btn-bg: var(--color-primary);
+    --btn-text: var(--color-white);
+    --btn-font: var(--font-primary);
+    --btn-radius: var(--radius-md);
+
+    /* Card specific */
+    --card-bg: var(--color-white);
+    --card-border: var(--color-border-light);
+
+    /* Testimonial specific */
+    --testimonial-bg: var(--color-primary);
+    --testimonial-text: var(--color-white);
 }
 
 html, body {
   margin: 0;
+  background-color: var(--main-bg-color);
 }
 
 h1, * {
@@ -124,22 +230,17 @@ body {
   min-height: 100vh;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: 'Merriweather', serif;
-}
-
 code {
   font-family: 'Source Code Pro', monospace;
 }
 
 .card {
-  border-radius: 12px;
-  border-left: 1px solid var(--light-accent-color);
-  border-bottom: 1px solid var(--light-accent-color);
+  border-radius: 5px;
+  border: 1px solid var(--color-border);
   background-color: var(--card-bg-color);
 }
 
-header, main, footer {
+header, main {
   display: flex;
   flex-direction: row;
   justify-content: center;
@@ -148,6 +249,12 @@ header, main, footer {
     flex-grow: 1;
     max-width: min(1080px, 100vw);
   }
+}
+
+.container {
+  max-width: min(1080px, 100vw);
+  width: 100%;
+  margin: 0 auto;
 }
 
 .layout {
@@ -172,13 +279,17 @@ header, main, footer {
 }
 
 main {
+  margin-top: var(--nav-height);
   flex-grow: 1;
   background-color: var(--main-bg-color);
   color: var(--main-text-color);
 
   & > .contents {
     padding: 1em;
+    width: 100%;
   }
+
+  margin-bottom: 50px;
 }
 
 header {
@@ -201,8 +312,7 @@ header {
 }
 
 .page-header {
-  padding: 1em;
-  background-color: var(--medium-color);
+  margin-top: 3em;
   border-radius: 6px;
   margin-bottom: 1em;
 }

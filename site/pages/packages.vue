@@ -32,7 +32,8 @@ const sortOptions: NonEmptyArray<SortOption<Package>> = [
 <template>
   <div class="search-page">
     <div class="page-header">
-      <h2 v-if="query || keywords.length > 0">
+      <SearchBar class="packages-search-bar" />
+      <h3 v-if="query || keywords.length > 0">
         Search Results
         <span class="search">
           for
@@ -43,7 +44,7 @@ const sortOptions: NonEmptyArray<SortOption<Package>> = [
            {{ keywords.map(k => `'${k}'`).join(' & ') }}
           </span>
         </span>
-      </h2>
+      </h3>
       <h2 v-else>All Packages</h2>
     </div>
     <div class="no-results" v-if="results.length === 0">
@@ -51,7 +52,7 @@ const sortOptions: NonEmptyArray<SortOption<Package>> = [
         <p>
           <span>0 packages found. </span>
           <span>
-            <a class="hard-link" href="https://lean-lang.org/lean4/doc/quickstart.html">Get started</a>
+            <a class="hard-link" href="https://lean-lang.org/learn">Get started</a>
             to create your own!
           </span>
         </p>
@@ -74,6 +75,12 @@ const sortOptions: NonEmptyArray<SortOption<Package>> = [
 </template>
 
 <style lang="scss">
+
+.packages-search-bar {
+  margin-bottom: 2em;
+  width: 100%;
+}
+
 .search-page {
   max-width: 100vw;
 
@@ -91,7 +98,7 @@ const sortOptions: NonEmptyArray<SortOption<Package>> = [
   }
 
   .pkg-result {
-    padding: 1em;
+    padding: 2em;
 
     .name {
       display: block;

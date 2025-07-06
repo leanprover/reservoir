@@ -48,7 +48,6 @@ const textStyles: CSSProperties = {
 const titleStyles: CSSProperties = {
   margin: "0.5em 0",
   fontSize: "5em",
-  fontFamily: "'Merriweather', serif",
   fontWeight: "bold",
   overflow: "hidden",
   textOverflow: "ellipsis",

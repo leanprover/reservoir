@@ -14,12 +14,14 @@ const findBuild = (pkg: Package) => (
   <div class="highlight-category">
     <h3 class="title">{{ props.title }}</h3>
     <ol class="short-list">
-      <li class="card" v-for="pkg in props.list" :key="pkg.fullName">
-        <BuildOutcome class="prefix icon" :build="findBuild(pkg)" :mark-outdated="true"/>
+      <li v-for="pkg in props.list" :key="pkg.fullName">
         <Tippy class="text" :on-show="() => { if (!pkg.description) return false }">
-          <NuxtLink class="soft-link" :to="pkgLink(pkg)">
-            <div class="name">{{ pkg.name }}</div>
-            <ForwardIcon class="suffix icon"/>
+          <NuxtLink class="soft-link card" :to="pkgLink(pkg)">
+            <BuildOutcome class="prefix icon" :build="findBuild(pkg)" :mark-outdated="true"/>
+            <div class="info">
+              <div class="name">{{ pkg.name }}</div>
+              <ForwardIcon class="suffix icon"/>
+            </div>
           </NuxtLink>
           <template #content>
             <div class="tooltip">{{ pkg.description }}</div>
@@ -44,13 +46,13 @@ const findBuild = (pkg: Package) => (
 .short-list {
   list-style: none;
 
-  li {
+  li .card {
     display: flex;
     flex-direction: row;
     align-items: center;
 
     margin: 0 0 0.8em 0;
-    padding: 1em;
+    padding: 2em;
 
     .text {
       display: flex;
@@ -63,7 +65,7 @@ const findBuild = (pkg: Package) => (
       font-size: 1.2em;
     }
 
-    a {
+    .info {
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -83,7 +85,7 @@ const findBuild = (pkg: Package) => (
 .see-more {
   display: flex;
   justify-content: center;
-  margin-top: 1em;
+  margin-top: 2em;
 
   a {
     display: flex;
