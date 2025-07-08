@@ -6,7 +6,7 @@ import ZulipIcon from '~icons/simple-icons/zulip'
 import MastodonIcon from '~icons/simple-icons/mastodon'
 import BlueskyIcon from '~icons/simple-icons/bluesky'
 
-import LeanIcon from '~/assets/white-logo.svg'
+import LeanIcon from '~/assets/white-logo.svg?component'
 
 </script>
 
