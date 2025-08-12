@@ -92,6 +92,7 @@ def try_build(
       run_cmd('lake', 'build')
     logging.info(f'Successfully built package')
     result['built'] = True
+    result['requiredUpdate'] = require_update
   except CommandError:
     logging.error(f'Failed to build package')
     result['built'] = False
