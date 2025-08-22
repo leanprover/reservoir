@@ -3,12 +3,12 @@ import { getRouterParams, getQuery } from "h3"
 import { validateMethod, defineEventErrorHandler } from '../utils/error'
 
 export async function getBarrel(hash: string, dev: boolean) {
-  const key = `${dev ? 'dev' : 'b1'}/${hash}.barrel`
+  const key = `${dev ? 'b0' : 'b1'}/${hash}.barrel`
   const url = `${process.env.S3_CDN_ENDPOINT}/${key}`
   return new Response(null, {status: 303, headers: {"Location": url}})
 }
 
-export function parseBarrelExt(barrel: string, ctx: z.RefinementCtx) {
+function parseBarrelExt(barrel: string, ctx: z.RefinementCtx) {
   const dotIdx = barrel.indexOf('.')
   if (dotIdx < 0) return barrel
   const ext = barrel.slice(dotIdx+1)
@@ -21,7 +21,7 @@ export function parseBarrelExt(barrel: string, ctx: z.RefinementCtx) {
   return z.NEVER
 }
 
-export const GetBarrelParams = z.object({
+const GetBarrelParams = z.object({
   barrel: z.string().transform(parseBarrelExt)
     .refine(key => key.length == 64, "Expected name with exactly 64 hexits")
 })

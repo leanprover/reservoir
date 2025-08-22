@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { createRouter, getRouterParams, getQuery } from 'h3'
 import { InternalServerError, defineEventErrorHandler, NotFound, validateMethod } from '../utils/error'
 import { getBarrel } from '../routes/barrel'
+import { parseArtifact, getArtifact } from '../routes/artifact'
 import type { Build } from '../../../site/utils/manifest'
 
 /**
@@ -10,7 +11,7 @@ import type { Build } from '../../../site/utils/manifest'
  *
  * `owner` and `path` should be URL encoded.
  */
-export async function fetchPackageJson(indexUrl: string, owner: string, name: string, filePath: string) {
+async function fetchPackageJson(indexUrl: string, owner: string, name: string, filePath: string) {
   const fileUrl = `${indexUrl}/${owner.toLowerCase()}/${name.toLowerCase()}/${filePath}.json`
   console.log(`Fetch ${fileUrl}`)
   const res = await fetch(fileUrl)
@@ -27,7 +28,7 @@ export async function fetchPackageJson(indexUrl: string, owner: string, name: st
   }
 }
 
-export const PackageParams = z.object({
+const PackageParams = z.object({
   name: z.string().min(1),
   owner: z.string().min(1),
 })
@@ -91,4 +92,19 @@ packageRouter.use('/packages/:owner/:name/barrel', defineEventErrorHandler(async
     throw new NotFound("No barrel found that satisfies criteria")
   }
   return getBarrel(hash, dev)
+}))
+
+const PackageArtifactParams = PackageParams.extend({
+  artifact: z.string().transform(parseArtifact),
+})
+
+const PackageArtifactQuery = z.object({
+  dev: z.any().optional().transform(dev => dev != undefined),
+})
+
+packageRouter.use('/packages/:owner/:name/artifacts/:artifact', defineEventErrorHandler(async event => {
+  validateMethod(event.method, ["GET"])
+  const {artifact} = PackageArtifactParams.parse(getRouterParams(event))
+  const {dev} = PackageArtifactQuery.parse(getQuery(event))
+  return getArtifact(artifact, dev)
 }))
