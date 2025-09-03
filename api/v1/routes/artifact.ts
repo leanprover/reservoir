@@ -2,8 +2,8 @@ import { z } from 'zod'
 import { getRouterParams, getQuery } from "h3"
 import { validateMethod, defineEventErrorHandler } from '../utils/error'
 
-export async function getArtifact(hash: string, dev: boolean) {
-  const key = `${dev ? 'a0' : 'a1'}/${hash}.art`
+export async function getArtifact(scope: string, hash: string, dev: boolean) {
+  const key = `${dev ? 'a0' : 'a1'}/${scope}/${hash}.art`
   const url = `${process.env.S3_CDN_ENDPOINT}/${key}`
   return new Response(null, {status: 303, headers: {"Location": url}})
 }
@@ -33,11 +33,13 @@ export function parseArtifact(file: string, ctx: z.RefinementCtx) {
 }
 
 const GetArtifactParams = z.object({
-  artifact: z.string().transform(parseArtifact)
+  owner: z.string().min(1),
+  repo: z.string().min(1),
+  artifact: z.string().transform(parseArtifact),
 })
 
 export const artifactHandler = defineEventErrorHandler(event => {
   validateMethod(event.method, ["GET"])
-  const {artifact} = GetArtifactParams.parse(getRouterParams(event, {decode: true}))
-  return getArtifact(artifact, getQuery(event).dev != undefined)
+  const {owner, repo, artifact} = GetArtifactParams.parse(getRouterParams(event, {decode: true}))
+  return getArtifact(`${owner}/${repo}`, artifact, getQuery(event).dev != undefined)
 })

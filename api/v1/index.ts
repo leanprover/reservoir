@@ -20,7 +20,7 @@ const v1 = createRouter()
 
 v1.use("**", packageRouter.handler)
 v1.use("/barrels/:barrel", barrelHandler)
-v1.use("/artifacts/:artifact", artifactHandler)
+v1.use("/artifacts/:owner/:repo/:artifact", artifactHandler)
 
 app.use("/api/v1", useBase("/api/v1", v1.handler))
 app.use("/api/v0", useBase("/api/v0", v1.handler))

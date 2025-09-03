@@ -104,7 +104,15 @@ const PackageArtifactQuery = z.object({
 
 packageRouter.use('/packages/:owner/:name/artifacts/:artifact', defineEventErrorHandler(async event => {
   validateMethod(event.method, ["GET"])
-  const {artifact} = PackageArtifactParams.parse(getRouterParams(event))
+  const {owner, name, artifact} = PackageArtifactParams.parse(getRouterParams(event))
   const {dev} = PackageArtifactQuery.parse(getQuery(event))
-  return getArtifact(artifact, dev)
+  const res = await fetchPackageJson(event.context.reservoir.indexUrl, owner, name, 'metadata')
+  const sources: Source[] = (await res.json())['sources']
+  const githubSrc = sources.find(src => src['host'] == 'github')
+  if (githubSrc) {
+    return getArtifact(githubSrc.fullName, artifact, dev)
+  } else {
+    console.log("Package lacks a GitHub source")
+    throw new NotFound("Package lacks artifacts")
+  }
 }))
