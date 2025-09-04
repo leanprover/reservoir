@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { createRouter, getRouterParams, getQuery } from 'h3'
 import { InternalServerError, defineEventErrorHandler, NotFound, validateMethod } from '../utils/error'
 import { getBarrel } from '../routes/barrel'
-import { parseArtifact, getArtifact } from '../routes/artifact'
+import { getArtifact, ArtifactFromFile, getRevisionOutputs } from '../routes/artifact'
 import type { Build } from '../../../site/utils/manifest'
 
 /**
@@ -94,25 +94,38 @@ packageRouter.use('/packages/:owner/:name/barrel', defineEventErrorHandler(async
   return getBarrel(hash, dev)
 }))
 
-const PackageArtifactParams = PackageParams.extend({
-  artifact: z.string().transform(parseArtifact),
-})
+async function fetchGitHubScope(indexUrl: string, owner: string, name: string) {
+  const res = await fetchPackageJson(indexUrl, owner, name, 'metadata')
+  const sources: Source[] = (await res.json())['sources']
+  const githubSrc = sources.find(src => src['host'] == 'github')
+  if (githubSrc) {
+    return githubSrc.fullName
+  } else {
+    console.log("Package lacks a GitHub source")
+    throw new NotFound("Operation only supported for packages with a GitHub source")
+  }
+}
 
-const PackageArtifactQuery = z.object({
-  dev: z.any().optional().transform(dev => dev != undefined),
+const PackageArtifactParams = PackageParams.extend({
+  artifact: ArtifactFromFile
 })
 
 packageRouter.use('/packages/:owner/:name/artifacts/:artifact', defineEventErrorHandler(async event => {
   validateMethod(event.method, ["GET"])
   const {owner, name, artifact} = PackageArtifactParams.parse(getRouterParams(event))
-  const {dev} = PackageArtifactQuery.parse(getQuery(event))
-  const res = await fetchPackageJson(event.context.reservoir.indexUrl, owner, name, 'metadata')
-  const sources: Source[] = (await res.json())['sources']
-  const githubSrc = sources.find(src => src['host'] == 'github')
-  if (githubSrc) {
-    return getArtifact(githubSrc.fullName, artifact, dev)
-  } else {
-    console.log("Package lacks a GitHub source")
-    throw new NotFound("Package lacks artifacts")
-  }
+  const scope = await fetchGitHubScope(event.context.reservoir.indexUrl, owner, name)
+  return getArtifact(scope, artifact, getQuery(event).dev != undefined)
 }))
+
+const PackageOutputsParams = PackageParams.extend({
+  rev: z.string().refine(rev => rev.length == 40, "Expected revision of exactly 40 hexits")
+})
+
+const outputsHandler = defineEventErrorHandler(async event => {
+  validateMethod(event.method, ["GET"])
+  const {owner, name, rev} = PackageOutputsParams.parse(getRouterParams(event))
+  const scope = await fetchGitHubScope(event.context.reservoir.indexUrl, owner, name)
+  return getRevisionOutputs(scope, rev, getQuery(event).dev != undefined)
+})
+packageRouter.use('/packages/:owner/:name/revisions/:rev/outputs', outputsHandler)
+packageRouter.use('/packages/:owner/:name/revisions/:rev/outputs.jsonl', outputsHandler)
