@@ -28,7 +28,7 @@ export const artifactHandler = defineEventErrorHandler(event => {
 })
 
 export async function getRevisionOutputs(scope: string, rev: string, dev: boolean) {
-  const key = `${dev ? 'a0' : 'a1'}/${scope}/${rev}.art`
+  const key = `${dev ? 'r0' : 'r1'}/${scope}/${rev}.jsonl`
   const url = `${process.env.S3_CDN_ENDPOINT}/${key}`
   return new Response(null, {status: 303, headers: {"Location": url}})
 }
