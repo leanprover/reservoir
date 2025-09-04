@@ -23,7 +23,8 @@ const GetArtifactParams = z.object({
 export const artifactHandler = defineEventErrorHandler(event => {
   validateMethod(event.method, ["GET"])
   const {owner, repo, artifact} = GetArtifactParams.parse(getRouterParams(event, {decode: true}))
-  return getArtifact(`${owner}/${repo}`, artifact, getQuery(event).dev != undefined)
+  const dev = event.context.reservoir.dev || getQuery(event).dev != undefined
+  return getArtifact(`${owner}/${repo}`, artifact, dev)
 })
 
 export async function getRevisionOutputs(scope: string, rev: string, dev: boolean) {
@@ -46,5 +47,6 @@ const GetOutputsParams = z.object({
 export const outputsHandler = defineEventErrorHandler(event => {
   validateMethod(event.method, ["GET"])
   const {owner, repo, rev} = GetOutputsParams.parse(getRouterParams(event, {decode: true}))
-  return getRevisionOutputs(`${owner}/${repo}`, rev, getQuery(event).dev != undefined)
+  const dev = event.context.reservoir.dev || getQuery(event).dev != undefined
+  return getRevisionOutputs(`${owner}/${repo}`, rev, dev)
 })

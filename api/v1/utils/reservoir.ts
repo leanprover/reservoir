@@ -4,6 +4,7 @@ export interface ReservoirContext {
   apiVersion: string | null
   lakeApiVersion: string | null
   indexUrl: string
+  dev: boolean
 }
 
 declare module 'h3' {
@@ -20,5 +21,6 @@ export function initReservoirContext(event: H3Event) {
     apiVersion: reservoirVer,
     lakeApiVersion: lakeVer,
     indexUrl: `${event.web!.url!.origin}/index`,
+    dev: false,
   }
 }

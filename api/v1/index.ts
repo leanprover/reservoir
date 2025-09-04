@@ -24,7 +24,10 @@ v1.use("/outputs/:rev", outputsHandler)
 v1.use("/artifacts/:owner/:repo/:artifact", artifactHandler)
 
 app.use("/api/v1", useBase("/api/v1", v1.handler))
-app.use("/api/v0", useBase("/api/v0", v1.handler))
+app.use("/api/v0", useBase("/api/v0", (event => {
+  event.context.reservoir.dev = true
+  return v1.handler(event)
+})))
 
 export const config: Config = {
   path: "/api/**"

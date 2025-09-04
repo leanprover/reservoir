@@ -21,5 +21,6 @@ const GetBarrelParams = z.object({
 export const barrelHandler = defineEventErrorHandler(event => {
   validateMethod(event.method, ["GET"])
   const {barrel} = GetBarrelParams.parse(getRouterParams(event, {decode: true}))
-  return getBarrel(barrel, getQuery(event).dev != undefined)
+  const dev = event.context.reservoir.dev || getQuery(event).dev != undefined
+  return getBarrel(barrel, dev)
 })

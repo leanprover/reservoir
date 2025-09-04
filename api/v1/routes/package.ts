@@ -91,7 +91,7 @@ packageRouter.use('/packages/:owner/:name/barrel', defineEventErrorHandler(async
   if (!hash) {
     throw new NotFound("No barrel found that satisfies criteria")
   }
-  return getBarrel(hash, dev)
+  return getBarrel(hash, event.context.reservoir.dev || dev)
 }))
 
 async function fetchGitHubScope(indexUrl: string, owner: string, name: string) {
@@ -114,7 +114,8 @@ packageRouter.use('/packages/:owner/:name/artifacts/:artifact', defineEventError
   validateMethod(event.method, ["GET"])
   const {owner, name, artifact} = PackageArtifactParams.parse(getRouterParams(event))
   const scope = await fetchGitHubScope(event.context.reservoir.indexUrl, owner, name)
-  return getArtifact(scope, artifact, getQuery(event).dev != undefined)
+  const dev = event.context.reservoir.dev || getQuery(event).dev != undefined
+  return getArtifact(scope, artifact, dev)
 }))
 
 const PackageOutputsParams = PackageParams.extend({
@@ -125,7 +126,8 @@ const outputsHandler = defineEventErrorHandler(async event => {
   validateMethod(event.method, ["GET"])
   const {owner, name, rev} = PackageOutputsParams.parse(getRouterParams(event))
   const scope = await fetchGitHubScope(event.context.reservoir.indexUrl, owner, name)
-  return getRevisionOutputs(scope, rev, getQuery(event).dev != undefined)
+  const dev = event.context.reservoir.dev || getQuery(event).dev != undefined
+  return getRevisionOutputs(scope, rev, dev)
 })
 packageRouter.use('/packages/:owner/:name/revisions/:rev/outputs', outputsHandler)
 packageRouter.use('/packages/:owner/:name/revisions/:rev/outputs.jsonl', outputsHandler)
