@@ -2,6 +2,17 @@ import {packages, pkgLink} from './utils/manifest'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
+  app: {
+    head: {
+      script: [
+        {
+          src: 'https://plausible.io/js/script.outbound-links.js',
+          defer: true,
+          'data-domain': 'lean-lang.org',
+        },
+      ],
+    },
+  },
   devtools: { enabled: true },
   typescript: { strict: true },
   build: {
@@ -38,7 +49,7 @@ export default defineNuxtConfig({
     },
   },
   site: {
-    url: 'https://reservoir.lean-lang.org',
+    url: 'https§://reservoir.lean-lang.org',
     name: 'Reservoir',
     description:
       "Reservoir is the package registry for Lake, the build system and " +
