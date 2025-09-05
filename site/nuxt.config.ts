@@ -49,7 +49,7 @@ export default defineNuxtConfig({
     },
   },
   site: {
-    url: 'https§://reservoir.lean-lang.org',
+    url: 'https://reservoir.lean-lang.org',
     name: 'Reservoir',
     description:
       "Reservoir is the package registry for Lake, the build system and " +
