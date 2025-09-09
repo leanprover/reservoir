@@ -2,6 +2,17 @@ import {packages, pkgLink} from './utils/manifest'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
+  app: {
+    head: {
+      script: [
+        {
+          src: 'https://plausible.io/js/script.outbound-links.js',
+          defer: true,
+          'data-domain': 'lean-lang.org',
+        },
+      ],
+    },
+  },
   devtools: { enabled: true },
   typescript: { strict: true },
   build: {
