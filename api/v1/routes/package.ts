@@ -118,16 +118,16 @@ packageRouter.use('/packages/:owner/:name/artifacts/:artifact', defineEventError
   return getArtifact(scope, artifact, dev)
 }))
 
-const PackageOutputsParams = PackageParams.extend({
-  rev: z.string().refine(rev => rev.length == 40, "Expected revision of exactly 40 hexits")
+const PackageOutputsQuery = z.object({
+  rev: z.string().refine(rev => rev.length == 40, "Expected revision of exactly 40 hexits"),
+  dev: z.any().optional().transform(dev => dev != undefined),
 })
 
-const outputsHandler = defineEventErrorHandler(async event => {
+packageRouter.use('/packages/:owner/:name/build-outputs', defineEventErrorHandler(async event => {
   validateMethod(event.method, ["GET"])
-  const {owner, name, rev} = PackageOutputsParams.parse(getRouterParams(event))
+  const {owner, name} = PackageParams.parse(getRouterParams(event))
+  const {rev, dev} = PackageOutputsQuery.parse(getQuery(event))
+  console.log(`Fetching build outputs for '${owner}/${name}' at '${rev?.slice(0, 7)}'`)
   const scope = await fetchGitHubScope(event.context.reservoir.indexUrl, owner, name)
-  const dev = event.context.reservoir.dev || getQuery(event).dev != undefined
-  return getRevisionOutputs(scope, rev, dev)
-})
-packageRouter.use('/packages/:owner/:name/revisions/:rev/outputs', outputsHandler)
-packageRouter.use('/packages/:owner/:name/revisions/:rev/outputs.jsonl', outputsHandler)
+  return getRevisionOutputs(scope, rev, event.context.reservoir.dev || dev)
+}))
