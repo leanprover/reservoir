@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { createRouter, getRouterParams, getQuery } from 'h3'
 import { InternalServerError, defineEventErrorHandler, NotFound, validateMethod } from '../utils/error'
 import { getBarrel } from '../routes/barrel'
+import { getArtifact, ArtifactFromFile, getRevisionOutputs } from '../routes/artifact'
 import type { Build } from '../../../site/utils/manifest'
 
 /**
@@ -10,7 +11,7 @@ import type { Build } from '../../../site/utils/manifest'
  *
  * `owner` and `path` should be URL encoded.
  */
-export async function fetchPackageJson(indexUrl: string, owner: string, name: string, filePath: string) {
+async function fetchPackageJson(indexUrl: string, owner: string, name: string, filePath: string) {
   const fileUrl = `${indexUrl}/${owner.toLowerCase()}/${name.toLowerCase()}/${filePath}.json`
   console.log(`Fetch ${fileUrl}`)
   const res = await fetch(fileUrl)
@@ -27,7 +28,7 @@ export async function fetchPackageJson(indexUrl: string, owner: string, name: st
   }
 }
 
-export const PackageParams = z.object({
+const PackageParams = z.object({
   name: z.string().min(1),
   owner: z.string().min(1),
 })
@@ -90,5 +91,43 @@ packageRouter.use('/packages/:owner/:name/barrel', defineEventErrorHandler(async
   if (!hash) {
     throw new NotFound("No barrel found that satisfies criteria")
   }
-  return getBarrel(hash, dev)
+  return getBarrel(hash, event.context.reservoir.dev || dev)
+}))
+
+async function fetchGitHubScope(indexUrl: string, owner: string, name: string) {
+  const res = await fetchPackageJson(indexUrl, owner, name, 'metadata')
+  const sources: Source[] = (await res.json())['sources']
+  const githubSrc = sources.find(src => src['host'] == 'github')
+  if (githubSrc) {
+    return githubSrc.fullName
+  } else {
+    console.log("Package lacks a GitHub source")
+    throw new NotFound("Operation only supported for packages with a GitHub source")
+  }
+}
+
+const PackageArtifactParams = PackageParams.extend({
+  artifact: ArtifactFromFile
+})
+
+packageRouter.use('/packages/:owner/:name/artifacts/:artifact', defineEventErrorHandler(async event => {
+  validateMethod(event.method, ["GET"])
+  const {owner, name, artifact} = PackageArtifactParams.parse(getRouterParams(event))
+  const scope = await fetchGitHubScope(event.context.reservoir.indexUrl, owner, name)
+  const dev = event.context.reservoir.dev || getQuery(event).dev != undefined
+  return getArtifact(scope, artifact, dev)
+}))
+
+const PackageOutputsQuery = z.object({
+  rev: z.string().refine(rev => rev.length == 40, "Expected revision of exactly 40 hexits"),
+  dev: z.any().optional().transform(dev => dev != undefined),
+})
+
+packageRouter.use('/packages/:owner/:name/build-outputs', defineEventErrorHandler(async event => {
+  validateMethod(event.method, ["GET"])
+  const {owner, name} = PackageParams.parse(getRouterParams(event))
+  const {rev, dev} = PackageOutputsQuery.parse(getQuery(event))
+  console.log(`Fetching build outputs for '${owner}/${name}' at '${rev?.slice(0, 7)}'`)
+  const scope = await fetchGitHubScope(event.context.reservoir.indexUrl, owner, name)
+  return getRevisionOutputs(scope, rev, event.context.reservoir.dev || dev)
 }))

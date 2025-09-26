@@ -2,6 +2,7 @@ import { type Config } from "@netlify/functions"
 import { createApp, createRouter, useBase } from "h3"
 import { packageRouter } from './routes/package'
 import { barrelHandler } from './routes/barrel'
+import { artifactHandler, outputsHandler } from './routes/artifact'
 import { toNetlifyHandler } from "./utils/netlify"
 import { mkError } from './utils/error'
 import { initReservoirContext } from "./utils/reservoir"
@@ -19,9 +20,14 @@ const v1 = createRouter()
 
 v1.use("**", packageRouter.handler)
 v1.use("/barrels/:barrel", barrelHandler)
+v1.use("/outputs/:owner/:repo/:rev", outputsHandler)
+v1.use("/artifacts/:owner/:repo/:artifact", artifactHandler)
 
 app.use("/api/v1", useBase("/api/v1", v1.handler))
-app.use("/api/v0", useBase("/api/v0", v1.handler))
+app.use("/api/v0", useBase("/api/v0", (event => {
+  event.context.reservoir.dev = true
+  return v1.handler(event)
+})))
 
 export const config: Config = {
   path: "/api/**"
