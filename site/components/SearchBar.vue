@@ -52,7 +52,7 @@ const filter = (event: AutoCompleteCompleteEvent) => {
       return pkgs
     }
     if (pkg.description) {
-    const descrIdx = pkg.description.toLowerCase().indexOf(q)
+      const descrIdx = pkg.description.toLowerCase().indexOf(q)
       if (descrIdx && descrIdx > -1) {
         const result = Object.assign(pkg, {
           highlightedName: h('span', pkg.name),
