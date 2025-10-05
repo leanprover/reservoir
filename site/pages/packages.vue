@@ -8,7 +8,7 @@ const results = computed(() => {
   const kws = keywords.value
   if (q || kws.length > 0) {
     pkgs = pkgs.filter(e => {
-      if (q && e.name.toLocaleLowerCase().indexOf(q) == -1) return false
+      if (q && e.fullName.toLocaleLowerCase().indexOf(q) == -1) return false
       if (kws.some(k => !e.keywords.includes(k))) return false
       return true
     })
@@ -94,55 +94,6 @@ const sortOptions: NonEmptyArray<SortOption<Package>> = [
 
     p {
       margin-bottom: 1em;
-    }
-  }
-
-  .pkg-result {
-    padding: 2em;
-
-    .name {
-      display: block;
-      margin-bottom: 0.8em;
-
-      h3 {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        text-wrap: nowrap;
-        display: block;
-        width: 100%;
-      }
-
-      &:hover, &:focus   {
-        color: var(--light-accent-color);
-      }
-
-      &:focus {
-        outline: none;
-      }
-    }
-
-    ul.links {
-      list-style: none;
-
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      margin-top: 1em;
-
-      & > li {
-        display: flex;
-        margin-right: 0.8em;
-
-        &.stars {
-          display: flex;
-          align-items: center;
-          line-height: 1em;
-
-          .icon {
-            color: var(--star-color);
-          }
-        }
-      }
     }
   }
 }

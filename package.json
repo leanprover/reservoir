@@ -22,7 +22,6 @@
     "postinstall": "cd site && npm run postinstall"
   },
   "devDependencies": {
-    "@iconify-json/eva": "^1.2.1",
     "netlify-cli": "^17.15.2"
   }
 }
