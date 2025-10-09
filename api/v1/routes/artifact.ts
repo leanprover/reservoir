@@ -1,12 +1,12 @@
 import { z } from 'zod'
 import { getRouterParams, getQuery } from "h3"
 import { validateMethod, defineEventErrorHandler } from '../utils/error'
-import { GitHubOwner, GitHubRepo, trimExt, validatePlatform, validateToolchain, toolchainToDir } from '../utils/zod'
+import { GitRev, GitHubOwner, GitHubRepo, trimExt, validatePlatform, validateToolchain, toolchainToDir, isFixedHex } from '../utils/zod'
 
 /**
  * Redirect to the location of an artifact in cloud storage.
  *
- * `repo` and `hash` should be URL encoded.
+ * `repo` and `hash` should have passed validation.
  */
 export async function getArtifact(repo: string, hash: string, dev: boolean) {
   const key = `${dev ? 'a0' : 'a1'}/${repo}/${hash}.art`
@@ -17,7 +17,7 @@ export async function getArtifact(repo: string, hash: string, dev: boolean) {
 /** Zod schema for extracting an artifact hash from a `<hash>.art` artifact file name. */
 export const ArtifactFromFile = z.string()
   .transform((art, ctx) => trimExt('art', art, ctx))
-  .refine(art => art.length == 16, "Expected name of exactly 16 hexits")
+  .refine(art => isFixedHex(art, 16), "Expected name of exactly 16 hexits")
 
 const GetArtifactParams = z.object({
   owner: GitHubOwner,
@@ -35,8 +35,7 @@ export const artifactHandler = defineEventErrorHandler(event => {
 /**
  * Redirect to the location of a build output file in cloud storage.
  *
- * `repo` and `rev` should be URL encoded.
- * `platform` and `toolchain` should have passed validation.
+ * `repo`, `rev`, `platform`, and `toolchain` should have passed validation.
  */
 export async function getRevisionOutputs(repo: string, rev: string, platform?: string, toolchain?: string, dev?: boolean) {
   let key = `${dev ? 'r0' : 'r1'}/${repo}`
@@ -59,7 +58,7 @@ const BuildOutputsParams = z.object({
 })
 
 export const BuildOutputsQuery = z.object({
-  rev: z.string().refine(rev => rev.length == 40, "Expected revision of exactly 40 hexits"),
+  rev: GitRev,
   platform: z.string().transform(validatePlatform).optional(),
   toolchain: z.string().transform(validateToolchain).optional(),
   dev: z.any().optional().transform(dev => dev != undefined),
@@ -67,7 +66,7 @@ export const BuildOutputsQuery = z.object({
 
 export const outputsHandler = defineEventErrorHandler(event => {
   validateMethod(event.method, ["GET"])
-  const {owner, repo} = BuildOutputsParams.parse(getRouterParams(event))
+  const {owner, repo} = BuildOutputsParams.parse(getRouterParams(event, {decode: true}))
   const {rev, platform, toolchain, dev} = BuildOutputsQuery.parse(getQuery(event))
   return getRevisionOutputs(`${owner}/${repo}`, rev, platform, toolchain, event.context.reservoir.dev || dev)
 })

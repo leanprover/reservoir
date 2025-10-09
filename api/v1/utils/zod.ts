@@ -98,6 +98,10 @@ export function toolchainToDir(toolchain: string) {
   return dir
 }
 
+/** Returns true if `s` is a string of exactly `n` hexadecimal digits. */
+export function isFixedHex(s: string, n: number) {
+  return s.length == n && /^[a-fA-F0-9]+$/.test(s)
+}
 
 /** Zod transform to validate an optional platform target triple. */
 // https://stackoverflow.com/questions/13819857/does-a-list-of-all-known-target-triplets-in-use-exist
@@ -131,6 +135,10 @@ export function validatePlatform(platform: string, ctx: z.RefinementCtx) {
   }
   return platform
 }
+
+/** Zod schema for validating Git revisions */
+export const GitRev = z.string()
+  .refine(rev => isFixedHex(rev, 40), "Expected revision of exactly 40 hexits")
 
 /* GitHub limits from: https://github.com/dead-claudia/github-limits */
 

@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { createRouter, getRouterParams, getQuery } from 'h3'
 import { InternalServerError, defineEventErrorHandler, NotFound, validateMethod } from '../utils/error'
 import { getBarrel } from '../routes/barrel'
-import { normalizeOptToolchain } from '../utils/zod'
+import { normalizeOptToolchain, GitRev } from '../utils/zod'
 import { getArtifact, ArtifactFromFile, getRevisionOutputs, BuildOutputsQuery } from '../routes/artifact'
 import type { Build } from '../../../site/utils/manifest'
 
@@ -55,7 +55,7 @@ packageRouter.use('/packages/:owner/:name/versions', defineEventErrorHandler(eve
 }))
 
 const PackageBarrelQuery = z.object({
-  rev: z.string().refine(rev => rev.length == 40, "Expected revision of exactly 40 hexits").optional(),
+  rev: GitRev.optional(),
   toolchain: z.string().transform(normalizeOptToolchain).optional(),
   dev: z.any().optional().transform(dev => dev != undefined),
 })
@@ -79,6 +79,12 @@ packageRouter.use('/packages/:owner/:name/barrel', defineEventErrorHandler(async
   return getBarrel(hash, event.context.reservoir.dev || dev)
 }))
 
+
+/**
+ * Fetch the GitHub repository for the package `<owner>/<name>`.
+ *
+ * `owner` and `name` should be URL encoded.
+ */
 async function fetchGitHubRepo(indexUrl: string, owner: string, name: string) {
   const res = await fetchPackageJson(indexUrl, owner, name, 'metadata')
   const sources: Source[] = (await res.json())['sources']
