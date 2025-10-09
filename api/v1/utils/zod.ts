@@ -18,3 +18,44 @@ export function trimExt(ext: string, val: string, ctx: z.RefinementCtx) {
   });
   return z.NEVER
 }
+
+export function normalizeToolchain(toolchain: string) {
+  if (toolchain === "") {
+    return undefined
+  }
+  let origin, ver
+  const colonIdx = toolchain.indexOf(':')
+  if (colonIdx < 0) {
+    ver = toolchain
+    if (ver.startsWith("pr-release-")) {
+      origin = "leanprover/lean4-pr-releases"
+    } else {
+      origin = "leanprover/lean4"
+    }
+  } else {
+    origin = toolchain.slice(0, colonIdx)
+    ver = toolchain.slice(colonIdx+1)
+  }
+  if (ver[0] >= '0' && ver[0] <= '9') {
+    ver = `v${ver}`
+  }
+  return `${origin}:${ver}`
+}
+
+export function validatePlatform(platform: string, ctx: z.RefinementCtx) {
+  if (platform == "") {
+    return undefined
+  }
+  // The expected legal characters in a target platform.
+  // https://stackoverflow.com/questions/13819857/does-a-list-of-all-known-target-triplets-in-use-exist
+  if (/^[a-z0-9_\-]+$/.test(platform)) {
+    return platform
+  } else {
+      ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Unexpected characters in platform",
+      fatal: true,
+    });
+    return z.NEVER
+  }
+}
