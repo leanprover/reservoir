@@ -1,8 +1,13 @@
 import { z } from 'zod'
 import { getRouterParams, getQuery } from "h3"
 import { validateMethod, defineEventErrorHandler } from '../utils/error'
-import { trimExt, normalizeToolchain, validatePlatform } from '../utils/zod'
+import { GitHubOwner, GitHubRepo, trimExt, validatePlatform, validateToolchain, toolchainToDir } from '../utils/zod'
 
+/**
+ * Redirect to the location of an artifact in cloud storage.
+ *
+ * `repo` and `hash` should be URL encoded.
+ */
 export async function getArtifact(repo: string, hash: string, dev: boolean) {
   const key = `${dev ? 'a0' : 'a1'}/${repo}/${hash}.art`
   const url = `${process.env.S3_CDN_ENDPOINT}/${key}`
@@ -15,8 +20,8 @@ export const ArtifactFromFile = z.string()
   .refine(art => art.length == 16, "Expected name of exactly 16 hexits")
 
 const GetArtifactParams = z.object({
-  owner: z.string().min(1),
-  repo: z.string().min(1),
+  owner: GitHubOwner,
+  repo: GitHubRepo,
   artifact: ArtifactFromFile,
 })
 
@@ -27,10 +32,17 @@ export const artifactHandler = defineEventErrorHandler(event => {
   return getArtifact(`${owner}/${repo}`, artifact, dev)
 })
 
+/**
+ * Redirect to the location of a build output file in cloud storage.
+ *
+ * `repo` and `rev` should be URL encoded.
+ * `toolchain` and `platform` should have passed validation.
+ */
 export async function getRevisionOutputs(repo: string, rev: string, toolchain?: string, platform?: string, dev?: boolean) {
   let key = `${dev ? 'r0' : 'r1'}/${repo}`
   if (toolchain) {
-    key = `${key}/tc/${encodeURIComponent(toolchain)}`
+    // toolchain is URI-safe after `toolchainToDir`, see `validateToolchain`
+    key = `${key}/tc/${toolchainToDir(toolchain)}`
   }
   if (platform) {
     // platform is URI-safe, see `validatePlatform`
@@ -42,13 +54,13 @@ export async function getRevisionOutputs(repo: string, rev: string, toolchain?: 
 }
 
 const BuildOutputsParams = z.object({
-  owner: z.string().min(1),
-  repo: z.string().min(1),
+  owner: GitHubOwner,
+  repo: GitHubRepo,
 })
 
 export const BuildOutputsQuery = z.object({
   rev: z.string().refine(rev => rev.length == 40, "Expected revision of exactly 40 hexits"),
-  toolchain: z.string().transform(normalizeToolchain).optional(),
+  toolchain: z.string().transform(validateToolchain).optional(),
   platform: z.string().transform(validatePlatform).optional(),
   dev: z.any().optional().transform(dev => dev != undefined),
 })

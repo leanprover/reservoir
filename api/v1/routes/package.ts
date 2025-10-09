@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { createRouter, getRouterParams, getQuery } from 'h3'
 import { InternalServerError, defineEventErrorHandler, NotFound, validateMethod } from '../utils/error'
 import { getBarrel } from '../routes/barrel'
-import { normalizeToolchain } from '../utils/zod'
+import { normalizeOptToolchain } from '../utils/zod'
 import { getArtifact, ArtifactFromFile, getRevisionOutputs, BuildOutputsQuery } from '../routes/artifact'
 import type { Build } from '../../../site/utils/manifest'
 
@@ -10,7 +10,7 @@ import type { Build } from '../../../site/utils/manifest'
  * Fetch JSON data for the package `<owner>/<name>`
  * stored at `<filePath>.json` in the index at `indexUrl`.
  *
- * `owner` and `path` should be URL encoded.
+ * `owner`, `name`, and `filePath` should be URL encoded.
  */
 async function fetchPackageJson(indexUrl: string, owner: string, name: string, filePath: string) {
   const fileUrl = `${indexUrl}/${owner.toLowerCase()}/${name.toLowerCase()}/${filePath}.json`
@@ -56,7 +56,7 @@ packageRouter.use('/packages/:owner/:name/versions', defineEventErrorHandler(eve
 
 const PackageBarrelQuery = z.object({
   rev: z.string().refine(rev => rev.length == 40, "Expected revision of exactly 40 hexits").optional(),
-  toolchain: z.string().transform(normalizeToolchain).optional(),
+  toolchain: z.string().transform(normalizeOptToolchain).optional(),
   dev: z.any().optional().transform(dev => dev != undefined),
 })
 
