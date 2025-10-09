@@ -106,8 +106,8 @@ packageRouter.use('/packages/:owner/:name/artifacts/:artifact', defineEventError
 packageRouter.use('/packages/:owner/:name/build-outputs', defineEventErrorHandler(async event => {
   validateMethod(event.method, ["GET"])
   const {owner, name} = PackageParams.parse(getRouterParams(event))
-  const {rev, toolchain, platform, dev} = BuildOutputsQuery.parse(getQuery(event))
+  const {rev, platform, toolchain, dev} = BuildOutputsQuery.parse(getQuery(event))
   console.log(`Fetching build outputs for '${owner}/${name}' at '${rev?.slice(0, 7)}'`)
   const repo = await fetchGitHubRepo(event.context.reservoir.indexUrl, owner, name)
-  return getRevisionOutputs(repo, rev, toolchain, platform, event.context.reservoir.dev || dev)
+  return getRevisionOutputs(repo, rev, platform, toolchain, event.context.reservoir.dev || dev)
 }))

@@ -36,17 +36,17 @@ export const artifactHandler = defineEventErrorHandler(event => {
  * Redirect to the location of a build output file in cloud storage.
  *
  * `repo` and `rev` should be URL encoded.
- * `toolchain` and `platform` should have passed validation.
+ * `platform` and `toolchain` should have passed validation.
  */
-export async function getRevisionOutputs(repo: string, rev: string, toolchain?: string, platform?: string, dev?: boolean) {
+export async function getRevisionOutputs(repo: string, rev: string, platform?: string, toolchain?: string, dev?: boolean) {
   let key = `${dev ? 'r0' : 'r1'}/${repo}`
-  if (toolchain) {
-    // toolchain is URI-safe after `toolchainToDir`, see `validateToolchain`
-    key = `${key}/tc/${toolchainToDir(toolchain)}`
-  }
   if (platform) {
     // platform is URI-safe, see `validatePlatform`
     key = `${key}/pt/${platform}`
+  }
+  if (toolchain) {
+    // toolchain is URI-safe after `toolchainToDir`, see `validateToolchain`
+    key = `${key}/tc/${toolchainToDir(toolchain)}`
   }
   key = `${key}/${rev}.jsonl`
   const url = `${process.env.S3_CDN_ENDPOINT}/${key}`
@@ -60,14 +60,14 @@ const BuildOutputsParams = z.object({
 
 export const BuildOutputsQuery = z.object({
   rev: z.string().refine(rev => rev.length == 40, "Expected revision of exactly 40 hexits"),
-  toolchain: z.string().transform(validateToolchain).optional(),
   platform: z.string().transform(validatePlatform).optional(),
+  toolchain: z.string().transform(validateToolchain).optional(),
   dev: z.any().optional().transform(dev => dev != undefined),
 })
 
 export const outputsHandler = defineEventErrorHandler(event => {
   validateMethod(event.method, ["GET"])
   const {owner, repo} = BuildOutputsParams.parse(getRouterParams(event))
-  const {rev, toolchain, platform, dev} = BuildOutputsQuery.parse(getQuery(event))
-  return getRevisionOutputs(`${owner}/${repo}`, rev, toolchain, platform, event.context.reservoir.dev || dev)
+  const {rev, platform, toolchain, dev} = BuildOutputsQuery.parse(getQuery(event))
+  return getRevisionOutputs(`${owner}/${repo}`, rev, platform, toolchain, event.context.reservoir.dev || dev)
 })
