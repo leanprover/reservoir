@@ -19,28 +19,41 @@ export function trimExt(ext: string, val: string, ctx: z.RefinementCtx) {
   return z.NEVER
 }
 
-/** Normalizes an Lean toolchain into the form `<origin>:<version>`. */
+/** Converts an Lean toolchain into its normal form. */
 export function normalizeToolchain(toolchain: string) {
-  let origin, ver
   const colonIdx = toolchain.indexOf(':')
   if (colonIdx < 0) {
-    ver = toolchain
-    if (ver.startsWith("pr-release-")) {
-      origin = "leanprover/lean4-pr-releases"
+    const ver = toolchain
+    if (ver[0] == 'v') {
+      return `leanprover/lean4:${ver}`
+    } else if (ver[0] >= '0' && ver[0] <= '9') {
+      return `leanprover/lean4:v${ver}`
+    } else if (ver.startsWith("nightly")) {
+      return `leanprover/lean4:${ver}`
+    } else if (ver.startsWith("pr-release")) {
+      return `leanprover/lean4-pr-releases:${ver}`
     } else {
-      origin = "leanprover/lean4"
+      // In Elan, local toolchains are left as-is whereas others are
+      // prefixed with the default origin (Lean's repository).
+      // Reservoir (and Lake) cannot distinguish custom toolchains,
+      // so they take the simpler route and just leave it as-is.
+      return ver
     }
   } else {
-    origin = toolchain.slice(0, colonIdx)
-    ver = toolchain.slice(colonIdx+1)
+    const ver = toolchain.slice(colonIdx+1)
+    const origin = toolchain.slice(0, colonIdx)
+    if (ver[0] >= '0' && ver[0] <= '9' && origin == 'leanprover/lean4') {
+      return `leanprover/lean4:v${ver}`
+    // TODO: Normalize nightlies (requires renormalization of indexed toolchains first)
+    // } else if (origin == 'leanprover/lean4-nightly' && ver.startsWith("nightly")) {
+    //   return `leanprover/lean4:${ver}`
+    } else {
+      return toolchain
+    }
   }
-  if (ver[0] >= '0' && ver[0] <= '9') {
-    ver = `v${ver}`
-  }
-  return `${origin}:${ver}`
 }
 
-/** Normalizes an optional Lean toolchain into the form `<origin>:<version>` or `undefined`. */
+/** Converts an optional Lean toolchain into its normal form or `undefined`. */
 export function normalizeOptToolchain(toolchain: string) {
   if (toolchain === "") {
     return undefined
