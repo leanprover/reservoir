@@ -1,8 +1,13 @@
 import { z } from 'zod'
 import { getRouterParams, getQuery } from "h3"
 import { validateMethod, defineEventErrorHandler } from '../utils/error'
-import { trimExt } from '../utils/zod'
+import { trimExt, isFixedHex } from '../utils/zod'
 
+/**
+ * Redirect to the location of an barrel in cloud storage.
+ *
+ * `hash` should have passed validation.
+ */
 export async function getBarrel(hash: string, dev: boolean) {
   const key = `${dev ? 'b0' : 'b1'}/${hash}.barrel`
   const url = `${process.env.S3_CDN_ENDPOINT}/${key}`
@@ -12,7 +17,7 @@ export async function getBarrel(hash: string, dev: boolean) {
 /** Zod schema for extracting a barrel hash from a `<hash>.barrel` file name. */
 export const BarrelFromFile = z.string()
   .transform((name, ctx) => trimExt('barrel', name, ctx))
-  .refine(key => key.length == 64, "Expected name with exactly 64 hexits")
+  .refine(key => isFixedHex(key, 64), "Expected name with exactly 64 hexits")
 
 const GetBarrelParams = z.object({
   barrel: BarrelFromFile

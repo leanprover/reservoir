@@ -2,14 +2,15 @@ import { z } from 'zod'
 import { createRouter, getRouterParams, getQuery } from 'h3'
 import { InternalServerError, defineEventErrorHandler, NotFound, validateMethod } from '../utils/error'
 import { getBarrel } from '../routes/barrel'
-import { getArtifact, ArtifactFromFile, getRevisionOutputs } from '../routes/artifact'
+import { normalizeOptToolchain, GitRev } from '../utils/zod'
+import { getArtifact, ArtifactFromFile, getRevisionOutputs, BuildOutputsQuery } from '../routes/artifact'
 import type { Build } from '../../../site/utils/manifest'
 
 /**
  * Fetch JSON data for the package `<owner>/<name>`
  * stored at `<filePath>.json` in the index at `indexUrl`.
  *
- * `owner` and `path` should be URL encoded.
+ * `owner`, `name`, and `filePath` should be URL encoded.
  */
 async function fetchPackageJson(indexUrl: string, owner: string, name: string, filePath: string) {
   const fileUrl = `${indexUrl}/${owner.toLowerCase()}/${name.toLowerCase()}/${filePath}.json`
@@ -53,25 +54,9 @@ packageRouter.use('/packages/:owner/:name/versions', defineEventErrorHandler(eve
   return fetchPackageJson(event.context.reservoir.indexUrl, owner, name, 'versions')
 }))
 
-function normalizeToolchain(toolchain: string): string {
-  let origin, ver
-  const colonIdx = toolchain.indexOf(':')
-  if (colonIdx < 0) {
-    origin = "leanprover/lean4"
-    ver = toolchain
-  } else {
-    origin = toolchain.slice(0, colonIdx)
-    ver = toolchain.slice(colonIdx+1)
-  }
-  if (ver[0] >= '0' && ver[0] <= '9') {
-    ver = `v${ver}`
-  }
-  return `${origin}:${ver}`
-}
-
 const PackageBarrelQuery = z.object({
-  rev: z.string().refine(rev => rev.length == 40, "Expected revision of exactly 40 hexits").optional(),
-  toolchain: z.string().transform(normalizeToolchain).optional(),
+  rev: GitRev.optional(),
+  toolchain: z.string().transform(normalizeOptToolchain).optional(),
   dev: z.any().optional().transform(dev => dev != undefined),
 })
 
@@ -94,7 +79,13 @@ packageRouter.use('/packages/:owner/:name/barrel', defineEventErrorHandler(async
   return getBarrel(hash, event.context.reservoir.dev || dev)
 }))
 
-async function fetchGitHubScope(indexUrl: string, owner: string, name: string) {
+
+/**
+ * Fetch the GitHub repository for the package `<owner>/<name>`.
+ *
+ * `owner` and `name` should be URL encoded.
+ */
+async function fetchGitHubRepo(indexUrl: string, owner: string, name: string) {
   const res = await fetchPackageJson(indexUrl, owner, name, 'metadata')
   const sources: Source[] = (await res.json())['sources']
   const githubSrc = sources.find(src => src['host'] == 'github')
@@ -113,21 +104,16 @@ const PackageArtifactParams = PackageParams.extend({
 packageRouter.use('/packages/:owner/:name/artifacts/:artifact', defineEventErrorHandler(async event => {
   validateMethod(event.method, ["GET"])
   const {owner, name, artifact} = PackageArtifactParams.parse(getRouterParams(event))
-  const scope = await fetchGitHubScope(event.context.reservoir.indexUrl, owner, name)
+  const repo = await fetchGitHubRepo(event.context.reservoir.indexUrl, owner, name)
   const dev = event.context.reservoir.dev || getQuery(event).dev != undefined
-  return getArtifact(scope, artifact, dev)
+  return getArtifact(repo, artifact, dev)
 }))
-
-const PackageOutputsQuery = z.object({
-  rev: z.string().refine(rev => rev.length == 40, "Expected revision of exactly 40 hexits"),
-  dev: z.any().optional().transform(dev => dev != undefined),
-})
 
 packageRouter.use('/packages/:owner/:name/build-outputs', defineEventErrorHandler(async event => {
   validateMethod(event.method, ["GET"])
   const {owner, name} = PackageParams.parse(getRouterParams(event))
-  const {rev, dev} = PackageOutputsQuery.parse(getQuery(event))
+  const {rev, platform, toolchain, dev} = BuildOutputsQuery.parse(getQuery(event))
   console.log(`Fetching build outputs for '${owner}/${name}' at '${rev?.slice(0, 7)}'`)
-  const scope = await fetchGitHubScope(event.context.reservoir.indexUrl, owner, name)
-  return getRevisionOutputs(scope, rev, event.context.reservoir.dev || dev)
+  const repo = await fetchGitHubRepo(event.context.reservoir.indexUrl, owner, name)
+  return getRevisionOutputs(repo, rev, platform, toolchain, event.context.reservoir.dev || dev)
 }))
