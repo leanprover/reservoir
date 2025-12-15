@@ -35,6 +35,10 @@ jobs:
           persist-credentials: false
       - name: Analyze
         continue-on-error: true
+        # GitHub's maximum execution time limit is 6 hours (360 minutes).
+        # To avoid hitting that and having the job ungracefully cancelled,
+        # we set a lower limit of 5 hours here.
+        timeout-minutes: 300
         # We run arbitrary untrusted code here
         run: scripts/testbed-analyze.py -v -d testbed -m '${{ toJson(matrix) }}'
       - name: Upload Result
