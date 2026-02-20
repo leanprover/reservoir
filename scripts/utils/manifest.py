@@ -74,7 +74,7 @@ class Version:
       self.major = int(match.group(1))
       self.minor = int(match.group(2))
       self.patch = int(match.group(3))
-      self.special_descr = match.group(4)
+      self.special_descr = ifnone(match.group(4), '')
     elif isinstance(ver, Version):
       self.major = ver.major
       self.minor = ver.minor
