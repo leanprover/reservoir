@@ -2,7 +2,7 @@ import { type Config } from "@netlify/functions"
 import { createApp, createRouter, useBase } from "h3"
 import { packageRouter } from './routes/package'
 import { barrelHandler } from './routes/barrel'
-import { artifactHandler, outputsHandler } from './routes/artifact'
+import { artifactHandler, artifactsHandler, outputsHandler } from './routes/artifact'
 import { toNetlifyHandler } from "./utils/netlify"
 import { mkError } from './utils/error'
 import { initReservoirContext } from "./utils/reservoir"
@@ -20,6 +20,7 @@ const v1 = createRouter()
 
 v1.use("**", packageRouter.handler)
 v1.use("/barrels/:barrel", barrelHandler)
+v1.use("/repositories/:owner/:repo/artifacts", artifactsHandler)
 v1.use("/repositories/:owner/:repo/artifacts/:artifact", artifactHandler)
 v1.use("/repositories/:owner/:repo/build-outputs", outputsHandler)
 

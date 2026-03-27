@@ -1,9 +1,10 @@
 import { z } from 'zod'
-import { createRouter, getRouterParams, getQuery } from 'h3'
+import { createRouter, getRouterParams, getQuery, readBody } from 'h3'
 import { InternalServerError, defineEventErrorHandler, NotFound, validateMethod } from '../utils/error'
+import { isDev } from '../utils/reservoir'
 import { getBarrel } from '../routes/barrel'
-import { normalizeOptToolchain, GitRev } from '../utils/zod'
-import { getArtifact, ArtifactFromFile, getRevisionOutputs, BuildOutputsQuery } from '../routes/artifact'
+import { normalizeOptToolchain, GitRev, Dev } from '../utils/zod'
+import { getArtifact, ArtifactFromFile, getRevisionOutputs, BuildOutputsQuery, getArtifactUrls, ArtifactsBody } from '../routes/artifact'
 import type { Build } from '../../../site/utils/manifest'
 
 /**
@@ -57,7 +58,7 @@ packageRouter.use('/packages/:owner/:name/versions', defineEventErrorHandler(eve
 const PackageBarrelQuery = z.object({
   rev: GitRev.optional(),
   toolchain: z.string().transform(normalizeOptToolchain).optional(),
-  dev: z.any().optional().transform(dev => dev != undefined),
+  dev: Dev,
 })
 
 packageRouter.use('/packages/:owner/:name/barrel', defineEventErrorHandler(async event => {
@@ -76,7 +77,7 @@ packageRouter.use('/packages/:owner/:name/barrel', defineEventErrorHandler(async
   if (!hash) {
     throw new NotFound("No barrel found that satisfies criteria")
   }
-  return getBarrel(hash, event.context.reservoir.dev || dev)
+  return getBarrel(hash, isDev(event, dev))
 }))
 
 
@@ -97,6 +98,14 @@ async function fetchGitHubRepo(indexUrl: string, owner: string, name: string) {
   }
 }
 
+packageRouter.use('/packages/:owner/:name/artifacts', defineEventErrorHandler(async event => {
+  validateMethod(event.method, ["POST"])
+  const {owner, name} = PackageParams.parse(getRouterParams(event))
+  const repo = await fetchGitHubRepo(event.context.reservoir.indexUrl, owner, name)
+  const hashes = ArtifactsBody.parse(await readBody(event))
+  return getArtifactUrls(repo, hashes, isDev(event))
+}))
+
 const PackageArtifactParams = PackageParams.extend({
   artifact: ArtifactFromFile
 })
@@ -105,8 +114,7 @@ packageRouter.use('/packages/:owner/:name/artifacts/:artifact', defineEventError
   validateMethod(event.method, ["GET"])
   const {owner, name, artifact} = PackageArtifactParams.parse(getRouterParams(event))
   const repo = await fetchGitHubRepo(event.context.reservoir.indexUrl, owner, name)
-  const dev = event.context.reservoir.dev || getQuery(event).dev != undefined
-  return getArtifact(repo, artifact, dev)
+  return getArtifact(repo, artifact, isDev(event))
 }))
 
 packageRouter.use('/packages/:owner/:name/build-outputs', defineEventErrorHandler(async event => {
@@ -115,5 +123,5 @@ packageRouter.use('/packages/:owner/:name/build-outputs', defineEventErrorHandle
   const {rev, platform, toolchain, dev} = BuildOutputsQuery.parse(getQuery(event))
   console.log(`Fetching build outputs for '${owner}/${name}' at '${rev?.slice(0, 7)}'`)
   const repo = await fetchGitHubRepo(event.context.reservoir.indexUrl, owner, name)
-  return getRevisionOutputs(repo, rev, platform, toolchain, event.context.reservoir.dev || dev)
+  return getRevisionOutputs(repo, rev, platform, toolchain, isDev(event, dev))
 }))

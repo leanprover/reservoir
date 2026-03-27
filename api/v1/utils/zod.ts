@@ -1,5 +1,8 @@
 import { z } from 'zod'
 
+/** Zod schema for the `dev` flag query parameter */
+export const Dev = z.any().optional().transform(dev => dev != undefined)
+
 /**
  * Zod transform to trim extension (e.g., removing `.art` from `abc.art`).
  *
