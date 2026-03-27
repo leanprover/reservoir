@@ -1,7 +1,7 @@
 [build]
 command = "npm run generate"
 # Use `.output/public` instead of `dist`
-# becasue `netlify-cli deploy` can not handle the symlink on Windows
+# because `netlify-cli deploy` can not handle the symlink on Windows
 # https://github.com/netlify/cli/issues/1809
 publish = "site/.output/public/"
 

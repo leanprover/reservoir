@@ -29,7 +29,6 @@ export class InternalServerError extends ResponseError {
   }
 }
 
-
 export class MethodNotAllowed extends ResponseError {
   method: string
   allow: HTTPMethod[]
@@ -85,6 +84,9 @@ export function defineEventErrorHandler<
         return mkError(e.status, e.message, e.headers)
       } else if (e instanceof ZodError) {
         const message = e.issues.map(issue => {
+          if (issue.path.length == 0) {
+            return `Invalid request: ${issue.message}`
+          }
           const field = issue.path.reduce((str, elem) => {
             if (typeof elem == 'string') {
               return str + elem
