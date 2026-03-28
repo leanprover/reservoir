@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { createRouter, getRouterParams, getQuery, readBody } from 'h3'
-import { InternalServerError, defineEventErrorHandler, NotFound, validateMethod, mkJsonReponse } from '../utils/error'
+import { InternalServerError, defineEventErrorHandler, NotFound, validateMethod, mkJsonResponse } from '../utils/error'
 import { isDev } from '../utils/reservoir'
 import { getBarrel } from '../routes/barrel'
 import { normalizeOptToolchain, GitRev, Dev } from '../utils/zod'
@@ -18,7 +18,10 @@ async function fetchPackageJson(indexUrl: string, owner: string, name: string, f
   console.log(`Fetch ${fileUrl}`)
   const res = await fetch(fileUrl)
   if (res.status == 200) {
-    return mkJsonReponse(res.body)
+    // `mkJsonResponse` does not work here as `res.body` is a stream
+    return new Response(res.body, {
+      headers: {"Content-Type": "application/json; charset=utf-8"}
+    })
   } else if (res.status == 404) {
     console.log("Package not found")
     throw new NotFound("Package not found in index")

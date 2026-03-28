@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { getRouterParams, getQuery, readBody } from "h3"
-import { validateMethod, defineEventErrorHandler, mkJsonReponse } from '../utils/error'
+import { validateMethod, defineEventErrorHandler, mkJsonResponse } from '../utils/error'
 import { GitRev, GitHubOwner, GitHubRepo, trimExt, validatePlatform, validateToolchain, toolchainToDir, isFixedHex, Dev } from '../utils/zod'
 import { isDev } from '../utils/reservoir'
 
@@ -29,7 +29,7 @@ export async function getArtifact(repo: string, hash: string, dev: boolean) {
 export async function getArtifactUrls(repo: string, hashes: string[], dev: boolean) {
   const baseUrl = `${process.env.S3_CDN_ENDPOINT}/${dev ? 'a0' : 'a1'}/${repo}`
   const urls = hashes.map(hash => `${baseUrl}/${hash}.art`)
-  return mkJsonReponse(urls)
+  return mkJsonResponse(urls)
 }
 
 /** Zod schema for an artifact hash. */

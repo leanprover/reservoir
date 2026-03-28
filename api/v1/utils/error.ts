@@ -59,7 +59,7 @@ export interface ReservoirErrorBody {
   error: ReservoirError
 }
 
-export function mkJsonReponse<T>(body: T, status: number = 200, headers: HeadersInit = {}): Response {
+export function mkJsonResponse<T>(body: T, status: number = 200, headers: HeadersInit = {}): Response {
   return new Response(JSON.stringify(body), {
     status, headers: {"Content-Type": "application/json; charset=utf-8", ...headers}
   })
@@ -67,7 +67,7 @@ export function mkJsonReponse<T>(body: T, status: number = 200, headers: Headers
 
 export function mkError(status: number, message: string, headers: HeadersInit = {}): Response {
   const body: ReservoirErrorBody = {"error": {status, message}}
-  return mkJsonReponse(body, status)
+  return mkJsonResponse(body, status)
 }
 
 export function defineEventErrorHandler<
