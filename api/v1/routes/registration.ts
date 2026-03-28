@@ -1,7 +1,7 @@
 import { z } from "zod"
 import { createRouter, readBody } from 'h3'
 import { getStore } from "@netlify/blobs"
-import { mkJsonResponse, NotFound, validateMethod, defineEventErrorHandler } from '../utils/error'
+import { mkJsonResponse, NotFound, InsufficientStorage, validateMethod, defineEventErrorHandler } from '../utils/error'
 import { randomUUID } from 'crypto'
 
 export function getRegistrationStore() {
@@ -25,6 +25,11 @@ registrationRouter.use('/registrations', defineEventErrorHandler(async event => 
       return mkJsonResponse({"data": Object.fromEntries(pairs)})
     }
     case "POST": {
+      const {blobs} = await registrations.list()
+      if (blobs.length > parseInt(process.env.REGISTRATION_LIMIT!)) {
+        console.error(`${blobs.length} registrations; limit reached`)
+        throw new InsufficientStorage("Registration limit reached")
+      }
       const uuid = randomUUID()
       await registrations.set(uuid, JSON.stringify(await readBody(event)))
       return mkJsonResponse(uuid)

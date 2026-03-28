@@ -29,6 +29,12 @@ export class InternalServerError extends ResponseError {
   }
 }
 
+export class InsufficientStorage extends ResponseError {
+  constructor(message?: string, options?: ResponseErrorOptions) {
+    super(503, message, options)
+  }
+}
+
 export class MethodNotAllowed extends ResponseError {
   method: string
   allow: HTTPMethod[]
