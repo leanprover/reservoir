@@ -1,14 +1,31 @@
 import { z } from "zod"
 import { createRouter, readBody } from 'h3'
 import { getStore } from "@netlify/blobs"
-import { mkJsonResponse, NotFound, InsufficientStorage, validateMethod, defineEventErrorHandler } from '../utils/error'
+import { mkJsonResponse, NotFound, InsufficientStorage, validateMethod, defineEventErrorHandler, InternalServerError } from '../utils/error'
 import { randomUUID } from 'crypto'
+import { GitHubFullName } from "../utils/zod"
+import type { Source } from '../../../site/utils/manifest'
+
+const GitHubRepoData = z.object({
+  node_id: z.string(),
+  default_branch: z.string(),
+})
 
 export function getRegistrationStore() {
   return getStore('package-registrations')
 }
 
 export const registrationRouter = createRouter()
+
+// body is a partial `Source` filed in with GitHub info
+const PostRegistrationsBody = z.object({
+  type: z.literal('git').optional(),
+  host: z.literal('github'),
+  fullName: GitHubFullName,
+  //TODO: Make customizatiable (needs analysis support)
+  //defaultBranch: z.string().optional(),
+  //subDir: z.string().optional(),
+}).strict()
 
 const DeleteRegistrationsBody = z.array(z.string()).optional()
 
@@ -30,9 +47,45 @@ registrationRouter.use('/registrations', defineEventErrorHandler(async event => 
         console.error(`${blobs.length} registrations; limit reached`)
         throw new InsufficientStorage("Registration limit reached")
       }
-      const uuid = randomUUID()
-      await registrations.set(uuid, JSON.stringify(await readBody(event)))
-      return mkJsonResponse(uuid)
+      // repository name passes validation
+      const {fullName} = PostRegistrationsBody.parse(await readBody(event))
+      const url = `https://api.github.com/repos/${fullName}`
+      console.log(`Fetch ${url}`)
+      const res = await fetch(url, {
+        headers: {
+          "Accept":"application/vnd.github+json",
+          "X-Github-Next-Global-ID": "1",
+        }
+      })
+      if (res.status == 200) {
+        let repo: typeof GitHubRepoData._type
+        const ghBody = await res.text()
+        try {
+          repo = GitHubRepoData.parse(JSON.parse(ghBody))
+        } catch (e) {
+          const info = e instanceof Error ? e.stack : e
+          console.error(`Unexpected GitHub response: ${info}\nRaw response: ${JSON.stringify(ghBody)}`)
+          throw new InternalServerError("Failed to retrieve GitHub repository data")
+        }
+        const src: Source = {
+          type: "git",
+          host: "github",
+          id: repo.node_id,
+          fullName: fullName,
+          repoUrl: `https://github.com/${fullName}`,
+          gitUrl: `https://github.com/${fullName}`,
+          defaultBranch: repo.default_branch
+        }
+        const uuid = randomUUID()
+        await registrations.set(uuid, JSON.stringify(src))
+        return mkJsonResponse(uuid)
+      } else if (res.status == 404) {
+        console.log("GitHub repository not found")
+        throw new NotFound("GitHub repository not found")
+      } else {
+        console.error(`Fetch failed (${res.status}): ${await res.text()}`)
+        throw new InternalServerError("Failed to retrieve GitHub repository data")
+      }
     }
     case "DELETE": {
       const keys = DeleteRegistrationsBody.parse(await readBody(event))

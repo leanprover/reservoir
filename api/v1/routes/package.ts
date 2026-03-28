@@ -26,7 +26,7 @@ async function fetchPackageJson(indexUrl: string, owner: string, name: string, f
     console.log("Package not found")
     throw new NotFound("Package not found in index")
   } else {
-    console.error(`Fetch failed (${res.status}): ${await res.text}`)
+    console.error(`Fetch failed (${res.status}): ${await res.text()}`)
     throw new InternalServerError("Failed to retrieve package data from index")
   }
 }
