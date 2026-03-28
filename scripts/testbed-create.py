@@ -112,7 +112,9 @@ if __name__ == "__main__":
   # Fetch registrations
   if args.registrations_url is not None:
     registrations = fetch_registrations(args.registrations_url)
-    num_registered = 0
+    # Collect registration repo IDs
+    # Filters by exclusions, missing IDs, and indexed repos
+    reg_by_repo = dict[str, tuple[str, dict]]()
     for key, src in registrations.items():
       name = src.get('fullName', key)
       if name.lower() in exclusions:
@@ -123,18 +125,22 @@ if __name__ == "__main__":
         logging.error(f"Registration '{key}' missing repo ID, skipping")
         continue
       if reindex and repo_id in indexed_repos:
-        logging.debug(f"Skipping already-indexed registration: {name}")
+        logging.debug(f"Skipping already-indexed registration: {key}")
         continue
-      git_url = src.get('gitUrl')
-      if git_url is None:
-        logging.error(f"Registration '{key}' missing git URL, skipping")
-        continue
-      entry = create_entry(
-        name, git_url,
-        toolchains, args.version_tags, False,
-        repo_id, None, registration_key=key)
-      entries.append(entry)
-      num_registered += 1
+      reg_by_repo[repo_id] = (key, src)
+    # Curate new registrations
+    # Fetches repository data from the GitHub API
+    num_registered = 0
+    repo_ids = list(reg_by_repo.keys())
+    repos = filter(None, query_repo_data(repo_ids))
+    for repo in curate_repos(repos, exclusions):
+        key, _ = reg_by_repo[repo['id']]
+        entry = create_entry(
+          repo['nameWithOwner'], repo['url'],
+          toolchains, args.version_tags, False,
+          repo['id'], None, registration_key=key)
+        entries.append(entry)
+        num_registered += 1
     logging.info(f"{num_registered} entries from registrations")
 
   if reindex:
