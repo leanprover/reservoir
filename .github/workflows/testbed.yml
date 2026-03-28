@@ -21,6 +21,20 @@ on:
         type: boolean
         required: false
         default: false
+      reservoir-url:
+        description: "Reservoir URL (for registrations)"
+        type: string
+        required: false
+      analyze-registrations:
+        description: "Analyze package registrations"
+        type: boolean
+        required: false
+        default: false
+      consume-registrations:
+        description: "Consume package registrations"
+        type: boolean
+        required: false
+        default: false
       search-packages:
         description: "Search GitHub for new packages"
         type: boolean
@@ -63,6 +77,20 @@ on:
         type: string
         required: true
         default: leanprover/reservoir-index
+      reservoir-url:
+        description: "Reservoir URL (for registrations)"
+        type: string
+        required: false
+      analyze-registrations:
+        description: "Analyze package registrations"
+        type: boolean
+        required: false
+        default: false
+      consume-registrations:
+        description: "Consume package registrations"
+        type: boolean
+        required: false
+        default: false
       search-packages:
         description: "Search GitHub for new packages"
         type: boolean
@@ -129,7 +157,8 @@ jobs:
             -n ${{ toJson(inputs.max-size) == 'null' && -1 || inputs.max-size }} \
             -Q ${{ inputs.search-packages && (inputs.dev && 100 || -1) || 0 }} \
             -X ${{ inputs.dev && 'scripts/package-dev-exclusions.txt' || 'scripts/package-exclusions.txt' }} \
-            ${{ inputs.cache-builds && '--cache' || '--no-cache' }}
+            ${{ inputs.cache-builds && '--cache' || '--no-cache' }} \
+            ${{ inputs.analyze-registrations && (inputs.reservoir-url && format('-R {0}', inputs.reservoir-url) || '-R') || '' }}
         env:
           GH_TOKEN: ${{ secrets.RESERVOIR_INDEX_TOKEN }}
       - name: Upload Matrix
@@ -208,7 +237,9 @@ jobs:
         with:
           name: results
       - name: Write Results to Index
-        run: scripts/testbed-save.py -v results.json index
+        run: |
+          scripts/testbed-save.py -v results.json index \
+            ${{ inputs.consume-registrations && (inputs.reservoir-url && format('-R {0}', inputs.reservoir-url) || '-R') || '' }}
         env:
           GH_TOKEN: ${{ secrets.RESERVOIR_INDEX_TOKEN }}
       - name: Update External Index

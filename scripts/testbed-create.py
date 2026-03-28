@@ -5,13 +5,23 @@ import re
 import json
 import itertools
 import argparse
+import requests
 from typing import Collection
 from utils import *
+
+def fetch_registrations(api_url: str) -> dict[str, dict]:
+  url = f"{api_url.rstrip('/')}/api/v1/registrations"
+  logging.info(f"Fetching registrations from {url}")
+  resp = requests.get(url, timeout=30)
+  if resp.status_code != 200:
+    raise RuntimeError(f"Failed to fetch registrations ({resp.status_code}): {resp.text}")
+  return resp.json()['data']
 
 def create_entry(
     name: str, git_url: str,
     toolchains: str, version_tags: str, cache_builds: bool,
-    repo_id: str | None, index_name: str | None
+    repo_id: str | None, index_name: str | None,
+    registration_key: str | None = None,
     ) -> TestbedEntry:
   job_name = f"{'Index' if toolchains == '' else 'Build'} {name}"
   digest = hashlib.sha256(job_name.encode()).digest()
@@ -25,6 +35,7 @@ def create_entry(
     'cacheBuilds': cache_builds,
     "repoId": repo_id,
     "indexName": index_name,
+    "registrationKey": registration_key,
   }
 
 def create_layers(entries: Iterable[TestbedEntry]) -> Iterable[TestbedLayer]:
@@ -51,6 +62,9 @@ if __name__ == "__main__":
     help="upload build archives in cloud storage")
   parser.add_argument('--no-cache', dest='cache', action='store_false',
     help="do not upload build archives in cloud storage")
+  parser.add_argument('-R', '--registrations-url', type=str, nargs='?',
+    const='https://reservoir.lean-lang.org',
+    help="analyze package registrations from the Reservoir API")
   parser.add_argument('-X', '--exclusions', default=default_exclusions,
     help='file containing repos to exclude')
   parser.add_argument('-o', '--output',
@@ -68,8 +82,8 @@ if __name__ == "__main__":
     for line in f: exclusions.add(line.strip().lower())
 
   reindex = args.packages != ''
-  if not reindex and args.query == 0:
-    raise RuntimeError("Testbed needs at least one of `-P` or '-Q'")
+  if not reindex and args.query == 0 and args.registrations_url is None:
+    raise RuntimeError("Testbed needs at least one of `-P`, '-Q', or '-R'")
   if reindex and not args.index:
     raise RuntimeError("Testbed needs an index (with '-i') to select from it (with '-P')")
 
@@ -94,6 +108,35 @@ if __name__ == "__main__":
       toolchains, args.version_tags, False,
       repo['id'], None)
     entries.append(entry)
+
+  # Fetch registrations
+  if args.registrations_url is not None:
+    registrations = fetch_registrations(args.registrations_url)
+    num_registered = 0
+    for key, src in registrations.items():
+      name = src.get('fullName', key)
+      if name.lower() in exclusions:
+        logging.debug(f"Skipping excluded registration: {name}")
+        continue
+      repo_id = src.get('id', None)
+      if repo_id is None:
+        logging.error(f"Registration '{key}' missing repo ID, skipping")
+        continue
+      if reindex and repo_id in indexed_repos:
+        logging.debug(f"Skipping already-indexed registration: {name}")
+        continue
+      git_url = src.get('gitUrl')
+      if git_url is None:
+        logging.error(f"Registration '{key}' missing git URL, skipping")
+        continue
+      entry = create_entry(
+        name, git_url,
+        toolchains, args.version_tags, False,
+        repo_id, None, registration_key=key)
+      entries.append(entry)
+      num_registered += 1
+    logging.info(f"{num_registered} entries from registrations")
+
   if reindex:
     pkgs = list(filter(lambda pkg: pkg['fullName'].lower() not in exclusions, pkgs))
     logging.info(f"{len(pkgs)} packages in index")
