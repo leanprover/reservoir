@@ -1,4 +1,4 @@
-import type { H3Event } from "h3"
+import { type H3Event, getQuery } from "h3"
 
 export interface ReservoirContext {
   apiVersion: string | null
@@ -13,14 +13,21 @@ declare module 'h3' {
   }
 }
 
+export function isDev(event: H3Event, devParam?: boolean) {
+  return event.context.reservoir.dev || (devParam ?? getQuery(event).dev != undefined)
+}
+
 export function initReservoirContext(event: H3Event) {
   const lakeVer = event.headers.get("X-Lake-Registry-Api-Version")
   const reservoirVer = event.headers.get("X-Reservoir-Api-Version")
+  const isNetlifyDev = event.context.netlify.deploy.context == "dev"
   console.log(`${event.method} Reservoir:${reservoirVer ?? "-"} Lake:${lakeVer ?? "-"} ${event.path} `)
   event.context.reservoir = {
     apiVersion: reservoirVer,
     lakeApiVersion: lakeVer,
-    indexUrl: `${event.web!.url!.origin}/index`,
+    indexUrl: isNetlifyDev
+      ? "https://reservoir.lean-lang.org/index"
+      : `${event.web!.url!.origin}/index`,
     dev: false,
   }
 }

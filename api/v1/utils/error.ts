@@ -29,7 +29,6 @@ export class InternalServerError extends ResponseError {
   }
 }
 
-
 export class MethodNotAllowed extends ResponseError {
   method: string
   allow: HTTPMethod[]
@@ -60,11 +59,15 @@ export interface ReservoirErrorBody {
   error: ReservoirError
 }
 
-export function mkError(status: number, message: string, headers: HeadersInit = {}): Response {
-  const body: ReservoirErrorBody = {"error": {status, message}}
+export function mkJsonReponse<T>(body: T, status: number = 200, headers: HeadersInit = {}): Response {
   return new Response(JSON.stringify(body), {
     status, headers: {"Content-Type": "application/json; charset=utf-8", ...headers}
   })
+}
+
+export function mkError(status: number, message: string, headers: HeadersInit = {}): Response {
+  const body: ReservoirErrorBody = {"error": {status, message}}
+  return mkJsonReponse(body, status)
 }
 
 export function defineEventErrorHandler<
@@ -81,6 +84,9 @@ export function defineEventErrorHandler<
         return mkError(e.status, e.message, e.headers)
       } else if (e instanceof ZodError) {
         const message = e.issues.map(issue => {
+          if (issue.path.length == 0) {
+            return `Invalid request: ${issue.message}`
+          }
           const field = issue.path.reduce((str, elem) => {
             if (typeof elem == 'string') {
               return str + elem
