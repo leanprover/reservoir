@@ -30,7 +30,6 @@ on:
         description: "Regex search for indexed packages"
         type: string
         required: false
-        default: ".*"
       version-pattern:
         description: "Regex search for version tags to build"
         type: string
