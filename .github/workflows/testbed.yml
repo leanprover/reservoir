@@ -242,6 +242,7 @@ jobs:
             ${{ inputs.consume-registrations && (inputs.reservoir-url && format('-R {0}', inputs.reservoir-url) || '-R') || '' }}
         env:
           GH_TOKEN: ${{ secrets.RESERVOIR_INDEX_TOKEN }}
+          RESERVOIR_AUTH_TOKEN: ${{ secrets.RESERVOIR_AUTH_TOKEN }}
       - name: Update External Index
         if: inputs.update-index
         uses: EndBug/add-and-commit@v9

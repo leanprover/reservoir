@@ -1,7 +1,7 @@
 import { z } from "zod"
-import { createRouter, readBody } from 'h3'
+import { type H3Event, createRouter, readBody, getRouterParams, getHeader } from 'h3'
 import { getStore } from "@netlify/blobs"
-import { mkJsonResponse, NotFound, InsufficientStorage, validateMethod, defineEventErrorHandler, InternalServerError } from '../utils/error'
+import { mkJsonResponse, NotFound, InsufficientStorage, validateMethod, defineEventErrorHandler, InternalServerError, Unauthorized } from '../utils/error'
 import { randomUUID } from 'crypto'
 import { GitHubFullName } from "../utils/zod"
 import type { Source } from '../../../site/utils/manifest'
@@ -13,6 +13,15 @@ const GitHubRepoData = z.object({
 
 export function getRegistrationStore() {
   return getStore('package-registrations')
+}
+
+function checkToken(event: H3Event) {
+  if (event.context.reservoir.local) return
+  const authHeader = getHeader(event, 'authorization')
+  if (authHeader?.startsWith('Bearer ') && authHeader.slice(7) === process.env.AUTH_TOKEN) {
+    return
+  }
+  throw new Unauthorized("Operation not permitted")
 }
 
 export const registrationRouter = createRouter()
@@ -88,6 +97,7 @@ registrationRouter.use('/registrations', defineEventErrorHandler(async event => 
       }
     }
     case "DELETE": {
+      checkToken(event)
       const keys = DeleteRegistrationsBody.parse(await readBody(event))
       if (keys) {
         await Promise.all(keys.map(key => registrations.delete(key)))
@@ -117,6 +127,7 @@ registrationRouter.use('/registrations/:key', defineEventErrorHandler(async even
       }
     }
     case "DELETE": {
+      checkToken(event)
       await registrations.delete(key)
       return mkJsonResponse(true)
     }

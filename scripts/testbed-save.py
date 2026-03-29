@@ -8,8 +8,12 @@ from utils import *
 def delete_registrations(api_url: str, keys: list[str]):
   url = f"{api_url.rstrip('/')}/api/v1/registrations"
   logging.info(f"Deleting {len(keys)} consumed registration(s)")
+  headers = {}
+  token = os.getenv('RESERVOIR_AUTH_TOKEN')
+  if token:
+    headers['Authorization'] = f"Bearer {token}"
   try:
-    resp = requests.delete(url, json=keys, timeout=30)
+    resp = requests.delete(url, json=keys, headers=headers, timeout=30)
     if resp.status_code != 200:
       logging.error(f"Failed to delete registrations ({resp.status_code}): {resp.text}")
   except requests.RequestException as e:
