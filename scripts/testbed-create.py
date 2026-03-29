@@ -11,7 +11,7 @@ from utils import *
 
 def fetch_registrations(api_url: str) -> dict[str, dict]:
   url = f"{api_url.rstrip('/')}/api/v1/registrations"
-  logging.info(f"Fetching registrations from {url}")
+  logging.debug(f"Fetching package registrations from {url}")
   resp = requests.get(url, timeout=30)
   if resp.status_code != 200:
     raise RuntimeError(f"Failed to fetch registrations ({resp.status_code}): {resp.text}")
@@ -112,20 +112,21 @@ if __name__ == "__main__":
   # Fetch registrations
   if args.registrations_url is not None:
     registrations = fetch_registrations(args.registrations_url)
+    logging.info(f"{len(registrations)} package registrations")
     # Collect registration repo IDs
     # Filters by exclusions, missing IDs, and indexed repos
     reg_by_repo = dict[str, tuple[str, dict]]()
     for key, src in registrations.items():
       name = src.get('fullName', key)
       if name.lower() in exclusions:
-        logging.debug(f"Skipping excluded registration: {name}")
+        logging.warning(f"Skipping excluded registration: {name}")
         continue
       repo_id = src.get('id', None)
       if repo_id is None:
-        logging.error(f"Registration '{key}' missing repo ID, skipping")
+        logging.warning(f"Registration '{key}' missing repo ID, skipping")
         continue
       if reindex and repo_id in indexed_repos:
-        logging.debug(f"Skipping already-indexed registration: {key}")
+        logging.debug(f"Reindexing, skipping already-indexed registration: {key}")
         continue
       reg_by_repo[repo_id] = (key, src)
     # Curate new registrations
@@ -138,10 +139,10 @@ if __name__ == "__main__":
         entry = create_entry(
           repo['nameWithOwner'], repo['url'],
           toolchains, args.version_tags, False,
-          repo['id'], None, registration_key=key)
+          repo['id'], None, key)
         entries.append(entry)
         num_registered += 1
-    logging.info(f"{num_registered} entries from registrations")
+    logging.info(f"{num_registered} packages selected from registrations")
 
   if reindex:
     pkgs = list(filter(lambda pkg: pkg['fullName'].lower() not in exclusions, pkgs))
