@@ -16,6 +16,10 @@ on:
         type: string
         required: false
         default: leanprover/reservoir-index
+      reservoir-url:
+        description: "Reservoir URL (for registrations)"
+        type: string
+        required: false
       analyze-registrations:
         description: "Analyze package registrations"
         type: boolean
@@ -138,6 +142,7 @@ jobs:
     secrets: inherit
     with:
       index-repo: ${{ needs.config.outputs.index-repo }}
+      reservoir-url: ${{ inputs.reservoir-url }}
       analyze-registrations: ${{ needs.config.outputs.analyze-registrations == 'true' }}
       consume-registrations: ${{ needs.config.outputs.analyze-registrations == 'true' && needs.config.outputs.update-index == 'true' }}
       search-packages: ${{ needs.config.outputs.search-packages == 'true' }}
