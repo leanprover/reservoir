@@ -16,10 +16,12 @@ const formatLicense = (id: string | null) => {
   switch (id && id.toLowerCase()) {
     case 'apache-2.0':
       return "Apache 2.0"
+    case "0bsd":
+      return "BSD 0-Clause"
     case "bsd-2-clause":
-      return "BSD 2 clause"
+      return "BSD 2-Clause"
     case "bsd-3-clause":
-      return "BSD 3 clause"
+      return "BSD 3-Clause"
     case "cc0-1.0":
       return "CC0"
     case "epl-2.0":
@@ -36,6 +38,10 @@ const formatLicense = (id: string | null) => {
       return "MIT"
     case "mpl-2.0":
       return "MPLv2"
+    case "isc":
+      return "ISC"
+    case "zlib":
+      return "Zlib"
     case "unlicense":
       return "Unlicense"
     default:
