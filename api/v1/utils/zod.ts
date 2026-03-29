@@ -162,7 +162,12 @@ export const GitRev = z.string()
 export const GitHubOwner = z.string().min(1).max(39)
   .regex(/^[a-zA-Z0-9\-]+$/, "Unexpected characters in repository owner")
 
-/** Zod schema for validating GitHub repository names names. */
+/** Zod schema for validating GitHub repository names (without owner). */
 export const GitHubRepo = z.string().min(1).max(100)
   .regex(/^[a-zA-Z0-9_\.\-]+$/, "Unexpected characters in repository name")
   .refine(r => !(r == '.' || r == '..' || r.endsWith(".git")), "Reserved repository name")
+
+/** Zod schema for validating GitHub repository names (with owner). */
+export const GitHubFullName = z.string().min(1).max(140)
+  .regex(/^[a-zA-Z0-9\-]+\/[a-zA-Z0-9_\.\-]+$/, "Unexpected characters in repository name")
+  .refine(r => !(r.endsWith("/.") || r.endsWith("/..") || r.endsWith(".git")), "Reserved repository name")

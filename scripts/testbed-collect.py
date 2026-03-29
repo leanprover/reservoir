@@ -32,6 +32,7 @@ def mk_testbed_result(entry: TestbedEntry, pkg_result: PackageResult) -> Testbed
   result = cast(TestbedResult, pkg_result)
   result['repoId'] = entry['repoId']
   result['indexName'] = entry['indexName']
+  result['registrationKey'] = entry['registrationKey']
   return result
 
 if __name__ == "__main__":

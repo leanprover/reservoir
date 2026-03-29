@@ -17,6 +17,12 @@ export class ResponseError extends Error {
   }
 }
 
+export class Unauthorized extends ResponseError {
+  constructor(message?: string, options?: ResponseErrorOptions) {
+    super(401, message, options)
+  }
+}
+
 export class NotFound extends ResponseError {
   constructor(message?: string, options?: ResponseErrorOptions) {
     super(404, message, options)
@@ -26,6 +32,12 @@ export class NotFound extends ResponseError {
 export class InternalServerError extends ResponseError {
   constructor(message?: string, options?: ResponseErrorOptions) {
     super(500, message, options)
+  }
+}
+
+export class InsufficientStorage extends ResponseError {
+  constructor(message?: string, options?: ResponseErrorOptions) {
+    super(503, message, options)
   }
 }
 

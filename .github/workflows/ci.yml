@@ -16,6 +16,15 @@ on:
         type: string
         required: false
         default: leanprover/reservoir-index
+      reservoir-url:
+        description: "Reservoir URL (for registrations)"
+        type: string
+        required: false
+      analyze-registrations:
+        description: "Analyze package registrations"
+        type: boolean
+        required: false
+        default: false
       search-packages:
         description: "Search GitHub for new packages"
         type: boolean
@@ -25,7 +34,6 @@ on:
         description: "Regex search for indexed packages"
         type: string
         required: false
-        default: ".*"
       version-pattern:
         description: "Regex search for version tags to build"
         type: string
@@ -69,6 +77,7 @@ jobs:
     outputs:
       index-repo: ${{ steps.compute.outputs.index-repo }}
       search-packages: ${{ steps.compute.outputs.search-packages }}
+      analyze-registrations: ${{ steps.compute.outputs.analyze-registrations }}
       update-index: ${{ steps.compute.outputs.update-index }}
       testbed: ${{ steps.compute.outputs.testbed }}
       package-pattern: ${{ steps.compute.outputs.package-pattern }}
@@ -89,17 +98,24 @@ jobs:
               echo testbed=true >> "$GITHUB_OUTPUT"
               echo 'package-pattern=^leanprover' >> "$GITHUB_OUTPUT"
             fi
+            if ${{ contains(github.event.pull_request.labels.*.name, 'A-registration') }}; then
+              echo testbed=true >> "$GITHUB_OUTPUT"
+              echo analyze-registrations=true >> "$GITHUB_OUTPUT"
+            else
+              echo analyze-registrations=false >> "$GITHUB_OUTPUT"
+            fi
             echo search-packages=${{ contains(github.event.pull_request.labels.*.name, 'A-search') }} >> "$GITHUB_OUTPUT"
             echo 'testbed-toolchain=${{ contains(github.event.pull_request.labels.*.name, 'A-testbed') && 'package,latest' || 'none' }}' >> "$GITHUB_OUTPUT"
             echo cache-builds=${{ contains(github.event.pull_request.labels.*.name, 'A-cache') }} >> "$GITHUB_OUTPUT"
           else
             if ${{ github.event_name == 'push' && github.ref_name == 'master' && contains(github.event.head_commit.message, 'UPDATE-INDEX') }}; then
+              echo analyze-registrations=false >> "$GITHUB_OUTPUT"
               echo search-packages=false >> "$GITHUB_OUTPUT"
               echo update-index=true >> "$GITHUB_OUTPUT"
-              echo testbed=true  >> "$GITHUB_OUTPUT"
+              echo testbed=true >> "$GITHUB_OUTPUT"
               echo 'package-pattern=.*' >> "$GITHUB_OUTPUT"
               echo testbed-toolchain=none >> "$GITHUB_OUTPUT"
-              echo cache-builds=true  >> "$GITHUB_OUTPUT"
+              echo cache-builds=true >> "$GITHUB_OUTPUT"
             else
               if ${{ github.event_name != 'workflow_dispatch' }}; then
                 echo testbed=${{ github.ref_name != 'master' }} >> "$GITHUB_OUTPUT"
@@ -108,6 +124,7 @@ jobs:
                 echo testbed=${{ toJson(inputs.testbed-size) == 'null' && true || inputs.testbed-size != 0 }} >> "$GITHUB_OUTPUT"
                 echo 'package-pattern=${{ inputs.package-pattern }}' >> "$GITHUB_OUTPUT"
               fi
+              echo analyze-registrations=${{ inputs.analyze-registrations == true }}  >> "$GITHUB_OUTPUT"
               echo search-packages=${{ inputs.search-packages == true }}  >> "$GITHUB_OUTPUT"
               echo cache-builds=${{ inputs.cache-builds == true }}  >> "$GITHUB_OUTPUT"
               echo update-index=${{ inputs.update-index == true }} >> "$GITHUB_OUTPUT"
@@ -125,6 +142,9 @@ jobs:
     secrets: inherit
     with:
       index-repo: ${{ needs.config.outputs.index-repo }}
+      reservoir-url: ${{ inputs.reservoir-url }}
+      analyze-registrations: ${{ needs.config.outputs.analyze-registrations == 'true' }}
+      consume-registrations: ${{ needs.config.outputs.analyze-registrations == 'true' && needs.config.outputs.update-index == 'true' }}
       search-packages: ${{ needs.config.outputs.search-packages == 'true' }}
       package-pattern: ${{ needs.config.outputs.package-pattern }}
       version-pattern: ${{ inputs.version-pattern }}

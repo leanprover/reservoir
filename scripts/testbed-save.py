@@ -2,7 +2,24 @@
 import logging
 import json
 import argparse
+import requests
 from utils import *
+
+def delete_registrations(api_url: str, keys: list[str]):
+  url = f"{api_url.rstrip('/')}/api/v1/registrations"
+  logging.debug(f"Deleting {len(keys)} package registrations using {url}")
+  headers = {}
+  token = os.getenv('RESERVOIR_AUTH_TOKEN')
+  if token:
+    headers['Authorization'] = f"Bearer {token}"
+  try:
+    resp = requests.delete(url, json=keys, headers=headers, timeout=30)
+    if resp.status_code == 200:
+      logging.info(f"Finished and removed {len(keys)} package registrations")
+    else:
+      logging.error(f"Failed to delete registrations ({resp.status_code}): {resp.text}")
+  except requests.RequestException as e:
+    logging.error(f"Failed to delete registrations: {e}")
 
 def add_result_data(pkg: Package, result: PackageResult):
   pkg['name'] = name = ifnone(result['name'], pkg['name'])
@@ -20,6 +37,9 @@ if __name__ == "__main__":
     help="JSON manifest of results")
   parser.add_argument('index',
     help='directory to output hierarchical index')
+  parser.add_argument('-R', '--registrations-url', type=str, nargs='?',
+    const='https://reservoir.lean-lang.org',
+    help="delete processed registrations from the Reservoir API")
   parser.add_argument('-q', '--quiet', dest="verbosity", action='store_const', const=0, default=1,
     help='print no logging information')
   parser.add_argument('-v', '--verbose', dest="verbosity", action='store_const', const=2,
@@ -97,3 +117,9 @@ if __name__ == "__main__":
   for pkg in opt_outs:
     logging.info(f"Index opt-out: {pkg['fullName']}")
     shutil.rmtree(os.path.join(args.index, package_relpath(pkg)))
+
+  # Consume processed registrations
+  if args.registrations_url:
+    consumed_keys = [r['registrationKey'] for r in results if r.get('registrationKey')]
+    if consumed_keys:
+      delete_registrations(args.registrations_url, consumed_keys)

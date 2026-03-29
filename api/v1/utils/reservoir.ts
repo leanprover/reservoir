@@ -4,6 +4,7 @@ export interface ReservoirContext {
   apiVersion: string | null
   lakeApiVersion: string | null
   indexUrl: string
+  local: boolean
   dev: boolean
 }
 
@@ -20,14 +21,15 @@ export function isDev(event: H3Event, devParam?: boolean) {
 export function initReservoirContext(event: H3Event) {
   const lakeVer = event.headers.get("X-Lake-Registry-Api-Version")
   const reservoirVer = event.headers.get("X-Reservoir-Api-Version")
-  const isNetlifyDev = event.context.netlify.deploy.context == "dev"
+  const local = event.context.netlify.deploy.context == "dev"
   console.log(`${event.method} Reservoir:${reservoirVer ?? "-"} Lake:${lakeVer ?? "-"} ${event.path} `)
   event.context.reservoir = {
     apiVersion: reservoirVer,
     lakeApiVersion: lakeVer,
-    indexUrl: isNetlifyDev
+    indexUrl: local
       ? "https://reservoir.lean-lang.org/index"
       : `${event.web!.url!.origin}/index`,
     dev: false,
+    local
   }
 }

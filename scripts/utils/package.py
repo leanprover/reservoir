@@ -72,6 +72,7 @@ class TestbedEntry(TypedDict):
   cacheBuilds: bool
   repoId: str | None
   indexName: str | None
+  registrationKey: str | None
 
 class TestbedLayer(TypedDict):
   name: str
@@ -82,6 +83,7 @@ TestbedMatrix = list[TestbedLayer]
 class TestbedResult(PackageResult):
   repoId: str | None
   indexName: str | None
+  registrationKey: str | None
 
 TestbedResults = list[TestbedResult]
 

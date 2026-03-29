@@ -5,13 +5,23 @@ import re
 import json
 import itertools
 import argparse
+import requests
 from typing import Collection
 from utils import *
+
+def fetch_registrations(api_url: str) -> dict[str, dict]:
+  url = f"{api_url.rstrip('/')}/api/v1/registrations"
+  logging.debug(f"Fetching package registrations from {url}")
+  resp = requests.get(url, timeout=30)
+  if resp.status_code != 200:
+    raise RuntimeError(f"Failed to fetch registrations ({resp.status_code}): {resp.text}")
+  return resp.json()['data']
 
 def create_entry(
     name: str, git_url: str,
     toolchains: str, version_tags: str, cache_builds: bool,
-    repo_id: str | None, index_name: str | None
+    repo_id: str | None, index_name: str | None,
+    registration_key: str | None = None,
     ) -> TestbedEntry:
   job_name = f"{'Index' if toolchains == '' else 'Build'} {name}"
   digest = hashlib.sha256(job_name.encode()).digest()
@@ -25,6 +35,7 @@ def create_entry(
     'cacheBuilds': cache_builds,
     "repoId": repo_id,
     "indexName": index_name,
+    "registrationKey": registration_key,
   }
 
 def create_layers(entries: Iterable[TestbedEntry]) -> Iterable[TestbedLayer]:
@@ -51,6 +62,9 @@ if __name__ == "__main__":
     help="upload build archives in cloud storage")
   parser.add_argument('--no-cache', dest='cache', action='store_false',
     help="do not upload build archives in cloud storage")
+  parser.add_argument('-R', '--registrations-url', type=str, nargs='?',
+    const='https://reservoir.lean-lang.org',
+    help="analyze package registrations from the Reservoir API")
   parser.add_argument('-X', '--exclusions', default=default_exclusions,
     help='file containing repos to exclude')
   parser.add_argument('-o', '--output',
@@ -68,40 +82,71 @@ if __name__ == "__main__":
     for line in f: exclusions.add(line.strip().lower())
 
   reindex = args.packages != ''
-  if not reindex and args.query == 0:
-    raise RuntimeError("Testbed needs at least one of `-P` or '-Q'")
+  if not reindex and args.query == 0 and args.registrations_url is None:
+    raise RuntimeError("Testbed needs at least one of `-P`, '-Q', or '-R'")
   if reindex and not args.index:
     raise RuntimeError("Testbed needs an index (with '-i') to select from it (with '-P')")
 
   # Entries
   entries = list[TestbedEntry]()
 
+  # Resolve toolchains
+  toolchains =  ','.join(resolve_toolchains(args.toolchain, "package"))
+
   # Load index
-  pkgs = load_index_metadata(args.index) if args.index is not None else []
+  if args.index is not None:
+    pkgs = load_index_metadata(args.index)
+    num_total = len(pkgs)
+    logging.info(f"{num_total} total packages in index")
+  else:
+    pkgs = []
+    num_total = 0
 
   # Query new repositories
   limit = ifnone(args.query, 0)
   indexed_repos = set(filter(None, map(github_repo_id, pkgs)))
   new_repos = query_new_repos(limit, indexed_repos, exclusions)
-
-  # Resolve toolchains
-  toolchains =  ','.join(resolve_toolchains(args.toolchain, "package"))
-
-  # Create testbed
+  # Add them to the testbed
   for repo in new_repos:
-    entry = create_entry(
+    entries.append(create_entry(
       repo['nameWithOwner'], repo['url'],
       toolchains, args.version_tags, False,
-      repo['id'], None)
-    entries.append(entry)
+      repo['id'], None))
+
+  # Remove exclusions from indexed packages
+  pkgs = list(filter(lambda pkg: pkg['fullName'].lower() not in exclusions, pkgs))
+  num_candidates = len(pkgs)
+  if num_candidates != num_total:
+    logging.info(f"{num_candidates} candidate packages in index")
+
+  # Fetch registrations
+  if args.registrations_url is not None:
+    registrations = fetch_registrations(args.registrations_url)
+    logging.info(f"{len(registrations)} package registrations")
+    # Collect registration repo IDs
+    # Filters by exclusions, missing IDs, and indexed repos
+    reg_by_repo = dict[str, tuple[str, dict]]()
+    for key, src in registrations.items():
+      name = src.get('fullName', key)
+      if name.lower() in exclusions:
+        logging.warning(f"Skipping excluded registration: {name}")
+        continue
+      repo_id = src.get('id', None)
+      if repo_id is None:
+        logging.warning(f"Registration '{key}' missing repo ID, skipping")
+        continue
+      reg_by_repo[repo_id] = (key, src)
+
+  # If reindexing, add (matching) indexed repositories to the testbed
   if reindex:
-    pkgs = list(filter(lambda pkg: pkg['fullName'].lower() not in exclusions, pkgs))
-    logging.info(f"{len(pkgs)} packages in index")
+    # Determine repositories to reindex (by regex)
     r = re.compile(args.packages)
-    pkgs = list(filter(lambda pkg: r.search(pkg['fullName']) is not None, pkgs))
-    logging.info(f"{len(pkgs)} packages selected from index")
-    for pkg in pkgs:
+    filtered_pkgs = list(filter(lambda pkg: r.search(pkg['fullName']) is not None, pkgs))
+    logging.info(f"{len(filtered_pkgs)} packages selected from index")
+    # Add them to the testbed
+    for pkg in filtered_pkgs:
       repo_id: str | None = None
+      registration_key: str | None = None
       git_url: str | None = None
       for pkg_src in reversed(pkg['sources']):
         if pkg_src.get('type', None) == 'git':
@@ -110,6 +155,11 @@ if __name__ == "__main__":
             repo_id = pkg_src.get('id', None)
           elif git_url is None:
             git_url = pkg_src.get('gitUrl', None)
+      if args.registrations_url is not None and repo_id is not None:
+        # Remove overlapping registration
+        reg = reg_by_repo.pop(repo_id, None)
+        if reg is not None:
+          registration_key = reg[0]
       if git_url is None:
         logging.error(f"{pkg['fullName']}: Package lacks a Git source")
       else:
@@ -118,11 +168,45 @@ if __name__ == "__main__":
           pkg['owner'] in ['leanprover', 'leanprover-community'] and
           pkg['fullName'] != 'leanprover-community/mathlib'
         )
-        entry = create_entry(
+        entries.append(create_entry(
           pkg['fullName'], git_url,
           toolchains, args.version_tags, cache_builds,
-          repo_id, pkg['fullName'])
-        entries.append(entry)
+          repo_id, pkg['fullName'], registration_key))
+
+  # Add remaining registrations to the testbed
+  if args.registrations_url is not None:
+    pkg_by_repo = dict[str, PackageMetadata]()
+    for pkg in pkgs:
+      repo_id = github_repo_id(pkg)
+      if repo_id is not None:
+        pkg_by_repo[repo_id] = pkg
+    # Add indexed packages in registrations to the testbed
+    old_registered = 0
+    for repo_id, (registration_key,  src) in list(reg_by_repo.items()):
+      pkg = pkg_by_repo.get(repo_id, None)
+      if pkg is not None:
+        reg_by_repo.pop(repo_id)
+        entries.append(create_entry(
+          pkg['fullName'], src['gitUrl'],
+          toolchains, args.version_tags, False,
+          repo_id, pkg['fullName'], registration_key))
+        old_registered += 1
+    logging.info(f"{old_registered} indexed packages selected from registrations")
+    # Curate new registrations and add passing ones to the testbed
+    # Fetches repository data on registrations from the GitHub API
+    new_registered = 0
+    repo_ids = list(reg_by_repo.keys())
+    repos = filter(None, query_repo_data(repo_ids))
+    for repo in curate_repos(repos, exclusions):
+        registration_key, _ = reg_by_repo[repo['id']]
+        entries.append(create_entry(
+          repo['nameWithOwner'], repo['url'],
+          toolchains, args.version_tags, False,
+          repo['id'], None, registration_key))
+        new_registered += 1
+    logging.info(f"{new_registered} new packages selected from registrations")
+
+  # Create layers
   logging.info(f"{len(entries)} total testbed candidates")
   if args.num >= 0:
     entries = itertools.islice(entries, args.num)
