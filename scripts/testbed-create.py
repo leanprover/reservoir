@@ -96,9 +96,11 @@ if __name__ == "__main__":
   # Load index
   if args.index is not None:
     pkgs = load_index_metadata(args.index)
-    logging.info(f"{len(pkgs)} total packages in index")
+    num_total = len(pkgs)
+    logging.info(f"{num_total} total packages in index")
   else:
     pkgs = []
+    num_total = 0
 
   # Query new repositories
   limit = ifnone(args.query, 0)
@@ -111,13 +113,11 @@ if __name__ == "__main__":
       toolchains, args.version_tags, False,
       repo['id'], None))
 
-  # Determine repositories to reindex
-  if reindex:
-    pkgs = list(filter(lambda pkg: pkg['fullName'].lower() not in exclusions, pkgs))
-    logging.info(f"{len(pkgs)} candidate packages in index")
-    r = re.compile(args.packages)
-    pkgs = list(filter(lambda pkg: r.search(pkg['fullName']) is not None, pkgs))
-    logging.info(f"{len(pkgs)} packages selected from index")
+  # Remove exclusions from indexed packages
+  pkgs = list(filter(lambda pkg: pkg['fullName'].lower() not in exclusions, pkgs))
+  num_candidates = len(pkgs)
+  if num_candidates != num_total:
+    logging.info(f"{num_candidates} candidate packages in index")
 
   # Fetch registrations
   if args.registrations_url is not None:
@@ -139,7 +139,12 @@ if __name__ == "__main__":
 
   # If reindexing, add (matching) indexed repositories to the testbed
   if reindex:
-    for pkg in pkgs:
+    # Determine repositories to reindex (by regex)
+    r = re.compile(args.packages)
+    filtered_pkgs = list(filter(lambda pkg: r.search(pkg['fullName']) is not None, pkgs))
+    logging.info(f"{len(filtered_pkgs)} packages selected from index")
+    # Add them to the testbed
+    for pkg in filtered_pkgs:
       repo_id: str | None = None
       registration_key: str | None = None
       git_url: str | None = None
@@ -151,6 +156,7 @@ if __name__ == "__main__":
           elif git_url is None:
             git_url = pkg_src.get('gitUrl', None)
       if args.registrations_url is not None and repo_id is not None:
+        # Remove overlapping registration
         reg = reg_by_repo.pop(repo_id, None)
         if reg is not None:
           registration_key = reg[0]
@@ -167,10 +173,28 @@ if __name__ == "__main__":
           toolchains, args.version_tags, cache_builds,
           repo_id, pkg['fullName'], registration_key))
 
-  # Curate new registrations and add passing ones to the testbed
-  # Fetches repository data on registrations from the GitHub API
+  # Add remaining registrations to the testbed
   if args.registrations_url is not None:
-    num_registered = 0
+    pkg_by_repo = dict[str, PackageMetadata]()
+    for pkg in pkgs:
+      repo_id = github_repo_id(pkg)
+      if repo_id is not None:
+        pkg_by_repo[repo_id] = pkg
+    # Add indexed packages in registrations to the testbed
+    old_registered = 0
+    for repo_id, (registration_key,  src) in list(reg_by_repo.items()):
+      pkg = pkg_by_repo.get(repo_id, None)
+      if pkg is not None:
+        reg_by_repo.pop(repo_id)
+        entries.append(create_entry(
+          pkg['fullName'], src['gitUrl'],
+          toolchains, args.version_tags, False,
+          repo_id, pkg['fullName'], registration_key))
+        old_registered += 1
+    logging.info(f"{old_registered} indexed packages selected from registrations")
+    # Curate new registrations and add passing ones to the testbed
+    # Fetches repository data on registrations from the GitHub API
+    new_registered = 0
     repo_ids = list(reg_by_repo.keys())
     repos = filter(None, query_repo_data(repo_ids))
     for repo in curate_repos(repos, exclusions):
@@ -179,8 +203,8 @@ if __name__ == "__main__":
           repo['nameWithOwner'], repo['url'],
           toolchains, args.version_tags, False,
           repo['id'], None, registration_key))
-        num_registered += 1
-    logging.info(f"{num_registered} new packages selected from registrations")
+        new_registered += 1
+    logging.info(f"{new_registered} new packages selected from registrations")
 
   # Create layers
   logging.info(f"{len(entries)} total testbed candidates")
