@@ -51,6 +51,7 @@ registrationRouter.use('/registrations', defineEventErrorHandler(async event => 
       return mkJsonResponse({"data": Object.fromEntries(pairs)})
     }
     case "POST": {
+      checkToken(event)
       const {blobs} = await registrations.list()
       if (blobs.length > parseInt(process.env.REGISTRATION_LIMIT!)) {
         console.error(`${blobs.length} registrations; limit reached`)
