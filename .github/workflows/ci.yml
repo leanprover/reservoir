@@ -140,6 +140,7 @@ jobs:
     with:
       index-repo: ${{ needs.config.outputs.index-repo }}
       analyze-registrations: ${{ needs.config.outputs.analyze-registrations == 'true' }}
+      consume-registrations: ${{ needs.config.outputs.analyze-registrations == 'true' && needs.config.outputs.update-index == 'true' }}
       search-packages: ${{ needs.config.outputs.search-packages == 'true' }}
       package-pattern: ${{ needs.config.outputs.package-pattern }}
       version-pattern: ${{ inputs.version-pattern }}
