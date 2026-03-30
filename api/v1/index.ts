@@ -19,8 +19,8 @@ const app = createApp({
 
 const v1 = createRouter()
 
-v1.use("**", packageRouter.handler)
-v1.use("**", registrationRouter.handler)
+v1.use("/packages/**", packageRouter.handler)
+v1.use("/registrations/**", registrationRouter.handler)
 v1.use("/barrels/:barrel", barrelHandler)
 v1.use("/repositories/:owner/:repo/artifacts", artifactsHandler)
 v1.use("/repositories/:owner/:repo/artifacts/:artifact", artifactHandler)
