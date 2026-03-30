@@ -39,6 +39,10 @@ class BuildResult(TypedDict):
 class Build(BuildResult):
   revision: str
 
+class LicenseFileEntry(TypedDict, total=False):
+  path: str
+  sha256: str | None
+
 class PackageVersionMetadata(TypedDict):
   version: str
   revision: str
@@ -47,12 +51,13 @@ class PackageVersionMetadata(TypedDict):
   toolchain: str | None
   platformIndependent: bool | None
   license: str | None
-  licenseFiles: list[str]
+  licenseFiles: 'list[str | LicenseFileEntry]'
   readmeFile: str | None
   dependencies: list[Dependency]
 
 class PackageVersion(PackageVersionMetadata):
   builds: list[BuildResult]
+  unresolvedLicenseFiles: bool
 
 class PackageResult(TypedDict):
   doIndex: bool
@@ -73,6 +78,7 @@ class TestbedEntry(TypedDict):
   repoId: str | None
   indexName: str | None
   registrationKey: str | None
+  checkLicenseFiles: bool
 
 class TestbedLayer(TypedDict):
   name: str
@@ -84,13 +90,15 @@ class TestbedResult(PackageResult):
   repoId: str | None
   indexName: str | None
   registrationKey: str | None
+  checkLicenseFiles: bool
 
 TestbedResults = list[TestbedResult]
 
 #`1.0.0: Reservoir 1.0
 # 1.1.0: Added `archiveHash`
 # 1.2.0: More Dependency data (`transitive``, `inputRev`, `url``)
-INDEX_SCHEMA_VERSION_STR = '1.2.0'
+# 1.3.0: `licenseFiles` changed from `list[str]` to `list[LicenseFileEntry]`
+INDEX_SCHEMA_VERSION_STR = '1.3.0'
 INDEX_SCHEMA_VERSION = Version(INDEX_SCHEMA_VERSION_STR)
 
 class PackageMetadata(TypedDict):
@@ -145,8 +153,15 @@ def package_of_metadata(
   pkg['builds'] = []
   return pkg
 
+def normalize_license_file(entry: 'str | LicenseFileEntry') -> LicenseFileEntry:
+  if isinstance(entry, str):
+    return {'path': entry}
+  return entry
+
 def version_metadata(ver: PackageVersionMetadata) -> PackageVersionMetadata:
-  return cast(PackageVersionMetadata, {k: ver[k] for k in PackageVersionMetadata.__annotations__.keys()})
+  data = cast(PackageVersionMetadata, {k: ver[k] for k in PackageVersionMetadata.__annotations__.keys()})
+  data['licenseFiles'] = [normalize_license_file(e) for e in data['licenseFiles']]
+  return data
 
 def version_of_metadata(data: PackageVersionMetadata) -> PackageVersion:
   ver = cast(PackageVersion, data)

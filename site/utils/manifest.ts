@@ -49,6 +49,11 @@ export interface PackageDependent extends PackageDep {
 }
 
 
+export interface LicenseFileEntry {
+  path: string
+  sha256?: string | null
+}
+
 export interface PackageVer {
   version: string
   revision: string
@@ -57,7 +62,7 @@ export interface PackageVer {
   toolchain: string | null
   dependencies: PackageDep[]
   license: string | null
-  licenseFiles:  string[]
+  licenseFiles: LicenseFileEntry[]
   readmeFile: string | null
 }
 

@@ -33,6 +33,7 @@ def mk_testbed_result(entry: TestbedEntry, pkg_result: PackageResult) -> Testbed
   result['repoId'] = entry['repoId']
   result['indexName'] = entry['indexName']
   result['registrationKey'] = entry['registrationKey']
+  result['checkLicenseFiles'] = entry.get('checkLicenseFiles', False)
   return result
 
 if __name__ == "__main__":

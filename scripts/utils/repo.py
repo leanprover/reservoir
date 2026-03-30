@@ -183,6 +183,55 @@ def license_id(license: RepoLicense | None) -> str | None:
   if license['spdxId'] in ['NONE', 'NOASSERTION']: return None
   return license['spdxId']
 
+class LicenseOverride(TypedDict):
+  github: str | None
+  license: str | None
+  reason: str
+
+LicenseOverrides = dict[str, LicenseOverride]
+
+def load_license_overrides(path: str) -> LicenseOverrides:
+  if not os.path.exists(path):
+    logging.debug(f"No license overrides file found at {path}")
+    return {}
+  with open(path, 'r') as f:
+    return json.load(f)
+
+def check_osi_license(
+    pkg: PackageMetadata,
+    licenses: dict[str, License],
+    overrides: LicenseOverrides
+) -> bool:
+  """Check if a package has an OSI-approved license or a valid override.
+  Returns True if the package should be included.
+  May mutate pkg['license'] if a pinned override is applied."""
+  fullName = pkg['fullName']
+  override = overrides.get(fullName, None)
+  if override is not None:
+    if pkg['license'] != override['github']:
+      logging.warning(f"{fullName}: GitHub license changed from '{override['github']}' to '{pkg['license']}', override not applied (review needed)")
+    elif override['license'] is not None:
+      logging.info(f"{fullName}: License pinned to '{override['license']}' (override: {override['reason']})")
+      pkg['license'] = override['license']
+      return True
+    else:
+      logging.info(f"{fullName}: Non-OSI license accepted (override: {override['reason']})")
+      return True
+  spdxId = pkg['license']
+  if spdxId is None:
+    logging.warning(f"{fullName}: Excluded from testbed (no license detected)")
+    return False
+  license = licenses.get(spdxId, None)
+  if license is None:
+    logging.error(f"{fullName}: Unknown SPDX ID '{spdxId}'")
+    return False
+  if license.get('isDeprecatedLicenseId', False):
+    logging.warning(f"{fullName}: Using deprecated SPDX ID '{spdxId}'")
+  if not license.get('isOsiApproved', False):
+    logging.warning(f"{fullName}: Excluded from testbed (non-OSI license '{spdxId}')")
+    return False
+  return True
+
 def filter_repo_ids(repos: 'Iterable[Repo]', ids: 'Iterable[str]') -> 'Iterable[Repo]':
   """Filter repositories with `ids` from `repos`"""
   repo_map = dict((repo['id'], repo) for repo in repos)

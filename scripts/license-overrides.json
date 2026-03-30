@@ -1,0 +1,7 @@
+{
+  "opencompl/SSA": {
+    "github": null,
+    "license": "Apache-2.0",
+    "reason": "Package is Apache 2.0, but its logo is not"
+  }
+}

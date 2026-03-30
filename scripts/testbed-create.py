@@ -22,6 +22,7 @@ def create_entry(
     toolchains: str, version_tags: str, cache_builds: bool,
     repo_id: str | None, index_name: str | None,
     registration_key: str | None = None,
+    check_license_files: bool = False,
     ) -> TestbedEntry:
   job_name = f"{'Index' if toolchains == '' else 'Build'} {name}"
   digest = hashlib.sha256(job_name.encode()).digest()
@@ -36,6 +37,7 @@ def create_entry(
     "repoId": repo_id,
     "indexName": index_name,
     "registrationKey": registration_key,
+    "checkLicenseFiles": check_license_files,
   }
 
 def create_layers(entries: Iterable[TestbedEntry]) -> Iterable[TestbedLayer]:
@@ -67,6 +69,9 @@ if __name__ == "__main__":
     help="analyze package registrations from the Reservoir API")
   parser.add_argument('-X', '--exclusions', default=default_exclusions,
     help='file containing repos to exclude')
+  parser.add_argument('-L', '--license-overrides',
+    default=os.path.join(script_dir, "license-overrides.json"),
+    help='JSON file containing license overrides')
   parser.add_argument('-o', '--output',
     help='file to output the bundle manifest')
   parser.add_argument('-q', '--quiet', dest="verbosity", action='store_const', const=0, default=1,
@@ -80,6 +85,9 @@ if __name__ == "__main__":
   exclusions = set[str]()
   with open(args.exclusions, 'r') as f:
     for line in f: exclusions.add(line.strip().lower())
+
+  license_overrides = load_license_overrides(args.license_overrides)
+  spdx_licenses = query_licenses()
 
   reindex = args.packages != ''
   if not reindex and args.query == 0 and args.registrations_url is None:
@@ -143,6 +151,15 @@ if __name__ == "__main__":
     r = re.compile(args.packages)
     filtered_pkgs = list(filter(lambda pkg: r.search(pkg['fullName']) is not None, pkgs))
     logging.info(f"{len(filtered_pkgs)} packages selected from index")
+    # Filter by OSI-approved license (with overrides)
+    num_before = len(filtered_pkgs)
+    check_license = dict[str, bool]()
+    for pkg in filtered_pkgs:
+      check_license[pkg['fullName']] = pkg['license'] is None
+    filtered_pkgs = [pkg for pkg in filtered_pkgs
+                     if check_osi_license(pkg, spdx_licenses, license_overrides)]
+    if len(filtered_pkgs) != num_before:
+      logging.info(f"{len(filtered_pkgs)} packages after license filtering")
     # Add them to the testbed
     for pkg in filtered_pkgs:
       repo_id: str | None = None
@@ -171,7 +188,8 @@ if __name__ == "__main__":
         entries.append(create_entry(
           pkg['fullName'], git_url,
           toolchains, args.version_tags, cache_builds,
-          repo_id, pkg['fullName'], registration_key))
+          repo_id, pkg['fullName'], registration_key,
+          check_license.get(pkg['fullName'], False)))
 
   # Add remaining registrations to the testbed
   if args.registrations_url is not None:
@@ -186,10 +204,14 @@ if __name__ == "__main__":
       pkg = pkg_by_repo.get(repo_id, None)
       if pkg is not None:
         reg_by_repo.pop(repo_id)
+        has_null_license = pkg['license'] is None
+        if not check_osi_license(pkg, spdx_licenses, license_overrides):
+          continue
         entries.append(create_entry(
           pkg['fullName'], src['gitUrl'],
           toolchains, args.version_tags, False,
-          repo_id, pkg['fullName'], registration_key))
+          repo_id, pkg['fullName'], registration_key,
+          has_null_license))
         old_registered += 1
     logging.info(f"{old_registered} indexed packages selected from registrations")
     # Curate new registrations and add passing ones to the testbed

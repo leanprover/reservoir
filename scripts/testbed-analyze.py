@@ -183,6 +183,27 @@ def cwd_checkout(rev: str):
 def cfg_default(cfg: ReservoirConfig | None, key: str, type: type[T], default: V = None) -> T | V:
   return get_type(cfg, key, type, default) if cfg is not None else default
 
+def relativize_license_files(files: list[str], name: str | None) -> tuple[list[str], bool]:
+  """Relativize license file paths against cwd. Returns (relativized_files, has_unresolved)."""
+  result = []
+  unresolved = False
+  cwd = os.getcwd()
+  for path in files:
+    if os.path.isabs(path):
+      try:
+        rel = os.path.relpath(path, cwd)
+        if rel.startswith('..'):
+          logging.error(f"{name}: License file path '{path}' is outside the repo root")
+          unresolved = True
+          continue
+        path = rel
+      except ValueError:
+        logging.error(f"{name}: License file path '{path}' is outside the repo root")
+        unresolved = True
+        continue
+    result.append(path)
+  return result, unresolved
+
 def cwd_licenses(cfg: ReservoirConfig | None) -> list[str]:
   if cfg is None:
     if os.path.exists('LICENSE'):
@@ -246,7 +267,10 @@ def cwd_analyze(
     result['headVersion']['version'] = get_type(cfg, 'version', str, '0.0.0')
     result['headVersion']['platformIndependent'] = get_type(cfg, 'platformIndependent', bool, None)
     result['headVersion']['license'] = filter_license(get_type(cfg, 'license', str))
-    result['headVersion']['licenseFiles'] = list(get_type_values(cfg, 'licenseFiles', str))
+    license_files, unresolved = relativize_license_files(list(get_type_values(cfg, 'licenseFiles', str)), result['name'])
+    result['headVersion']['licenseFiles'] = license_files
+    if unresolved:
+      result['headVersion']['unresolvedLicenseFiles'] = True
     result['headVersion']['readmeFile'] = cwd_readme(cfg)
     version_tags = list(get_type_values(cfg, 'versionTags', str))
   else:
@@ -281,11 +305,15 @@ def cwd_analyze(
           'toolchain': toolchain,
           'platformIndependent': cfg_default(cfg, 'platformIndependent', bool),
           'license': filter_ws(cfg_default(cfg, 'license', str)),
-          'licenseFiles': cwd_licenses(cfg),
+          'licenseFiles': [],
           'readmeFile': cwd_readme(cfg),
           'dependencies': cwd_manifest().dependencies,
           'builds': [],
         }
+        license_files, unresolved = relativize_license_files(cwd_licenses(cfg), result['name'])
+        ver['licenseFiles'] = license_files
+        if unresolved:
+          ver['unresolvedLicenseFiles'] = True
         result['versions'].append(ver)
         if tag_pattern is not None and tag_pattern.search(tag) is not None:
           failure = try_add_builds(ver, build_dir, target_toolchains, is_mathlib) or failure
