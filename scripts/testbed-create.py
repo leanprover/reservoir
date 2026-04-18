@@ -83,7 +83,7 @@ if __name__ == "__main__":
 
   reindex = args.packages != ''
   if not reindex and args.query == 0 and args.registrations_url is None:
-    raise RuntimeError("Testbed needs at least one of `-P`, '-Q', or '-R'")
+    raise RuntimeError("Testbed needs at least one of '-P', '-Q', or '-R'")
   if reindex and not args.index:
     raise RuntimeError("Testbed needs an index (with '-i') to select from it (with '-P')")
 
@@ -105,13 +105,21 @@ if __name__ == "__main__":
   # Query new repositories
   limit = ifnone(args.query, 0)
   indexed_repos = set(filter(None, map(github_repo_id, pkgs)))
-  new_repos = query_new_repos(limit, indexed_repos, exclusions)
-  # Add them to the testbed
-  for repo in new_repos:
-    entries.append(create_entry(
-      repo['nameWithOwner'], repo['url'],
-      toolchains, args.version_tags, False,
-      repo['id'], None))
+  try:
+    new_repos = query_new_repos(limit, indexed_repos, exclusions)
+    # Add them to the testbed
+    for repo in new_repos:
+      entries.append(create_entry(
+        repo['nameWithOwner'], repo['url'],
+        toolchains, args.version_tags, False,
+        repo['id'], None))
+  except RuntimeError as e:
+    # Unfortunately, querying GitHub fails with some regularity,
+    # so we permit failures if there is something else to do.
+    if not reindex and args.registrations_url is None:
+      raise RuntimeError("Querying failed and neither of '-P' or '-R' were specified") from e
+    else:
+      logging.exception("Failed to query GitHub for new repositories")
 
   # Remove exclusions from indexed packages
   pkgs = list(filter(lambda pkg: pkg['fullName'].lower() not in exclusions, pkgs))
