@@ -140,7 +140,7 @@ export function validatePlatform(platform: string, ctx: z.RefinementCtx) {
     return z.NEVER
   }
   // The expected legal characters in a target triple.
-  if (!/^[a-zA-Z0-9_\-]+$/.test(platform)) {
+  if (!/^[a-zA-Z0-9_\-\.]+$/.test(platform)) {
     console.error(`Received platform with unexpected characters: ${platform}`)
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
