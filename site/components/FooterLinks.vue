@@ -73,7 +73,7 @@ import LeanIcon from '~/assets/white-logo.svg?component'
     <div class="footer-divider container" role="separator"></div>
 
     <div class="footer-bottom container">
-      <div class="footer-copy">© 2025 Lean FRO. All rights reserved.</div>
+      <div class="footer-copy">© 2026 Lean FRO. All rights reserved.</div>
       <div class="footer-socials">
         <a href="https://functional.cafe/@leanprover">
           <MastodonIcon />
