@@ -131,7 +131,7 @@ jobs:
       matrix: ${{ steps.output-matrix.outputs.matrix }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Download Index Artifact
         if: inputs.reuse-artifact
         uses: actions/download-artifact@v4
@@ -189,7 +189,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Collect Outcomes
         run: |
           scripts/testbed-collect.py \
@@ -217,7 +217,7 @@ jobs:
       group: ${{ inputs.update-index && format('update-index/{0}', inputs.index-repo) || format('index/{0}', github.run_id) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Download Index Artifact
         if: inputs.reuse-artifact
         uses: actions/download-artifact@v4
@@ -226,10 +226,11 @@ jobs:
           path: index
       - name: Checkout External Index
         if: inputs.index-repo && !inputs.reuse-artifact
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           token: ${{ secrets.RESERVOIR_INDEX_TOKEN }}
           repository: ${{ inputs.index-repo }}
+          ref: master # avoid potentially expensive default branch check
           path: index
       - name: Download Results Artifact
         uses: actions/download-artifact@v4
