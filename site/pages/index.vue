@@ -12,9 +12,10 @@ const updated = [...packages].sort((a, b) =>
 definePageMeta({
   layout: false,
 })
-defineOgImage({
-  component: 'Generic',
-  title: 'Reservoir',
+const site = useSiteConfig()
+defineOgImageComponent('Generic', {
+  title: site.name,
+  description: site.description,
 })
 </script>
 

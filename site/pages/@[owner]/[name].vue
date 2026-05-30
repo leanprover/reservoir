@@ -25,11 +25,12 @@ useHead({
   meta: pkg.description ? [{ name: 'description', content: pkg.description }] : undefined
 })
 
-defineOgImageComponent('Generic', {
-  title: pkg.name,
-  description: pkg.description,
-  hasNoDescription: !pkg.description
-})
+// Disabled for now as this appears to be breaking the site build.
+// defineOgImageComponent('Generic', {
+//   title: pkg.name,
+//   description: pkg.description,
+//   hasNoDescription: !pkg.description
+// })
 
 const navTab = computed(() => {
   return route.path == pkgLink(pkg) ? 'readme' : route.path.split('/').at(-1)

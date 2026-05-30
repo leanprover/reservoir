@@ -6,11 +6,12 @@ useHead({
   ]
 })
 
-const site = useSiteConfig()
-defineOgImageComponent('Generic', {
-  title: site.name,
-  description: site.description,
-})
+// Disabled for now as this appears to be breaking the site build.
+// const site = useSiteConfig()
+// defineOgImageComponent('Generic', {
+//   title: site.name,
+//   description: site.description,
+// })
 </script>
 
 <template>
