@@ -54,7 +54,7 @@ jobs:
         uses: actions/checkout@v6
       - name: Download Index Artifact
         if: inputs.index-artifact
-        uses:  actions/download-artifact@v4
+        uses:  actions/download-artifact@v8
         with:
           name: index
           path: index
@@ -71,7 +71,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.RESERVOIR_INDEX_TOKEN }}
       - name: Upload Manifest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: manifest
           path: manifest.json
@@ -84,7 +84,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
       - name: Download Manifest
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: manifest
           path: site
@@ -102,7 +102,7 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=16384
       - name: Download Index Artifact
         if: inputs.index-artifact
-        uses:  actions/download-artifact@v4
+        uses:  actions/download-artifact@v8
         with:
           name: index
           path: site/dist/index
@@ -118,7 +118,7 @@ jobs:
       - name: Copy Manifest to Site
         run: cp site/manifest.json site/dist/index/manifest.json
       - name: Upload Site
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: site
           path: site/dist
@@ -134,7 +134,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
       - name: Download Site
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: site
           path: site/.output/public
