@@ -245,7 +245,7 @@ jobs:
           RESERVOIR_AUTH_TOKEN: ${{ secrets.RESERVOIR_AUTH_TOKEN }}
       - name: Update External Index
         if: inputs.update-index
-        uses: EndBug/add-and-commit@v9
+        uses: EndBug/add-and-commit@v10
         with:
           cwd: index
           fetch: false
