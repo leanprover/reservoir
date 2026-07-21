@@ -1,9 +1,11 @@
 import re
 import json
+import requests
+import itertools
 from typing import TypedDict
 from utils.core import *
 
-class Release(TypedDict):
+class GHRelease(TypedDict):
   tag_name: str
   published_at: str
   html_url: str
@@ -11,7 +13,7 @@ class Release(TypedDict):
 
 DEFAULT_ORIGIN = 'leanprover/lean4'
 
-def query_releases(repo: str = DEFAULT_ORIGIN, paginate: bool = True) -> 'Iterator[Release]':
+def query_gh_releases(repo: str = DEFAULT_ORIGIN, paginate: bool = True) -> 'Iterator[GHRelease]':
   out = capture_cmd(
     'gh', 'api',
     '--cache', '1h',
@@ -44,8 +46,8 @@ def lean_version_number(tag: str):
   match = LEAN_VER_PATTERN.search(tag)
   return int(match.group(1)) if match is not None else None
 
-def query_toolchains(repo: str = DEFAULT_ORIGIN) -> 'list[Toolchain]':
-  def toolchain_of_release(rel: Release) -> Toolchain:
+def query_gh_toolchains(repo: str = DEFAULT_ORIGIN) -> 'list[Toolchain]':
+  def toolchain_of_release(rel: GHRelease) -> Toolchain:
     return {
       "name": f"{repo}:{rel['tag_name']}",
       "version":  lean_version_number(rel['tag_name']),
@@ -54,7 +56,39 @@ def query_toolchains(repo: str = DEFAULT_ORIGIN) -> 'list[Toolchain]':
       "releaseUrl": rel['html_url'],
       "prerelease": rel['prerelease']
     }
-  toolchains = map(toolchain_of_release, query_releases(repo))
+  toolchains = map(toolchain_of_release, query_gh_releases(repo))
+  return sorted(toolchains, key=toolchain_sort_key, reverse=True)
+
+class ReleaseAsset(TypedDict):
+  name: str
+  browser_download_url: str
+
+class Release(TypedDict):
+  name: str
+  created_at: str
+  asset: list[ReleaseAsset]
+
+class ReleaseResp(TypedDict):
+  version: str
+  stable: list[Release]
+  beta: list[Release]
+  nightly: list[Release]
+
+def query_toolchains() -> 'list[Toolchain]':
+  def toolchain_of_release(rel: Release, prerelease: bool) -> Toolchain:
+    return {
+      "name": f"{DEFAULT_ORIGIN}:{rel['name']}",
+      "version":  lean_version_number(rel['name']),
+      "tag": rel['name'],
+      "date": rel['created_at'],
+      "releaseUrl": f"https://github.com/leanprover/lean4/releases/tag/{rel['name']}",
+      "prerelease": prerelease
+    }
+  resp: ReleaseResp = requests.get("https://release.lean-lang.org/").json()
+  toolchains = itertools.chain(
+    (toolchain_of_release(rel, prerelease=False) for rel in resp["stable"]),
+    (toolchain_of_release(rel, prerelease=True) for rel in resp["beta"]),
+  )
   return sorted(toolchains, key=toolchain_sort_key, reverse=True)
 
 def normalize_toolchain(toolchain: str) -> str:
@@ -75,13 +109,13 @@ def resolve_toolchain(toolchain: str, package_toolchain: T) -> str | T:
   if toolchain == 'package':
     return package_toolchain
   elif toolchain == 'stable':
-    releases = filter(lambda r: not r['prerelease'], query_releases())
+    releases = filter(lambda r: not r['prerelease'], query_gh_releases())
     return f"{DEFAULT_ORIGIN}:{next(releases)['tag_name']}"
   elif toolchain == 'nightly':
-    releases = query_releases(NIGHTLY_REPO, paginate=False)
+    releases = query_gh_releases(NIGHTLY_REPO, paginate=False)
     return f"{DEFAULT_ORIGIN}:{next(releases)['tag_name']}"
   elif toolchain == 'latest':
-    releases = query_releases(paginate=False)
+    releases = query_gh_releases(paginate=False)
     return f"{DEFAULT_ORIGIN}:{next(releases)['tag_name']}"
   else:
     return normalize_toolchain(toolchain)
