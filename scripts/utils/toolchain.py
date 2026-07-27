@@ -74,6 +74,9 @@ class ReleaseResp(TypedDict):
   beta: list[Release]
   nightly: list[Release]
 
+def query_releases() -> 'ReleaseResp':
+  return requests.get("https://release.lean-lang.org/").json()
+
 def query_toolchains() -> 'list[Toolchain]':
   def toolchain_of_release(rel: Release, prerelease: bool) -> Toolchain:
     return {
@@ -84,7 +87,7 @@ def query_toolchains() -> 'list[Toolchain]':
       "releaseUrl": f"https://github.com/leanprover/lean4/releases/tag/{rel['name']}",
       "prerelease": prerelease
     }
-  resp: ReleaseResp = requests.get("https://release.lean-lang.org/").json()
+  resp = query_releases()
   toolchains = itertools.chain(
     (toolchain_of_release(rel, prerelease=False) for rel in resp["stable"]),
     (toolchain_of_release(rel, prerelease=True) for rel in resp["beta"]),
@@ -109,14 +112,14 @@ def resolve_toolchain(toolchain: str, package_toolchain: T) -> str | T:
   if toolchain == 'package':
     return package_toolchain
   elif toolchain == 'stable':
-    releases = filter(lambda r: not r['prerelease'], query_gh_releases())
-    return f"{DEFAULT_ORIGIN}:{next(releases)['tag_name']}"
+    name = query_releases()['stable'][0]['name']
+    return f"{DEFAULT_ORIGIN}:{name}"
   elif toolchain == 'nightly':
-    releases = query_gh_releases(NIGHTLY_REPO, paginate=False)
-    return f"{DEFAULT_ORIGIN}:{next(releases)['tag_name']}"
+    name = query_releases()['nightly'][0]['name']
+    return f"{DEFAULT_ORIGIN}:{name}"
   elif toolchain == 'latest':
-    releases = query_gh_releases(paginate=False)
-    return f"{DEFAULT_ORIGIN}:{next(releases)['tag_name']}"
+    name = query_releases()['beta'][0]['name']
+    return f"{DEFAULT_ORIGIN}:{name}"
   else:
     return normalize_toolchain(toolchain)
 
