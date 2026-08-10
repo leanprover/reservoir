@@ -221,11 +221,13 @@ def metadata_of_repo(repo: Repo) -> PackageMetadata:
 def package_of_repo(repo: Repo) -> Package:
   return package_of_metadata(metadata_of_repo(repo))
 
-def curate_repos(repos: Iterable[Repo], excluded_pkgs: Container[str] = set()) -> Iterable[Repo]:
+def curate_repos(repos: Iterable[Repo], excluded_pkgs: Container[str] = set(), check_stars: bool = True) -> Iterable[Repo]:
   licenses = query_licenses()
   deprecated_ids = set[str]()
   def curate(repo: Repo):
-    if repo['nameWithOwner'] in excluded_pkgs or repo['stargazerCount'] <= 1:
+    if repo['nameWithOwner'] in excluded_pkgs:
+      return False
+    if check_stars and repo['stargazerCount'] <= 1:
       return False
     spdxId = license_id(repo['licenseInfo'])
     if spdxId is not None:

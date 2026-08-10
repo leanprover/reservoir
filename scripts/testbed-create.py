@@ -205,7 +205,7 @@ if __name__ == "__main__":
     new_registered = 0
     repo_ids = list(reg_by_repo.keys())
     repos = filter(None, query_repo_data(repo_ids))
-    for repo in curate_repos(repos, exclusions):
+    for repo in curate_repos(repos, exclusions, check_stars=False):
         registration_key, _ = reg_by_repo[repo['id']]
         entries.append(create_entry(
           repo['nameWithOwner'], repo['url'],
