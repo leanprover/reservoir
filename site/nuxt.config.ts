@@ -6,10 +6,12 @@ export default defineNuxtConfig({
     head: {
       script: [
         {
-          src: 'https://plausible.io/js/script.outbound-links.js',
-          defer: true,
-          'data-domain': 'lean-lang.org',
+          src: 'https://plausible.io/js/pa-RTua_4FfKHhfAvAc3liZd.js',
+          async: true,
         },
+        {
+          textContent: 'window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init()',
+        }
       ],
     },
   },
