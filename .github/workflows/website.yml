@@ -89,7 +89,7 @@ jobs:
           name: manifest
           path: site
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 18
           cache: npm
@@ -139,7 +139,7 @@ jobs:
           name: site
           path: site/.output/public
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
