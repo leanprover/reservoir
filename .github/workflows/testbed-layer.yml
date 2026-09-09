@@ -21,6 +21,8 @@ jobs:
         include: ${{ fromJson(inputs.matrix) }}
       # complete all jobs
       fail-fast: false
+      # do not consume all GitHub runners
+      max-parallel: 40
     continue-on-error: true # e.g., upload/download failures
     steps:
       - name: Install Elan
