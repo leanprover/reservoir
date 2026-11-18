@@ -58,6 +58,8 @@ if __name__ == "__main__":
     help="max number of testbed entries (< 0 for no limit)")
   parser.add_argument('-Q', '--query', type=int, default=0,
     help='(max) number of new packages to query from GitHub (< 0 for no limit)')
+  parser.add_argument('--max-new', type=int, default=-1,
+    help='max number of new GitHub packages to add per run, most-starred first (< 0 for no limit)')
   parser.add_argument('--cache', action='store_true', default=True,
     help="upload build archives in cloud storage")
   parser.add_argument('--no-cache', dest='cache', action='store_false',
@@ -107,6 +109,11 @@ if __name__ == "__main__":
   indexed_repos = set(filter(None, map(github_repo_id, pkgs)))
   try:
     new_repos = query_new_repos(limit, indexed_repos, exclusions)
+    # Cap new packages per run, so a large backlog is indexed gradually.
+    # Indexed repositories are skipped next run, so later runs take the next batch.
+    if args.max_new >= 0 and len(new_repos) > args.max_new:
+      new_repos = sorted(new_repos, key=lambda repo: repo['stargazerCount'], reverse=True)[:args.max_new]
+      logging.info(f"Limited to {args.max_new} new repositories (most-starred first)")
     # Add them to the testbed
     for repo in new_repos:
       entries.append(create_entry(
