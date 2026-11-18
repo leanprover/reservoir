@@ -122,9 +122,19 @@ def query_github_results(limit: int, endpoint: str, params: dict[str, Any]) -> I
     res = query_github_api(endpoint, params)
     yield from res['items']
 
+def query_github_graphql_data(query: str, variables: dict, what: str) -> Any:
+  """GraphQL `data`, with retries. Some failures arrive as HTTP 200 with `errors` and no `data`."""
+  def request():
+    resp = query_github_graphql(query, variables)
+    data = resp.get('data')
+    if data is None:
+      raise RuntimeError(f"GitHub GraphQL request failed: {resp.get('errors')}")
+    return data
+  return with_retries(request, what)
+
 def query_repo_data(items: Iterable[str]) -> Iterable[Repo | None]:
   for page in paginate(items, 100):
-    data = query_github_graphql(REPO_QUERY, {"repoIds": page})['data']
+    data = query_github_graphql_data(REPO_QUERY, {"repoIds": page}, "GitHub GraphQL repository query")
     logging.debug(f"GitHub GraphQL request cost: {data['rateLimit']['cost']}")
     yield from data['nodes']
 
@@ -159,14 +169,16 @@ def query_lake_repos(limit: int, known_repos: Container[str] = set()) -> list[st
     # so also sweep repository search, which can be partitioned by creation date.
     # A failure here should not discard the code search results.
     try:
-      seen = set(repo_ids)
-      window_ids = [id for id in query_windowed_lean_repos() if id not in seen and id not in known_repos]
+      # Repository search returns the same (new-style) node IDs as the index, so known repos can be skipped
+      # here. Code search returns legacy IDs, so overlap with it is resolved later, by canonical ID.
+      window_ids = [id for id in query_windowed_lean_repos() if id not in known_repos]
       found = query_root_manifest_repos(window_ids)
       logging.info(f"{len(found)} additional repositories with root Lake manifests found by windowed search")
       repo_ids.extend(found)
     except RuntimeError:
       logging.exception("Windowed repository search failed; using code search results only")
   # Unsorted code search pages can overlap, so deduplicate (preserving order).
+  # IDs from the two searches differ in format; callers deduplicate by canonical ID after querying data.
   return list(dict.fromkeys(repo_ids))
 
 # GitHub's launch; bisection makes early, sparse windows cheap.
@@ -259,20 +271,12 @@ query($repoIds: [ID!]!) {
 }
 """
 
-def query_root_manifest_page(page: list[str]) -> Any:
-  resp = query_github_graphql(ROOT_MANIFEST_QUERY, {"repoIds": page})
-  data = resp.get('data')
-  if data is None:
-    # GraphQL reports some failures with HTTP 200 and an `errors` field.
-    raise RuntimeError(f"GitHub GraphQL request failed: {resp.get('errors')}")
-  return data
-
 def query_root_manifest_repos(repo_ids: Iterable[str]) -> list[str]:
   """Filters repositories to those with a `lake-manifest.json` at the root of their default branch."""
   found = list[str]()
   # Each `object` lookup is a git read, so large pages can exceed GitHub's GraphQL timeout (HTTP 502).
   for page in paginate(repo_ids, 25):
-    data = with_retries(lambda: query_root_manifest_page(page), "GitHub GraphQL manifest check")
+    data = query_github_graphql_data(ROOT_MANIFEST_QUERY, {"repoIds": page}, "GitHub GraphQL manifest check")
     logging.debug(f"GitHub GraphQL request cost: {data['rateLimit']['cost']}")
     for node in data['nodes']:
       if node is not None and node.get('lakeManifest') is not None:
@@ -378,7 +382,8 @@ def query_new_repos(limit: int, indexed_repos: Collection[str], exclusions: Cont
   logging.info(f"Searching for new Lean/Lake repositories")
   repo_ids = query_lake_repos(limit, indexed_repos)
   logging.info(f"{len(repo_ids)} candidate repositories with root Lake manifests")
-  repos = filter(None, query_repo_data(repo_ids))
+  # Code search returns legacy node IDs, so deduplicate and filter by the canonical IDs GraphQL returns.
+  repos = list({repo['id']: repo for repo in query_repo_data(repo_ids) if repo is not None}.values())
   if len(indexed_repos) != 0:
     repos = [repo for repo in repos if repo['id'] not in indexed_repos]
     logging.info(f"{len(repos)} candidate repositories not in index")
