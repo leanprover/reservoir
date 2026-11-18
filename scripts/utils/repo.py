@@ -1,10 +1,11 @@
 import os
 import json
 import time
+import random
 import logging
 import requests
 from datetime import datetime, timedelta, timezone
-from typing import Container, Collection, TypedDict, Any
+from typing import Callable, Container, Collection, TypedDict, Any
 from utils.index import *
 from utils.core import *
 
@@ -173,6 +174,23 @@ WINDOWED_SEARCH_START = datetime(2008, 1, 1, tzinfo=timezone.utc)
 WINDOWED_SEARCH_QUERY = 'language:Lean stars:>1'
 GH_SEARCH_CAP = 1000
 
+def with_retries(request: Callable[[], T], what: str, attempts: int = 5, base: float = 4.0) -> T:
+  """
+  Runs `request`, retrying on `RuntimeError` with exponential backoff and full jitter.
+  The waits (up to 4, 8, 16, 32 seconds by default) span about a minute,
+  which is what GitHub asks clients to wait after a secondary rate limit.
+  """
+  for attempt in range(attempts):
+    try:
+      return request()
+    except RuntimeError as e:
+      if attempt + 1 == attempts:
+        raise
+      delay = random.uniform(0, base * 2**attempt)
+      logging.warning(f"{what} failed ({e}); retrying in {delay:.1f}s")
+      time.sleep(delay)
+  raise AssertionError("unreachable")
+
 def wait_for_search_quota():
   # Querying the rate limit does not count against it.
   # Keep one request in reserve, as the reported limit has been observed to be off by one.
@@ -183,8 +201,10 @@ def wait_for_search_quota():
     time.sleep(wait)
 
 def query_search_repositories(query: str, page: int = 1) -> Any:
-  wait_for_search_quota()
-  res = query_github_api("search/repositories", {"q": query, "per_page": 100, "page": page})
+  def request():
+    wait_for_search_quota()
+    return query_github_api("search/repositories", {"q": query, "per_page": 100, "page": page})
+  res = with_retries(request, "GitHub repository search")
   if res.get('incomplete_results', False):
     logging.warning(f"GitHub returned incomplete results for '{query}' (page {page})")
   return res
@@ -239,24 +259,20 @@ query($repoIds: [ID!]!) {
 }
 """
 
-def query_root_manifest_repos(repo_ids: Iterable[str], retries: int = 3) -> list[str]:
+def query_root_manifest_page(page: list[str]) -> Any:
+  resp = query_github_graphql(ROOT_MANIFEST_QUERY, {"repoIds": page})
+  data = resp.get('data')
+  if data is None:
+    # GraphQL reports some failures with HTTP 200 and an `errors` field.
+    raise RuntimeError(f"GitHub GraphQL request failed: {resp.get('errors')}")
+  return data
+
+def query_root_manifest_repos(repo_ids: Iterable[str]) -> list[str]:
   """Filters repositories to those with a `lake-manifest.json` at the root of their default branch."""
   found = list[str]()
   # Each `object` lookup is a git read, so large pages can exceed GitHub's GraphQL timeout (HTTP 502).
   for page in paginate(repo_ids, 25):
-    for attempt in range(retries):
-      try:
-        resp = query_github_graphql(ROOT_MANIFEST_QUERY, {"repoIds": page})
-        data = resp.get('data')
-        if data is None:
-          # GraphQL reports some failures with HTTP 200 and an `errors` field.
-          raise RuntimeError(f"GitHub GraphQL request failed: {resp.get('errors')}")
-        break
-      except RuntimeError:
-        if attempt + 1 == retries:
-          raise
-        logging.warning("GitHub GraphQL request failed; retrying")
-        time.sleep(5 * (attempt + 1))
+    data = with_retries(lambda: query_root_manifest_page(page), "GitHub GraphQL manifest check")
     logging.debug(f"GitHub GraphQL request cost: {data['rateLimit']['cost']}")
     for node in data['nodes']:
       if node is not None and node.get('lakeManifest') is not None:
