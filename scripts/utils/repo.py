@@ -156,11 +156,15 @@ def query_lake_repos(limit: int, known_repos: Container[str] = set()) -> list[st
   if unbounded:
     # The code search above is capped at 1000 results (and is not sortable),
     # so also sweep repository search, which can be partitioned by creation date.
-    seen = set(repo_ids)
-    window_ids = [id for id in query_windowed_lean_repos() if id not in seen and id not in known_repos]
-    found = query_root_manifest_repos(window_ids)
-    logging.info(f"{len(found)} additional repositories with root Lake manifests found by windowed search")
-    repo_ids.extend(found)
+    # A failure here should not discard the code search results.
+    try:
+      seen = set(repo_ids)
+      window_ids = [id for id in query_windowed_lean_repos() if id not in seen and id not in known_repos]
+      found = query_root_manifest_repos(window_ids)
+      logging.info(f"{len(found)} additional repositories with root Lake manifests found by windowed search")
+      repo_ids.extend(found)
+    except RuntimeError:
+      logging.exception("Windowed repository search failed; using code search results only")
   # Unsorted code search pages can overlap, so deduplicate (preserving order).
   return list(dict.fromkeys(repo_ids))
 
@@ -171,8 +175,9 @@ GH_SEARCH_CAP = 1000
 
 def wait_for_search_quota():
   # Querying the rate limit does not count against it.
+  # Keep one request in reserve, as the reported limit has been observed to be off by one.
   rate_limit = query_github_api("rate_limit")['resources']['search']
-  if rate_limit['remaining'] < 1:
+  if rate_limit['remaining'] < 2:
     wait = max(0, int(rate_limit['reset']) - int(time.time())) + 1
     logging.debug(f"Search rate limit reached; waiting {wait}s")
     time.sleep(wait)
@@ -241,7 +246,11 @@ def query_root_manifest_repos(repo_ids: Iterable[str], retries: int = 3) -> list
   for page in paginate(repo_ids, 25):
     for attempt in range(retries):
       try:
-        data = query_github_graphql(ROOT_MANIFEST_QUERY, {"repoIds": page})['data']
+        resp = query_github_graphql(ROOT_MANIFEST_QUERY, {"repoIds": page})
+        data = resp.get('data')
+        if data is None:
+          # GraphQL reports some failures with HTTP 200 and an `errors` field.
+          raise RuntimeError(f"GitHub GraphQL request failed: {resp.get('errors')}")
         break
       except RuntimeError:
         if attempt + 1 == retries:
