@@ -1,8 +1,11 @@
 import os
 import json
+import time
+import random
 import logging
 import requests
-from typing import Container, Collection, TypedDict, Any
+from datetime import datetime, timedelta, timezone
+from typing import Callable, Container, Collection, TypedDict, Any
 from utils.index import *
 from utils.core import *
 
@@ -119,9 +122,19 @@ def query_github_results(limit: int, endpoint: str, params: dict[str, Any]) -> I
     res = query_github_api(endpoint, params)
     yield from res['items']
 
+def query_github_graphql_data(query: str, variables: dict, what: str) -> Any:
+  """GraphQL `data`, with retries. Some failures arrive as HTTP 200 with `errors` and no `data`."""
+  def request():
+    resp = query_github_graphql(query, variables)
+    data = resp.get('data')
+    if data is None:
+      raise RuntimeError(f"GitHub GraphQL request failed: {resp.get('errors')}")
+    return data
+  return with_retries(request, what)
+
 def query_repo_data(items: Iterable[str]) -> Iterable[Repo | None]:
   for page in paginate(items, 100):
-    data = query_github_graphql(REPO_QUERY, {"repoIds": page})['data']
+    data = query_github_graphql_data(REPO_QUERY, {"repoIds": page}, "GitHub GraphQL repository query")
     logging.debug(f"GitHub GraphQL request cost: {data['rateLimit']['cost']}")
     yield from data['nodes']
 
@@ -134,12 +147,13 @@ def query_repos(ids: Iterable[str]) -> dict[str, Repo]:
       repos[id] = repo
   return repos
 
-def query_lake_repos(limit: int) -> list[str]:
+def query_lake_repos(limit: int, known_repos: Container[str] = set()) -> list[str]:
   # NOTE: For some reason, the GitHub rate limit is currently (07-08-24) off by one.
   rate_limit = query_github_api("rate_limit")['resources']['code_search']
-  if limit < 0:
+  unbounded = limit < 0
+  if unbounded:
     # NOTE: GitHub limits code searches to 10 requests/min, which is 1000 results.
-    # Thus, the strategy used here will need to change when we hit that limit.
+    # Thus, an unbounded query also sweeps a date-windowed repository search (below).
     limit = (rate_limit['limit']-1)*100
   gh_limit = (rate_limit['remaining']-1)*100
   if limit > gh_limit:
@@ -149,7 +163,125 @@ def query_lake_repos(limit: int) -> list[str]:
   logging.debug(f"Querying at most {limit} repositories")
   query='filename:lake-manifest.json path:/'
   items = query_github_results(limit, "search/code", {"q": query})
-  return [item['repository']['node_id'] for item in items]
+  repo_ids = [item['repository']['node_id'] for item in items]
+  if unbounded:
+    # The code search above is capped at 1000 results (and is not sortable),
+    # so also sweep repository search, which can be partitioned by creation date.
+    # A failure here should not discard the code search results.
+    try:
+      # Repository search returns the same (new-style) node IDs as the index, so known repos can be skipped
+      # here. Code search returns legacy IDs, so overlap with it is resolved later, by canonical ID.
+      window_ids = [id for id in query_windowed_lean_repos() if id not in known_repos]
+      found = query_root_manifest_repos(window_ids)
+      logging.info(f"{len(found)} additional repositories with root Lake manifests found by windowed search")
+      repo_ids.extend(found)
+    except RuntimeError:
+      logging.exception("Windowed repository search failed; using code search results only")
+  # Unsorted code search pages can overlap, so deduplicate (preserving order).
+  # IDs from the two searches differ in format; callers deduplicate by canonical ID after querying data.
+  return list(dict.fromkeys(repo_ids))
+
+# GitHub's launch; bisection makes early, sparse windows cheap.
+WINDOWED_SEARCH_START = datetime(2008, 1, 1, tzinfo=timezone.utc)
+WINDOWED_SEARCH_QUERY = 'language:Lean stars:>1'
+GH_SEARCH_CAP = 1000
+
+def with_retries(request: Callable[[], T], what: str, attempts: int = 5, base: float = 4.0) -> T:
+  """
+  Runs `request`, retrying on `RuntimeError` with exponential backoff and full jitter.
+  The waits (up to 4, 8, 16, 32 seconds by default) span about a minute,
+  which is what GitHub asks clients to wait after a secondary rate limit.
+  """
+  for attempt in range(attempts):
+    try:
+      return request()
+    except RuntimeError as e:
+      if attempt + 1 == attempts:
+        raise
+      delay = random.uniform(0, base * 2**attempt)
+      logging.warning(f"{what} failed ({e}); retrying in {delay:.1f}s")
+      time.sleep(delay)
+  raise AssertionError("unreachable")
+
+def wait_for_search_quota():
+  # Querying the rate limit does not count against it.
+  # Keep one request in reserve, as the reported limit has been observed to be off by one.
+  rate_limit = query_github_api("rate_limit")['resources']['search']
+  if rate_limit['remaining'] < 2:
+    wait = max(0, int(rate_limit['reset']) - int(time.time())) + 1
+    logging.debug(f"Search rate limit reached; waiting {wait}s")
+    time.sleep(wait)
+
+def query_search_repositories(query: str, page: int = 1) -> Any:
+  def request():
+    wait_for_search_quota()
+    return query_github_api("search/repositories", {"q": query, "per_page": 100, "page": page})
+  res = with_retries(request, "GitHub repository search")
+  if res.get('incomplete_results', False):
+    logging.warning(f"GitHub returned incomplete results for '{query}' (page {page})")
+  return res
+
+def query_windowed_lean_repos(
+  start: datetime = WINDOWED_SEARCH_START, end: datetime | None = None
+) -> list[str]:
+  """
+  Node IDs of all repositories matching `WINDOWED_SEARCH_QUERY`.
+  A search returns at most 1000 results, so the creation-date range is bisected
+  until each window holds fewer than that.
+  """
+  if end is None:
+    end = datetime.now(timezone.utc).replace(microsecond=0)
+  repo_ids = list[str]()
+  windows = [(start, end)]
+  while windows:
+    a, b = windows.pop()
+    query = f"{WINDOWED_SEARCH_QUERY} created:{fmt_utc_iso(a)}..{fmt_utc_iso(b)}"
+    res = query_search_repositories(query)
+    total = res['total_count']
+    if total >= GH_SEARCH_CAP and b - a > timedelta(seconds=1):
+      mid = (a + (b - a) / 2).replace(microsecond=0)
+      # Ranges are inclusive, so the halves must not share an endpoint.
+      windows.append((mid + timedelta(seconds=1), b))
+      windows.append((a, mid))
+      continue
+    if total >= GH_SEARCH_CAP:
+      logging.warning(f"Search window '{query}' exceeds {GH_SEARCH_CAP} results; some will be missed")
+    items = res['items']
+    pages = (min(total, GH_SEARCH_CAP) + 99) // 100
+    for page in range(2, pages + 1):
+      items.extend(query_search_repositories(query, page)['items'])
+    logging.debug(f"{len(items)} repositories created {fmt_utc_iso(a)}..{fmt_utc_iso(b)}")
+    repo_ids.extend(item['node_id'] for item in items)
+  logging.info(f"{len(repo_ids)} repositories found by windowed search")
+  return repo_ids
+
+ROOT_MANIFEST_QUERY="""
+query($repoIds: [ID!]!) {
+  nodes(ids: $repoIds) {
+    ... on Repository {
+      id
+      lakeManifest: object(expression: "HEAD:lake-manifest.json") {
+        __typename
+      }
+    }
+  }
+  rateLimit {
+    cost
+  }
+}
+"""
+
+def query_root_manifest_repos(repo_ids: Iterable[str]) -> list[str]:
+  """Filters repositories to those with a `lake-manifest.json` at the root of their default branch."""
+  found = list[str]()
+  # Each `object` lookup is a git read, so large pages can exceed GitHub's GraphQL timeout (HTTP 502).
+  for page in paginate(repo_ids, 25):
+    data = query_github_graphql_data(ROOT_MANIFEST_QUERY, {"repoIds": page}, "GitHub GraphQL manifest check")
+    logging.debug(f"GitHub GraphQL request cost: {data['rateLimit']['cost']}")
+    for node in data['nodes']:
+      if node is not None and node.get('lakeManifest') is not None:
+        found.append(node['id'])
+  return found
 
 class License(TypedDict):
   reference: str
@@ -248,9 +380,10 @@ def add_repo_metadata(pkg: Package, repo: Repo):
 def query_new_repos(limit: int, indexed_repos: Collection[str], exclusions: Container[str] = set()) -> list[Repo]:
   if limit == 0: return []
   logging.info(f"Searching for new Lean/Lake repositories")
-  repo_ids = query_lake_repos(limit)
+  repo_ids = query_lake_repos(limit, indexed_repos)
   logging.info(f"{len(repo_ids)} candidate repositories with root Lake manifests")
-  repos = filter(None, query_repo_data(repo_ids))
+  # Code search returns legacy node IDs, so deduplicate and filter by the canonical IDs GraphQL returns.
+  repos = list({repo['id']: repo for repo in query_repo_data(repo_ids) if repo is not None}.values())
   if len(indexed_repos) != 0:
     repos = [repo for repo in repos if repo['id'] not in indexed_repos]
     logging.info(f"{len(repos)} candidate repositories not in index")
