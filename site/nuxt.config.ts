@@ -47,7 +47,9 @@ export default defineNuxtConfig({
     prerender: {
       failOnError: false,
       autoSubfolderIndex: false,
-      routes: ["/", ...packages.map(pkgLink)]
+      routes: ["/", ...packages.map(pkgLink)],
+      // miminize build resource usage until scalability issues are fixed
+      concurrency: 4,
     },
   },
   site: {

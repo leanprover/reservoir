@@ -99,7 +99,8 @@ jobs:
         run: npm run generate
         env:
           # Node default is 4GB and the build exceeds that
-          NODE_OPTIONS: --max-old-space-size=16384
+          # GitHub runners have 16GB and a lower value avoids exhaustion
+          NODE_OPTIONS: --max-old-space-size=12288
       - name: Download Index Artifact
         if: inputs.index-artifact
         uses:  actions/download-artifact@v8
