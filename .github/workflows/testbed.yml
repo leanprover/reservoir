@@ -56,6 +56,10 @@ on:
         description: "Max number of packages to test"
         type: number
         required: false
+      max-new:
+        description: "Max number of new GitHub packages to add per run"
+        type: number
+        required: false
       cache-builds:
         description: "Upload builds to cloud cache"
         type: boolean
@@ -154,6 +158,7 @@ jobs:
             -V '${{ inputs.version-pattern }}' \
             -T '${{ inputs.toolchain || 'package' }}'  \
             -n ${{ toJson(inputs.max-size) == 'null' && -1 || inputs.max-size }} \
+            --max-new ${{ toJson(inputs.max-new) == 'null' && -1 || inputs.max-new }} \
             -Q ${{ inputs.search-packages && (inputs.dev && 100 || -1) || 0 }} \
             -X ${{ inputs.dev && 'scripts/package-dev-exclusions.txt' || 'scripts/package-exclusions.txt' }} \
             ${{ inputs.cache-builds && '--cache' || '--no-cache' }} \
