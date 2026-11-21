@@ -47,7 +47,18 @@ export default defineNuxtConfig({
     prerender: {
       failOnError: false,
       autoSubfolderIndex: false,
-      routes: ["/", ...packages.map(pkgLink)]
+      routes: ["/", ...packages.map(pkgLink)],
+    },
+    hooks: {
+      'rollup:before'(_nitro, config) {
+        // remove Nitro's `@rollup/plugin-inject`,
+        // which creates a sourcemap for the manifest
+        if (Array.isArray(config.plugins)) {
+          config.plugins = config.plugins.filter(p =>
+            !(p && 'name' in p && p.name === 'inject')
+          )
+        }
+      },
     },
   },
   site: {
