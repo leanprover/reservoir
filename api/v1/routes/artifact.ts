@@ -32,9 +32,14 @@ export async function getArtifactUrls(repo: string, hashes: string[], dev: boole
   return mkJsonResponse(urls)
 }
 
+/** Returns true if `s` is a Lake artifact hash: 64 hexits (SHA-256) or 16 hexits (older Lake versions). */
+function isArtifactHash(s: string) {
+  return isFixedHex(s, 64) || isFixedHex(s, 16)
+}
+
 /** Zod schema for an artifact hash. */
 export const ArtifactHash = z.string()
-  .refine(art => isFixedHex(art, 16), "Expected name of exactly 16 hexits")
+  .refine(isArtifactHash, "Expected name of exactly 64 (or 16) hexits")
 
 /** Zod schema request body for an artifact URL query. */
 export const ArtifactsBody = z.array(ArtifactHash)
@@ -49,7 +54,7 @@ export const artifactsHandler = defineEventErrorHandler(async event => {
 /** Zod schema for extracting an artifact hash from a `<hash>.art` artifact file name. */
 export const ArtifactFromFile = z.string()
   .transform((art, ctx) => trimExt('art', art, ctx))
-  .refine(art => isFixedHex(art, 16), "Expected name of exactly 16 hexits")
+  .refine(isArtifactHash, "Expected name of exactly 64 (or 16) hexits")
 
 const GetArtifactParams = RepoParams.extend({
   artifact: ArtifactFromFile,
