@@ -95,8 +95,8 @@ const commit = (event: Event, clickedPkg?: Package) => {
 </script>
 
 <template>
-    <div class="search-bar">
-      <AutoComplete ref="ctrl"
+    <form class="search-bar" action="/packages">
+      <AutoComplete ref="ctrl" name="q"
         class="search-control" panelClass="search-panel"
         placeholder="Press 'S' to start searching..." optionLabel="name"
         v-model="query" :suggestions="filteredPkgs" :autoOptionFocus="false"
@@ -119,7 +119,7 @@ const commit = (event: Event, clickedPkg?: Package) => {
       <div tabindex="0" class="search-button" @click="commit" @keyup.enter="commit">
         <SearchIcon width="100%" height="100%"/>
       </div>
-    </div>
+    </form>
 </template>
 
 <style lang="scss">
